@@ -10,7 +10,8 @@ import PowerParser
 /// Every candidate action builds its hypothetical board from this alone, so candidate generation
 /// and ranking are pure functions of the request (and of the simulated scores).
 public struct AdvisorRequest: Codable, Hashable, Sendable {
-    /// The combat the advisor scores against: nil input means the next opponent hasn't been seen.
+    /// The combat the advisor scores against: nil input means there's nothing to score against
+    /// (no opponent seen yet). Against `standIn`'s side when there is one.
     public var preview: OddsPreviewRequest
     /// Gold left to spend now.
     public var gold: Int
@@ -43,6 +44,11 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     /// The base card of every golden card in the request (`…_G` or `TB_BaconUps_*` → the normal
     /// card), when it isn't simply the ID without `_G`; for matching build cards and pairs.
     public var baseCardIDs: [String: String]?
+    /// When the next opponent hasn't been fought yet: the opponent whose last-seen side the
+    /// combat term fights in their place (the most recently seen one), with the next opponent's
+    /// health and tier. `preview.input` is against it, and it isn't in `lobby`. Nil when the next
+    /// opponent's own board is used.
+    public var standIn: AdvisorLobbyOpponent?
 
     public static let boardLimit = 7
     public static let handLimit = 10
@@ -55,7 +61,7 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
         preview: OddsPreviewRequest, gold: Int, tier: Int, board: [AdvisorCard], hand: [AdvisorCard],
         shop: [AdvisorCard], levelCost: Int? = nil, rollCost: Int? = nil, canFreeze: Bool = false,
         shopFrozen: Bool = false, income: Int? = nil, goldCap: Int? = nil, lobby: [AdvisorLobbyOpponent]? = nil,
-        builds: [AdvisorBuild]? = nil, baseCardIDs: [String: String]? = nil
+        builds: [AdvisorBuild]? = nil, baseCardIDs: [String: String]? = nil, standIn: AdvisorLobbyOpponent? = nil
     ) {
         self.preview = preview
         self.gold = gold
@@ -72,6 +78,7 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
         self.lobby = lobby
         self.builds = builds
         self.baseCardIDs = baseCardIDs
+        self.standIn = standIn
     }
 
     /// One per game, BG turn and next opponent (the preview's); the state within it changes.
@@ -83,6 +90,21 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
         if let base = baseCardIDs?[cardID] { return base }
         if cardID.hasSuffix("_G") { return String(cardID.dropLast(2)) }
         return cardID
+    }
+
+    /// Who the combat term fights, for the reasons shown: "next opponent", or the stand-in's
+    /// "last opponent" (fought last turn) or "turn N opponent".
+    public var opponentLabel: String {
+        guard let standIn else { return "next opponent" }
+        return standIn.seenTurn == preview.bgTurn - 1 ? "last opponent" : "turn \(standIn.seenTurn) opponent"
+    }
+
+    /// The most recently seen of `lobby`, the combat term's opponent when the next one hasn't been
+    /// seen (the closest to the boards the lobby has now); a combat-start side before a rebuilt
+    /// one, then the lower PlayerID. Nil without a living one.
+    public static func standIn(from lobby: [AdvisorLobbyOpponent]) -> AdvisorLobbyOpponent? {
+        func key(_ o: AdvisorLobbyOpponent) -> (Int, Int, Int) { (o.seenTurn, o.source == .combatStart ? 1 : 0, -o.playerID) }
+        return lobby.filter { $0.side.player.hpLeft > 0 }.max { key($0) < key($1) }
     }
 
     /// The local hero's health now; nil without data.

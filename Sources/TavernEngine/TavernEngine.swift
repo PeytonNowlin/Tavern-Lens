@@ -480,8 +480,10 @@ public struct TavernEngine: Sendable {
 
     /// The advisor's view of the recruit phase now: the odds preview's combat plus the gold, board,
     /// hand, shop and tavern buttons the candidate actions are built from. Nil outside the recruit
-    /// phase or without a next opponent; without data (and so without candidates) when that
-    /// opponent hasn't been seen. Built on demand from the store, like `oddsPreview`.
+    /// phase or without a next opponent. When that opponent hasn't been seen, the combat is against
+    /// a stand-in (`AdvisorRequest.standIn`, the most recently seen opponent); without data (and so
+    /// without candidates) only when no opponent has been seen. Built on demand from the store,
+    /// like `oddsPreview`.
     ///
     /// It also carries what the blended score needs besides the next combat: every other living
     /// opponent's last-seen side (health and tier as they are now), the detected builds (from
@@ -490,13 +492,24 @@ public struct TavernEngine: Sendable {
         guard let preview = oddsPreview, let snapshot = BGSnapshot.project(store),
               var request = BattleInputBuilder.advisorRequest(store: store, snapshot: snapshot, preview: preview)
         else { return nil }
-        guard request.hasData else { return request }
         var lobby: [AdvisorLobbyOpponent] = []
         for entry in snapshot.lobby where !entry.isLocal && !entry.isDead && entry.playerID != preview.opponentPlayerID {
             guard var seen = lastSeenSide(of: entry.playerID, snapshot: snapshot) else { continue }
             seen.side.player.hpLeft = entry.hero.hp
             if let tier = entry.hero.tier, tier > 0 { seen.side.player.tavernTier = tier }
             lobby.append(AdvisorLobbyOpponent(playerID: entry.playerID, seenTurn: seen.seenTurn, source: seen.source, side: seen.side))
+        }
+        if !request.hasData {
+            // The next opponent hasn't been fought: the most recently seen opponent's board stands in.
+            guard let standIn = AdvisorRequest.standIn(from: lobby),
+                  let stood = BattleInputBuilder.preview(
+                      store: store, snapshot: snapshot, opponent: (standIn.side, standIn.seenTurn, standIn.source),
+                      validTribes: simulatorLobbyTribes(snapshot)
+                  ), stood.hasData
+            else { return request }
+            request.preview = stood
+            request.standIn = standIn
+            lobby.removeAll { $0.playerID == standIn.playerID }
         }
         request.lobby = lobby.sorted { $0.playerID < $1.playerID }
         if let catalog = builds.catalog, let detected = state.game?.builds?.detected, !detected.isEmpty {

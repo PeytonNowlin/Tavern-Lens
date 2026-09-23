@@ -35,6 +35,17 @@ per opponent: every candidate would be about 180 evaluations late in a game, far
 budget, and the other terms have already ranked the rest too low for the lobby to change the top
 (`docs/deviations.md`).
 
+### An unseen next opponent: a stand-in
+
+Matchmaking avoids recent opponents, so early in a game the next opponent is usually one not fought
+yet, and has no board to simulate against. Then the combat term fights a **stand-in**
+(`AdvisorRequest.standIn`): the most recently seen living opponent's board (a combat-start side
+before a rebuilt one, then the lower PlayerID), with the next opponent's health and tier. It is
+usually last turn's opponent, the freshest sample of how strong boards are now. The stand-in leaves
+the lobby term, which covers the rest. Its advice is capped at medium confidence, the reasons name it
+("+8% win vs last opponent"), and the note says the next opponent hasn't been fought. Only with no
+opponent seen at all (turn 1) is there no data.
+
 ### Builds
 
 The value of the cards held (board and hand), per build and by its share: `buildCoreCard` (6) per

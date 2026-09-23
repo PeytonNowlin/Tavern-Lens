@@ -22,7 +22,10 @@ extension Advisor {
     /// The lobby's other opponents the lobby term fights: every one with a last-seen board, by PlayerID.
     public static func lobbyOpponents(for request: AdvisorRequest) -> [AdvisorLobbyOpponent] {
         (request.lobby ?? [])
-            .filter { $0.playerID != request.preview.opponentPlayerID && $0.side.player.hpLeft > 0 }
+            .filter {
+                $0.playerID != request.preview.opponentPlayerID && $0.playerID != request.standIn?.playerID
+                    && $0.side.player.hpLeft > 0
+            }
             .sorted { $0.playerID < $1.playerID }
     }
 

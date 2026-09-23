@@ -303,7 +303,7 @@ public struct Advice: Codable, Hashable, Sendable {
         case recommendation
         /// The options are close, or the data is thin: the suggestions are there, but none stands out.
         case noStrongRecommendation
-        /// The next opponent hasn't been seen, so there's nothing to simulate against.
+        /// No opponent has been seen yet, so there's nothing to simulate against.
         case noData
     }
 
@@ -334,7 +334,7 @@ public struct Advice: Codable, Hashable, Sendable {
         self.sanity = sanity
     }
 
-    public static let noData = Advice(status: .noData, note: "No data: next opponent not fought yet")
+    public static let noData = Advice(status: .noData, note: "No data: no opponent fought yet")
 }
 
 extension Advisor {
@@ -530,7 +530,9 @@ extension Advisor {
             return item
         }
         let staleness = request.preview.opponentSeenTurn.map { request.preview.bgTurn - $0 } ?? 0
+        // A stand-in's board is a guess at the next opponent's: at most medium confidence too.
         let capped = staleness >= weights.staleAfterTurns || request.preview.opponentSource == .lastSeenBoard
+            || request.standIn != nil
 
         func isClose(_ a: Option, _ b: Option) -> Bool {
             let gap = a.gain - b.gain
@@ -574,7 +576,11 @@ extension Advisor {
             status = .noStrongRecommendation
             note = "Options are close"
         } else if let top = suggestions.first, top.confidence != .low {
-            if capped, let seen = request.preview.opponentSeenTurn { note = "Their board is from turn \(seen)" }
+            if request.standIn != nil {
+                note = "Next opponent not fought yet: scored vs your \(request.opponentLabel)"
+            } else if capped, let seen = request.preview.opponentSeenTurn {
+                note = "Their board is from turn \(seen)"
+            }
         } else {
             status = .noStrongRecommendation
             if suggestions.isEmpty {
@@ -629,7 +635,7 @@ extension Advisor {
         }
         let lobby = terms.lobby ?? 0, build = terms.build ?? 0, tempo = terms.economy ?? 0
         let biggest = max(lobby, build, tempo)
-        if terms.combat >= biggest || biggest <= 0 { return reason(option.tally, versus: base) }
+        if terms.combat >= biggest || biggest <= 0 { return reason(option.tally, versus: base, opponent: request.opponentLabel) }
         if biggest == build, let card = boughtCard(option.candidate.action) {
             if let core = builds.coreBuild(of: card) { return "Core card for \(core.name)" }
             if let addon = builds.addonBuild(of: card) { return "Add-on for \(addon.name)" }
@@ -637,7 +643,7 @@ extension Advisor {
         }
         if biggest == tempo { return "Frees the gold to level now" }
         if biggest == lobby { return "Stronger vs the rest of the lobby" }
-        return reason(option.tally, versus: base)
+        return reason(option.tally, versus: base, opponent: request.opponentLabel)
     }
 
     static func boughtCard(_ action: AdvisorAction) -> String? {
@@ -647,21 +653,22 @@ extension Advisor {
         }
     }
 
-    /// One line on what a board change does to the next combat.
-    static func reason(_ tally: CombatTally, versus base: CombatTally) -> String {
+    /// One line on what a board change does to the next combat, against `opponent`
+    /// (`AdvisorRequest.opponentLabel`).
+    static func reason(_ tally: CombatTally, versus base: CombatTally, opponent: String = "next opponent") -> String {
         let lethalBefore = base.lethalRiskPercent, lethalAfter = tally.lethalRiskPercent
         if lethalBefore - lethalAfter >= 5 {
             return "Cuts lethal risk \(Int(lethalBefore.rounded()))% → \(Int(lethalAfter.rounded()))%"
         }
         let win = tally.winPercent - base.winPercent
-        if abs(win) >= 1 { return "\(signed(win))% win vs next opponent" }
+        if abs(win) >= 1 { return "\(signed(win))% win vs \(opponent)" }
         let taken = base.averageDamageTaken - tally.averageDamageTaken
         let dealt = tally.averageDamageDealt - base.averageDamageDealt
-        if taken >= 1, taken >= abs(dealt) { return "Takes \(Int(taken.rounded())) less damage vs next opponent" }
-        if dealt >= 1 { return "Deals \(Int(dealt.rounded())) more damage to next opponent" }
-        if taken <= -1 { return "Takes \(Int((-taken).rounded())) more damage vs next opponent" }
-        if dealt <= -1 { return "Deals \(Int((-dealt).rounded())) less damage to next opponent" }
-        return "About even vs next opponent"
+        if taken >= 1, taken >= abs(dealt) { return "Takes \(Int(taken.rounded())) less damage vs \(opponent)" }
+        if dealt >= 1 { return "Deals \(Int(dealt.rounded())) more damage to \(opponent)" }
+        if taken <= -1 { return "Takes \(Int((-taken).rounded())) more damage vs \(opponent)" }
+        if dealt <= -1 { return "Deals \(Int((-dealt).rounded())) less damage to \(opponent)" }
+        return "About even vs \(opponent)"
     }
 
     static func signed(_ value: Double) -> String {

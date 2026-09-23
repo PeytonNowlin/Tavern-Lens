@@ -44,3 +44,15 @@ And the lobby term rarely decides between candidates the other terms already ran
 The consequence is that a board change that's only good against the rest of the lobby, and bad
 against the next opponent, can't be suggested. That is the intended trade: the next combat is the
 one the advice is about.
+
+## Against an unseen next opponent, the advisor scores against a stand-in (stories 48–52)
+
+The spec's advice is about the next combat against the next opponent's last-seen board. When the
+next opponent hasn't been fought yet, the advisor scores the combat term against the most recently
+seen opponent's board instead (the odds preview still shows no data). See `docs/advisor/scoring.md`,
+"An unseen next opponent".
+
+Why: matchmaking avoids recent opponents, so the next opponent is often one not fought yet. A game
+with a new opponent every turn for its first seven turns (a playtest on 2026-09-23) had no advice at
+all. A recent board is a fair guess at what boards look like now, so advice against it is better
+than none. It is marked as a guess: at most medium confidence, reasons that name it, and a note.

@@ -47,6 +47,38 @@ struct AdvisorBlendTests {
         #expect(Advisor.lobbyOpponents(for: request).map(\.playerID) == [2, 3])
     }
 
+    @Test("The stand-in for an unseen next opponent is the most recently seen living one, fought at combat start first")
+    func standInChoice() throws {
+        var rebuilt = try S.lobbyOpponent(4, seenTurn: 10)
+        rebuilt.source = .lastSeenBoard
+        let lobby = [
+            try S.lobbyOpponent(2, seenTurn: 9), rebuilt, try S.lobbyOpponent(6, seenTurn: 10),
+            try S.lobbyOpponent(3, seenTurn: 10), try S.lobbyOpponent(5, seenTurn: 10, hp: 0),
+        ]
+        #expect(AdvisorRequest.standIn(from: lobby)?.playerID == 3)
+        #expect(AdvisorRequest.standIn(from: [rebuilt])?.playerID == 4)
+        #expect(AdvisorRequest.standIn(from: []) == nil)
+    }
+
+    @Test("Scored against a stand-in, a clear buy says who it's against, at most medium confidence, and the stand-in isn't in the lobby term")
+    func standIn() async throws {
+        let shop = [S.shopMinion(901, attack: 2, health: 2), S.shopMinion(902, attack: 20, health: 20)]
+        let standIn = try S.lobbyOpponent(3, seenTurn: 10)
+        var request = try S.request(boardCount: 5, shop: shop, gold: 3, lobby: [try S.lobbyOpponent(2, seenTurn: 8), standIn])
+        request.standIn = standIn
+        #expect(Advisor.lobbyOpponents(for: request).map(\.playerID) == [2])
+
+        let advice = try await Self.run(request, AdvisorSyntheticTests.stub(request))
+        #expect(advice.status == .recommendation)
+        let top = try #require(advice.suggestions.first)
+        #expect(top.reason == "+20% win vs last opponent")
+        #expect(top.confidence == .medium, "a stand-in's board is a guess: no more than medium")
+        #expect(advice.note == "Next opponent not fought yet: scored vs your last opponent")
+
+        request.standIn?.seenTurn = 8
+        #expect(request.opponentLabel == "turn 8 opponent")
+    }
+
     @Test("A buy that's even against the next opponent but strong against the rest of the lobby comes first")
     func lobby() async throws {
         let shop = [S.shopMinion(901, attack: 6, health: 6), S.shopMinion(902, attack: 6, health: 6)]

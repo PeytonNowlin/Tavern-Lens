@@ -116,7 +116,7 @@ struct AdvisorSyntheticTests {
         let request = try S.request(boardCount: 5, shop: [S.shopMinion(901, attack: 5, health: 5)], hasData: false)
         let calls = S.Calls()
         let result = try await Self.run(request, Self.stub(try S.request()), calls: calls)
-        #expect(result.advice.status == .noData && result.advice.note == "No data: next opponent not fought yet")
+        #expect(result.advice.status == .noData && result.advice.note == "No data: no opponent fought yet")
         #expect(result.advice.suggestions.isEmpty && calls.all.isEmpty)
     }
 

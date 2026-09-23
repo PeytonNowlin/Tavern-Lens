@@ -67,6 +67,30 @@ struct AdvisorFixtureTests {
         try AdvisorFixture.verify(request, golden: "\(AdvisorSimulatorTests.turn11).request")
     }
 
+    @Test("Facing a new opponent every turn, the advisor scores against the last opponent's board from turn 2",
+          .enabled(if: Fixtures.isAvailable(Fixtures.freshOpponentsGame), "private fixture log not present"))
+    func standIn() async throws {
+        let replay = try AdvisorFixture.replay(Fixtures.freshOpponentsGame)
+        #expect(replay.mostGold[1]?.hasData == false, "turn 1: no opponent seen yet")
+        #expect(replay.mostGold[1]?.standIn == nil)
+        let simulate = try AdvisorFixture.simulate()
+        for turn in 2...7 {
+            let request = try #require(replay.mostGold[turn], "turn \(turn)")
+            let standIn = try #require(request.standIn, "turn \(turn): the next opponent wasn't fought before")
+            #expect(request.hasData && standIn.seenTurn == turn - 1 && request.opponentLabel == "last opponent")
+            #expect(standIn.playerID != request.preview.opponentPlayerID)
+            #expect(request.preview.opponentSeenTurn == turn - 1)
+            let lobby = try #require(request.lobby)
+            #expect(lobby.count == turn - 2 && !lobby.contains { $0.playerID == standIn.playerID }, "turn \(turn)")
+            if turn == 5 {
+                let done = try await AdvisorEvaluation.run(request, plan: AdvisorFixture.plan, simulate: simulate)
+                #expect(done.isComplete && done.advice.baseline != nil)
+                #expect(done.advice.suggestions.allSatisfy { $0.confidence != .high })
+                #expect(AdvisorSanity.violations(done.advice, request: request).isEmpty)
+            }
+        }
+    }
+
     @Test("A bookmark keeps the advice shown, in its game's record, and replays to exactly that advice",
           .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present"))
     func bookmark() async throws {
