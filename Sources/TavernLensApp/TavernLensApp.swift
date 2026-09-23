@@ -60,6 +60,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The minion pool (card data + HSReplay + overrides) feeds the live tribe inference.
         PoolDataModel.shared.onPoolChanged = { [live] pool in live.pool = pool }
         PoolDataModel.shared.start()
+        // Build data (Firestone comps + our override file, filtered by the pool) feeds build detection.
+        BuildDataModel.shared.onCatalogChanged = { [live] catalog in live.builds = catalog }
+        BuildDataModel.shared.start()
         live.start()
         overlay.start()
         feedback.start()

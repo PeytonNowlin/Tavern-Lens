@@ -1,0 +1,486 @@
+{
+  "catalog" : [
+    "murloc_handbuff",
+    "beast_beetle",
+    "demon_boost_shop",
+    "beast_leviathan",
+    "undead_butcher",
+    "neutral_tea_set",
+    "demon_self_damage",
+    "pirate_discover",
+    "mech_magnet",
+    "beast_lobster",
+    "quilboar_choose_one",
+    "dragon_kalecgos",
+    "aberration_cthun_poet",
+    "aberration_discard_deity",
+    "aberration_spell_deity",
+    "aberration_tea_set_deity"
+  ],
+  "checkpoints" : {
+    "last" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+            "BG36_101",
+            "BG25_354",
+            "BG36_MagicItem_404"
+          ],
+          "coreHave" : [
+            "BG36_318"
+          ],
+          "id" : "aberration_spell_deity"
+        },
+        {
+          "addonsHave" : [
+            "BG36_301t"
+          ],
+          "coreHave" : [
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        }
+      ],
+      "opponents" : {
+        "P5" : {
+          "id" : "dragon_kalecgos",
+          "matchedCards" : [
+            "BG_LOE_077",
+            "BG36_243"
+          ],
+          "name" : "Dragon Kalecgos"
+        },
+        "P7" : {
+          "id" : "aberration_spell_deity",
+          "matchedCards" : [
+            "BG36_108",
+            "BG36_101"
+          ],
+          "name" : "Aberration Tavern Spells"
+        },
+        "P8" : {
+          "id" : "aberration_discard_deity",
+          "matchedCards" : [
+            "BG36_099",
+            "BG36_097",
+            "BG36_312",
+            "BG36_115",
+            "BG36_114"
+          ],
+          "name" : "Aberration Discard"
+        }
+      },
+      "shop" : [
+
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:10:recruit:end" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+
+          ],
+          "coreHave" : [
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        },
+        {
+          "addonsHave" : [
+            "BG36_101",
+            "BG25_354",
+            "BG36_MagicItem_404"
+          ],
+          "coreHave" : [
+            "BG36_109"
+          ],
+          "id" : "aberration_spell_deity"
+        }
+      ],
+      "opponents" : {
+        "P5" : {
+          "id" : "dragon_kalecgos",
+          "matchedCards" : [
+            "BG_LOE_077",
+            "BG36_243"
+          ],
+          "name" : "Dragon Kalecgos"
+        },
+        "P7" : {
+          "id" : "aberration_spell_deity",
+          "matchedCards" : [
+            "BG36_108",
+            "BG36_101"
+          ],
+          "name" : "Aberration Tavern Spells"
+        }
+      },
+      "shop" : [
+        "BG28_309",
+        "BGS_041",
+        "BGS_123",
+        "BGS_116",
+        "BG34_888"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:11:recruit:end" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+            "BG36_301t"
+          ],
+          "coreHave" : [
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        },
+        {
+          "addonsHave" : [
+            "BG36_101",
+            "BG25_354",
+            "BG36_MagicItem_404"
+          ],
+          "coreHave" : [
+
+          ],
+          "id" : "aberration_spell_deity"
+        }
+      ],
+      "opponents" : {
+        "P5" : {
+          "id" : "dragon_kalecgos",
+          "matchedCards" : [
+            "BG_LOE_077",
+            "BG36_243"
+          ],
+          "name" : "Dragon Kalecgos"
+        },
+        "P7" : {
+          "id" : "aberration_spell_deity",
+          "matchedCards" : [
+            "BG36_108",
+            "BG36_101"
+          ],
+          "name" : "Aberration Tavern Spells"
+        },
+        "P8" : {
+          "id" : "aberration_discard_deity",
+          "matchedCards" : [
+            "BG36_099",
+            "BG36_097",
+            "BG36_312",
+            "BG36_115",
+            "BG36_114"
+          ],
+          "name" : "Aberration Discard"
+        }
+      },
+      "shop" : [
+        "BG36_849",
+        "BG36_330",
+        "BG33_886",
+        "BG36_104",
+        "BGS_116",
+        "BG25_016",
+        "BG28_882"
+      ],
+      "shopHighlights" : [
+        {
+          "buildID" : "aberration_spell_deity",
+          "cardID" : "BG36_104",
+          "index" : 3,
+          "role" : "addon"
+        }
+      ]
+    },
+    "turn:12:recruit:end" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+            "BG36_101",
+            "BG25_354",
+            "BG36_MagicItem_404"
+          ],
+          "coreHave" : [
+            "BG36_318"
+          ],
+          "id" : "aberration_spell_deity"
+        },
+        {
+          "addonsHave" : [
+
+          ],
+          "coreHave" : [
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        }
+      ],
+      "opponents" : {
+        "P5" : {
+          "id" : "dragon_kalecgos",
+          "matchedCards" : [
+            "BG_LOE_077",
+            "BG36_243"
+          ],
+          "name" : "Dragon Kalecgos"
+        },
+        "P7" : {
+          "id" : "aberration_spell_deity",
+          "matchedCards" : [
+            "BG36_108",
+            "BG36_101"
+          ],
+          "name" : "Aberration Tavern Spells"
+        },
+        "P8" : {
+          "id" : "aberration_discard_deity",
+          "matchedCards" : [
+            "BG36_099",
+            "BG36_097",
+            "BG36_312",
+            "BG36_115",
+            "BG36_114"
+          ],
+          "name" : "Aberration Discard"
+        }
+      },
+      "shop" : [
+        "BGS_131",
+        "BG31_815",
+        "BG36_372",
+        "BG34_500",
+        "BG_DEEP_015",
+        "BG36_112",
+        "BG28_830"
+      ],
+      "shopHighlights" : [
+        {
+          "buildID" : "aberration_discard_deity",
+          "cardID" : "BG36_112",
+          "index" : 5,
+          "role" : "addon"
+        }
+      ]
+    },
+    "turn:1:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG28_300",
+        "BG33_886",
+        "BG28_503"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:2:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG35_814",
+        "BG36_098",
+        "BG20_100",
+        "BG28_512"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:3:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG35_814",
+        "BG20_100",
+        "BG31_818"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:4:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG25_008",
+        "BG32_237",
+        "BGS_115",
+        "BG26_963",
+        "BG28_805"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:5:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG36_098",
+        "BG36_112",
+        "BG34_856",
+        "BG31_816",
+        "BG35_951"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:6:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG36_112",
+        "BG34_856",
+        "BG31_816",
+        "BG35_951",
+        "BG35_881"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:7:recruit:end" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+
+          ],
+          "coreHave" : [
+            "BG36_099",
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        }
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG30_121",
+        "BG32_880",
+        "BG36_346",
+        "BG29_888",
+        "BG36_243",
+        "BG28_168"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:8:recruit:end" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+            "BG36_301t"
+          ],
+          "coreHave" : [
+            "BG36_099",
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        }
+      ],
+      "opponents" : {
+        "P7" : {
+          "id" : "aberration_spell_deity",
+          "matchedCards" : [
+            "BG36_108",
+            "BG36_101"
+          ],
+          "name" : "Aberration Tavern Spells"
+        }
+      },
+      "shop" : [
+        "BG36_312",
+        "BG35_814",
+        "BG35_814",
+        "BG36_372",
+        "BG20_101",
+        "BG28_825"
+      ],
+      "shopHighlights" : [
+        {
+          "buildID" : "aberration_discard_deity",
+          "cardID" : "BG36_312",
+          "index" : 0,
+          "role" : "addon"
+        }
+      ]
+    },
+    "turn:9:recruit:end" : {
+      "detected" : [
+        {
+          "addonsHave" : [
+
+          ],
+          "coreHave" : [
+            "BG36_106"
+          ],
+          "id" : "aberration_discard_deity"
+        }
+      ],
+      "opponents" : {
+        "P5" : {
+          "id" : "dragon_kalecgos",
+          "matchedCards" : [
+            "BG_LOE_077",
+            "BG36_243"
+          ],
+          "name" : "Dragon Kalecgos"
+        },
+        "P7" : {
+          "id" : "aberration_spell_deity",
+          "matchedCards" : [
+            "BG36_108",
+            "BG36_101"
+          ],
+          "name" : "Aberration Tavern Spells"
+        }
+      },
+      "shop" : [
+        "BG36_101",
+        "BG28_309",
+        "BGS_041",
+        "BGS_123",
+        "BGS_116",
+        "BG34_888"
+      ],
+      "shopHighlights" : [
+
+      ]
+    }
+  }
+}

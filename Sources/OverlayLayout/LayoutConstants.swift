@@ -120,6 +120,8 @@ public struct LayoutConstants: Hashable, Sendable {
     public var panelGap: CGFloat
     /// The lobby's tribes panel, under the next opponent preview (its width is the HUD's).
     public var tribesPanel = TribesPanelMetrics()
+    /// The shop highlights and the build tips panel (under the tribes panel, the HUD's width).
+    public var buildOverlay = BuildOverlayMetrics()
 }
 
 /// The status HUD's type and spacing, in reference points (multiplied by `panelScale`).

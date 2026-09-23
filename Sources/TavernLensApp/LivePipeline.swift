@@ -37,6 +37,8 @@ final class LivePipeline: @unchecked Sendable {
     private var session: LogSession?
     /// The minion pool for tribe inference; each new session's engine starts with it.
     private var pool: MinionPool?
+    /// The build catalog; each new session's engine starts with it.
+    private var builds: BuildCatalog?
     private var lastPublished: LiveUpdate?
     private var lastPublishTime: ContinuousClock.Instant?
     private var pendingFlush = false
@@ -84,7 +86,7 @@ final class LivePipeline: @unchecked Sendable {
             // A game the previous session left unfinished may be resumed in this one.
             let carried = engine.inProgressRecord ?? records?.latestInProgress()
             session = newSession
-            engine = TavernEngine(pool: pool, session: newSession)
+            engine = TavernEngine(pool: pool, builds: builds, session: newSession)
             if let carried { engine.resume(carried) }
             engine.beginCatchUp()
         case .powerLogEntry(let entry):
@@ -111,6 +113,15 @@ final class LivePipeline: @unchecked Sendable {
         defer { lock.unlock() }
         pool = newPool
         engine.usePool(newPool)
+        publishIfDue()
+    }
+
+    /// Uses a new build catalog from now on, including for the game in progress.
+    func useBuilds(_ catalog: BuildCatalog?) {
+        lock.lock()
+        defer { lock.unlock() }
+        builds = catalog
+        engine.useBuilds(catalog)
         publishIfDue()
     }
 

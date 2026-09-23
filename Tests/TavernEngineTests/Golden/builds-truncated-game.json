@@ -1,0 +1,125 @@
+{
+  "catalog" : [
+    "murloc_handbuff",
+    "beast_beetle",
+    "demon_boost_shop",
+    "beast_leviathan",
+    "undead_butcher",
+    "neutral_tea_set",
+    "demon_self_damage",
+    "pirate_discover",
+    "mech_magnet",
+    "beast_lobster",
+    "quilboar_choose_one",
+    "dragon_kalecgos",
+    "aberration_cthun_poet",
+    "aberration_discard_deity",
+    "aberration_spell_deity",
+    "aberration_tea_set_deity"
+  ],
+  "checkpoints" : {
+    "last" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG36_112",
+        "BG29_816",
+        "BG36_345",
+        "BG26_146",
+        "BG30_804"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:1:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG35_814",
+        "BG26_146",
+        "BG31_815"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:2:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG31_330",
+        "BG36_345",
+        "BG35_814",
+        "BG33_101"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:3:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG21_015",
+        "BGS_034",
+        "BG29_888",
+        "BG31_880"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:4:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BGS_119",
+        "BG36_098",
+        "BG31_177",
+        "BG28_503"
+      ],
+      "shopHighlights" : [
+
+      ]
+    },
+    "turn:5:recruit:end" : {
+      "detected" : [
+
+      ],
+      "opponents" : {
+
+      },
+      "shop" : [
+        "BG36_112",
+        "BG29_816",
+        "BG36_345",
+        "BG26_146",
+        "BG30_804"
+      ],
+      "shopHighlights" : [
+
+      ]
+    }
+  }
+}
