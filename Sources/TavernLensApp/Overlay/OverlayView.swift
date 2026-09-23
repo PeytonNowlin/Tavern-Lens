@@ -15,7 +15,16 @@ final class OverlayModel {
     var alignmentWarning: String?
     /// The latest combat's odds, from `CombatOddsModel`.
     var combatOdds: CombatOddsView?
+    /// The recruit-phase odds preview, from `CombatOddsModel`.
+    var oddsPreview: OddsPreviewView?
     @ObservationIgnored var hide: () -> Void = {}
+
+    /// The preview's odds show in the next opponent preview during the recruit phase they're for.
+    var shownOddsPreview: OddsPreviewView? {
+        guard view.status == .inGame, let game = view.game, let preview = oddsPreview, preview.isFor(game)
+        else { return nil }
+        return preview
+    }
 
     /// The status HUD shows during a solo Battlegrounds game and on its game-over screen.
     var game: GameView? {
@@ -255,6 +264,7 @@ struct LayoutGuides: View {
             for i in 0..<10 { stroke(layout.goldCoin(i), .yellow) }
             stroke(layout.hud, .white)
             stroke(layout.nextOpponentPreview, .white, dash: true)
+            stroke(layout.nextOpponentOdds, .green.opacity(0.6), dash: true)
             stroke(layout.combatOddsPanel, .red.opacity(0.6), dash: true)
             stroke(layout.opponentPanel, .white, dash: true)
             stroke(layout.tribesPanel, .white, dash: true)

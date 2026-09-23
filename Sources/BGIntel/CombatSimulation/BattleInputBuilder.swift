@@ -23,6 +23,13 @@ public enum BattleInputBuilder {
         guard let player = side(store, index, slot: local, mechanics: localMechanics, isOpponent: false),
               let opponent = side(store, index, slot: slot, mechanics: opponentMechanics, isOpponent: true)
         else { return nil }
+        return input(player: player, opponent: opponent, snapshot: snapshot, validTribes: validTribes)
+    }
+
+    /// Two sides and the game's state now (turn, damage cap, anomaly, players alive, tribes).
+    static func input(
+        player: BattleBoard, opponent: BattleBoard, snapshot: BGSnapshot, validTribes: Set<HS.Race>?
+    ) -> BattleInput {
         let game = snapshot.mechanics
         return BattleInput(
             playerBoard: player,
@@ -35,6 +42,52 @@ public enum BattleInputBuilder {
                 numberOfPlayersAlive: game.playersAlive,
                 validTribes: validTribes.map { $0.map(\.rawValue).sorted() }
             )
+        )
+    }
+
+    // MARK: - Recruit-phase previews and hypothetical boards
+
+    /// The local player's side as it is now: hero, board, hand and mechanics. During recruit
+    /// that's the board they would take into combat, read the way the combat-start input reads it.
+    /// Nil without a local player, hero or mechanics.
+    public static func localSide(store: EntityStore, snapshot: BGSnapshot) -> BattleBoard? {
+        guard let local = store.localPlayer, let mechanics = snapshot.local?.mechanics else { return nil }
+        return side(store, AttachmentIndex(store), slot: local, mechanics: mechanics, isOpponent: false)
+    }
+
+    /// Entities (shop minions, cards in hand, board minions) as the simulator reads a minion, with
+    /// their enchantments; for building hypothetical boards. Unknown IDs are left out.
+    public static func battleEntities(ids: [Int], in store: EntityStore) -> [BattleEntity] {
+        let index = AttachmentIndex(store)
+        return ids.compactMap { id in store[id].map { entity(store, index, $0) } }
+    }
+
+    /// An opponent's side rebuilt from their last-seen board in the game history, for when the
+    /// combat-start input isn't at hand (a game carried in from an earlier log): the minions as
+    /// seen, without enchantments or hand, and their mechanics as saved then (hero powers read
+    /// without their targets). Their hero's entity, health and tier are as of now. Nil when the
+    /// board predates mechanics tracking.
+    public static func side(
+        seen: BGOpponentBoard, heroCardID: String, heroEntityID: Int, hpLeft: Int, tier: Int
+    ) -> BattleBoard? {
+        guard let mechanics = seen.mechanics else { return nil }
+        let store = EntityStore()
+        let player = battlePlayer(
+            store, AttachmentIndex(store), mechanics: mechanics, heroCardID: seen.heroCardID ?? heroCardID,
+            heroEntityID: heroEntityID, hp: hpLeft, tier: tier, hand: []
+        )
+        return BattleBoard(player: player, board: seen.cards.map(entity(seen:)))
+    }
+
+    private static func entity(seen card: BGCard) -> BattleEntity {
+        let has = { (keyword: BGKeyword) in card.keywords.contains(keyword) }
+        return BattleEntity(
+            entityId: card.entityID, cardId: card.cardID, attack: card.attack, health: card.health,
+            maxHealth: card.maxHealth, taunt: has(.taunt), divineShield: has(.divineShield),
+            poisonous: has(.poisonous), venomous: has(.venomous), reborn: has(.reborn), stealth: has(.stealth),
+            windfury: has(.windfury) || has(.megaWindfury), locked: false, enchantments: [],
+            scriptDataNum1: 0, scriptDataNum2: 0, scriptDataNum3: 0, scriptDataNum4: 0, scriptDataNum5: 0,
+            scriptDataNum6: 0, tags: [:]
         )
     }
 
@@ -55,12 +108,24 @@ public enum BattleInputBuilder {
         }
         let handEntities = inZone(store, controller: controller, zone: "HAND")
 
-        var globalInfo = Self.globalInfo(mechanics)
+        let heroTier = hero.entity.int(.playerTechLevel).flatMap { $0 > 0 ? $0 : nil }
+        var player = battlePlayer(
+            store, index, mechanics: mechanics, heroCardID: hero.cardID, heroEntityID: hero.entity.id, hp: hero.hp,
+            tier: heroTier ?? playerEntity?.int(.playerTechLevel).flatMap { $0 > 0 ? $0 : nil } ?? 1,
+            hand: handEntities.map { entity(store, index, $0) }
+        )
         if let choral = choralBuff(store, index, board: boardEntities) {
-            globalInfo["ChoralAttackBuff"] = choral.attack
-            globalInfo["ChoralHealthBuff"] = choral.health
+            player.globalInfo["ChoralAttackBuff"] = choral.attack
+            player.globalInfo["ChoralHealthBuff"] = choral.health
         }
+        return BattleBoard(player: player, board: boardEntities.map { entity(store, index, $0) })
+    }
 
+    /// A side's player: hero, hero powers, quests, hand, secrets with the Deity, trinkets and counters.
+    private static func battlePlayer(
+        _ store: EntityStore, _ index: AttachmentIndex, mechanics: BGPlayerMechanics, heroCardID: String,
+        heroEntityID: Int, hp: Int, tier: Int, hand: [BattleEntity]
+    ) -> BattlePlayer {
         var secrets = mechanics.secrets.map {
             BattleSecret(
                 entityId: $0.entityID, cardId: $0.cardID, scriptDataNum1: $0.scriptData[1],
@@ -77,12 +142,11 @@ public enum BattleInputBuilder {
         }
         secrets.sort { $0.entityId < $1.entityId }
 
-        let heroTier = hero.entity.int(.playerTechLevel).flatMap { $0 > 0 ? $0 : nil }
-        let player = BattlePlayer(
-            cardId: hero.cardID,
-            entityId: hero.entity.id,
-            hpLeft: hero.hp,
-            tavernTier: heroTier ?? playerEntity?.int(.playerTechLevel).flatMap { $0 > 0 ? $0 : nil } ?? 1,
+        return BattlePlayer(
+            cardId: heroCardID,
+            entityId: heroEntityID,
+            hpLeft: hp,
+            tavernTier: tier,
             heroPowers: mechanics.heroPowers.map { heroPower($0, store, index) },
             questEntities: mechanics.quests.map {
                 BattleQuest(CardId: $0.cardID, RewardDbfId: $0.rewardDbfID ?? 0,
@@ -92,15 +156,14 @@ public enum BattleInputBuilder {
             questRewardEntities: mechanics.questRewards.map {
                 BattleQuestReward(CardId: $0.cardID, ScriptDataNum1: $0.scriptData[1])
             },
-            hand: handEntities.map { entity(store, index, $0) },
+            hand: hand,
             secrets: secrets,
             trinkets: mechanics.trinkets.map {
                 BattleTrinket(cardId: $0.cardID, entityId: $0.entityID, scriptDataNum1: $0.scriptData[1],
                               scriptDataNum2: $0.scriptData[2], scriptDataNum6: $0.scriptData[6])
             },
-            globalInfo: globalInfo
+            globalInfo: globalInfo(mechanics)
         )
-        return BattleBoard(player: player, board: boardEntities.map { entity(store, index, $0) })
     }
 
     /// A side's entities in a zone, in `ZONE_POSITION` order.

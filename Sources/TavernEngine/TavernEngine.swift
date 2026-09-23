@@ -75,6 +75,9 @@ public struct TavernEngine: Sendable {
     /// published, so a live runner can start simulating at once.
     public private(set) var combatRequests: [CombatSimulationRequest] = []
     private var combatStartsSeen = 0
+    /// Each opponent's side of the latest combat-start input against them, by PlayerID, for the
+    /// recruit-phase odds preview. Reset with each new game.
+    private var lastSeenSides: [Int: (seed: Int?, bgTurn: Int, side: BattleBoard)] = [:]
     private let sessionName: String?
     private var clock: LogClock?
     /// Suppresses publishing while the existing log is replayed.
@@ -346,6 +349,35 @@ public struct TavernEngine: Sendable {
             gameSeed: snapshot.gameSeed, bgTurn: snapshot.bgTurn, opponentPlayerID: opponent, position: position,
             input: input
         ))
+        if lastSeenSides.values.contains(where: { $0.seed != snapshot.gameSeed }) { lastSeenSides = [:] }
+        lastSeenSides[opponent] = (snapshot.gameSeed, snapshot.bgTurn, input.opponentBoard)
+    }
+
+    /// The recruit-phase odds preview as of now: the local player's current board, hero and
+    /// mechanics against the next opponent's last-seen board (without data when they haven't been
+    /// seen). Nil outside the recruit phase or without a next opponent. Built on demand from the
+    /// store, so a live caller asks for it when the state it shows changes.
+    ///
+    /// The opponent's side is their side of the combat-start input when they were last fought;
+    /// for a game carried in from an earlier log it's rebuilt from the history's last-seen board.
+    public var oddsPreview: OddsPreviewRequest? {
+        guard let snapshot = BGSnapshot.project(store), snapshot.phase == .recruit,
+              let next = snapshot.nextOpponentPlayerID
+        else { return nil }
+        var opponent: (side: BattleBoard, seenTurn: Int, source: OddsPreviewRequest.OpponentSource)?
+        if let seen = history.lobby.lastSeenBoards[next] {
+            if let captured = lastSeenSides[next], captured.seed == snapshot.gameSeed, captured.bgTurn == seen.bgTurn {
+                opponent = (captured.side, seen.bgTurn, .combatStart)
+            } else if let hero = snapshot.lobby.first(where: { $0.playerID == next })?.hero,
+                      let side = BattleInputBuilder.side(
+                          seen: seen, heroCardID: hero.cardID, heroEntityID: hero.entityID, hpLeft: hero.hp, tier: hero.tier ?? 1
+                      ) {
+                opponent = (side, seen.bgTurn, .lastSeenBoard)
+            }
+        }
+        return BattleInputBuilder.preview(
+            store: store, snapshot: snapshot, opponent: opponent, validTribes: simulatorLobbyTribes(snapshot)
+        )
     }
 
     /// The lobby's tribes for the simulator: the injected source's, else the tribe inference's

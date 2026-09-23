@@ -21,7 +21,8 @@ struct OpponentOverlays: View {
             }
             if game.phase == .recruit, let next = game.nextOpponent, !next.isLocal {
                 let rect = layout.nextOpponentPreview
-                NextOpponentPreview(entry: next, currentTurn: game.bgTurn, cards: cards, scale: scale)
+                NextOpponentPreview(entry: next, currentTurn: game.bgTurn, cards: cards, scale: scale,
+                                    odds: model.shownOddsPreview, oddsMetrics: layout.constants.oddsPreview)
                     .frame(width: rect.width, height: rect.height, alignment: .top)
                     .offset(x: rect.minX, y: rect.minY)
             }
@@ -160,12 +161,16 @@ struct MinionTile: View {
     }
 }
 
-/// The next opponent, compact: hero, tier, health, and their last-seen board as a list.
+/// The next opponent, compact: hero, tier, health, their last-seen board as a list, and the live
+/// odds of the board as it is now against it.
 struct NextOpponentPreview: View {
     let entry: LobbyEntryView
     let currentTurn: Int
     let cards: CardDB?
     let scale: CGFloat
+    /// The recruit-phase odds preview for this opponent; nil until the first request reaches it.
+    var odds: OddsPreviewView?
+    var oddsMetrics = OddsPreviewMetrics()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4 * scale) {
@@ -207,6 +212,8 @@ struct NextOpponentPreview: View {
                     .font(.system(size: 10.5 * scale, weight: .medium))
                     .foregroundStyle(.secondary)
             }
+            Divider().opacity(0.5)
+            PreviewOdds(odds: odds, seen: entry.lastSeenBoard != nil, scale: scale, metrics: oddsMetrics)
         }
         .lineLimit(1)
         .monospacedDigit()

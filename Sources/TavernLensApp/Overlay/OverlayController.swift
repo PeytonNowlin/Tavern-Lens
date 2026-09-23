@@ -140,6 +140,7 @@ final class OverlayController {
             if model.leaderboardGame != nil {
                 if model.nextOpponentSlot != nil { panels.append("nextOpponentRing") }
                 if game.phase == .recruit, let next = game.nextOpponent, !next.isLocal { panels.append("nextOpponentPreview") }
+                if model.shownOddsPreview?.odds != nil { panels.append("oddsPreview") }
                 if model.hoveredOpponent != nil { panels.append("opponentPanel") }
             }
             if model.heroPick != nil { panels.append("heroPickPlates") }
@@ -168,6 +169,7 @@ final class OverlayController {
             _ = live.hearthstone
             _ = live.update.state
             _ = live.combatOdds.current
+            _ = live.combatOdds.preview
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -190,6 +192,7 @@ final class OverlayController {
         guard let panel else { return }
         if model.view != live.update.state { model.view = live.update.state }
         if model.combatOdds != live.combatOdds.current { model.combatOdds = live.combatOdds.current }
+        if model.oddsPreview != live.combatOdds.preview { model.oddsPreview = live.combatOdds.preview }
         let wanted = !isHiddenByUser && hearthstoneOrUsFrontmost
         let located = wanted ? hearthstonePID.flatMap(HearthstoneWindowTracker.locate) : nil
         if !wanted || located == nil {

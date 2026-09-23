@@ -31,6 +31,7 @@ final class LivePipeline: @unchecked Sendable {
     private let records: GameRecordStore?
     private let onGameEnded: @Sendable (GameRecord) -> Void
     private let onCombatRequest: @Sendable (CombatSimulationRequest) -> Void
+    private let onOddsPreview: @Sendable (OddsPreviewRequest?) -> Void
     private var follower: LogSessionFollower?
 
     // Guarded by `lock`: written on the follower's queue, and read by deferred flushes.
@@ -47,6 +48,8 @@ final class LivePipeline: @unchecked Sendable {
     private var endedGames: Set<Int> = []
     /// How many of the engine's combat requests have been seen (dispatched, or skipped in catch-up).
     private var combatRequestsSeen = 0
+    /// The odds preview last sent to `onOddsPreview`.
+    private var lastOddsPreview: OddsPreviewRequest?
     private let clock = ContinuousClock()
     private let flushQueue = DispatchQueue(label: "TavernLens.LivePipeline.flush")
     private let lock = NSLock()
@@ -56,11 +59,13 @@ final class LivePipeline: @unchecked Sendable {
         records: GameRecordStore?,
         onGameEnded: @escaping @Sendable (GameRecord) -> Void = { _ in },
         onCombatRequest: @escaping @Sendable (CombatSimulationRequest) -> Void = { _ in },
+        onOddsPreview: @escaping @Sendable (OddsPreviewRequest?) -> Void = { _ in },
         publish: @escaping @Sendable (LiveUpdate) -> Void
     ) {
         self.records = records
         self.onGameEnded = onGameEnded
         self.onCombatRequest = onCombatRequest
+        self.onOddsPreview = onOddsPreview
         self.publish = publish
     }
 
@@ -215,6 +220,17 @@ final class LivePipeline: @unchecked Sendable {
         lastPublished = update
         lastPublishTime = now
         publish(update)
+        dispatchOddsPreview()
+    }
+
+    /// The recruit-phase odds preview for the state just published, when it changed: the local
+    /// board now against the next opponent's last-seen board (nil outside recruit). Built with
+    /// each publish, so at most about 10 times a second. Call with `lock` held.
+    private func dispatchOddsPreview() {
+        let preview = engine.isCatchingUp ? nil : engine.oddsPreview
+        guard preview != lastOddsPreview else { return }
+        lastOddsPreview = preview
+        onOddsPreview(preview)
     }
 
     private func isPublished(_ update: LiveUpdate) -> Bool {
