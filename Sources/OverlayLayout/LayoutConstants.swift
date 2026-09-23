@@ -118,6 +118,8 @@ public struct LayoutConstants: Hashable, Sendable {
     public var nextOpponentPreviewHeight: CGFloat
     /// Space between stacked panels (in reference points).
     public var panelGap: CGFloat
+    /// The lobby's tribes panel, under the next opponent preview (its width is the HUD's).
+    public var tribesPanel = TribesPanelMetrics()
 }
 
 /// The status HUD's type and spacing, in reference points (multiplied by `panelScale`).

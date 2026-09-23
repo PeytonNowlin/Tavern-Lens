@@ -147,13 +147,13 @@ extension TavernEngine {
     /// last, and publish once. The returned engine's `state` is the moment.
     public static func replay(
         _ cut: LogCut, powerLog url: URL, resuming record: GameRecord? = nil, cards: CardDB? = nil,
-        timeZone: TimeZone = .current
+        pool: MinionPool? = nil, timeZone: TimeZone = .current
     ) throws -> TavernEngine {
         guard cut.startLine >= 1, cut.endLine >= cut.startLine else { throw BookmarkReplayError.invalidCut }
         let session = cut.session.flatMap {
             LogSession(directory: URL(filePath: "/", directoryHint: .isDirectory).appending(path: $0), timeZone: timeZone)
         }
-        var engine = TavernEngine(cards: cards, session: session, timeZone: timeZone)
+        var engine = TavernEngine(cards: cards, pool: pool, session: session, timeZone: timeZone)
         if let record { engine.resume(record) }
         let start = cut.startByteOffset ?? cut.locating(in: url).startByteOffset
         guard let start else { throw BookmarkReplayError.logTooShort(lines: 0, needed: cut.startLine) }
@@ -172,8 +172,11 @@ extension TavernEngine {
     }
 
     /// Replays a bookmark's moment from its Power.log (or another copy of it at `url`).
-    public static func replay(_ bookmark: FeedbackBookmark, powerLog url: URL, cards: CardDB? = nil) throws -> TavernEngine {
-        try replay(bookmark.cut, powerLog: url, resuming: bookmark.resumed, cards: cards)
+    /// With a pool, the moment's tribes come out as they did live if the pool is the same.
+    public static func replay(
+        _ bookmark: FeedbackBookmark, powerLog url: URL, cards: CardDB? = nil, pool: MinionPool? = nil
+    ) throws -> TavernEngine {
+        try replay(bookmark.cut, powerLog: url, resuming: bookmark.resumed, cards: cards, pool: pool)
     }
 }
 

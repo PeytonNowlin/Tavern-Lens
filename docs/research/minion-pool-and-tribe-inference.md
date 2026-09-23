@@ -442,6 +442,7 @@ P(tribe) after the last event of each BG turn, for the 21:08 game with all evide
 | 20:33 | all | Demon T3 from the opponent's Laboratory Assistant | BG turn **4**, 14th shop minion | same (P = 1.000) |
 | 21:08 | shop only | Undead T1 Harmless Bonehead · Quilboar T1 Tusked Camper · Dragon T2 Scarlet Survivor · Elemental T3 Snow Baller | BG turn **4**, 11th shop minion | Aberration, Dragon, Elemental, Quilboar, Undead (P = 1.000) |
 | 21:08 | all | Dragon T1 from the opponent's Scarlet Survivor | BG turn **4**, 10th shop minion | same |
+| 22:34 (added 2026-09-23, #13) | all | Mech T1 Lullabot · Murloc T2 Flighty Scout · Demon T2 Wrath Weaver · Pirate T3 Southsea Busker. The app's engine, which also applies hero rules, has P(Pirate) = 0.97 at turn 0 from the heroes | BG turn **4**, 11th shop minion | Aberration, Demon, Mech, Murloc, Pirate (P = 1.000) |
 
 The resolution points are the same with uniform tier weights, so the unverified copy counts don't matter. The 20:33 game could also have used the turn-0 hero constraint: Ysera implied Dragon.
 

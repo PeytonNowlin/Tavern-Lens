@@ -46,12 +46,14 @@ public struct GameView: Codable, Hashable, Sendable {
     public var combatOpponentPlayerID: Int?
     /// The local player's final place; nil until the game ends.
     public var placement: PlacementView?
+    /// The lobby's tribes; nil without a minion pool.
+    public var tribes: TribesView?
 
     public init(
         gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int,
         phase: BGPhase = .heroPick, player: PlayerView? = nil, shop: ShopView = ShopView(),
         lobby: [LobbyEntryView] = [], nextOpponentPlayerID: Int? = nil, combatOpponentPlayerID: Int? = nil,
-        placement: PlacementView? = nil
+        placement: PlacementView? = nil, tribes: TribesView? = nil
     ) {
         self.gameType = gameType
         self.localPlayerID = localPlayerID
@@ -65,6 +67,7 @@ public struct GameView: Codable, Hashable, Sendable {
         self.nextOpponentPlayerID = nextOpponentPlayerID
         self.combatOpponentPlayerID = combatOpponentPlayerID
         self.placement = placement
+        self.tribes = tribes
     }
 
     /// The next opponent's lobby entry.

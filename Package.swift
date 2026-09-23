@@ -23,7 +23,11 @@ let package = Package(
         // Battlegrounds projection of the entity store, plus the event-driven game history.
         .target(name: "BGState", dependencies: ["EntityStore", "PowerParser"]),
         // Card data, generated enums, minion pool, hero and build stats.
-        .target(name: "HSData", dependencies: ["PowerParser"], plugins: ["HSEnumsPlugin"]),
+        // Resources: the minion-pool override files and the bundled HSReplay meta period.
+        .target(
+            name: "HSData", dependencies: ["PowerParser"], resources: [.copy("Resources/bg-pool")],
+            plugins: ["HSEnumsPlugin"]
+        ),
         // Tribes, builds, shop highlights, hero-pick stats, simulator adapter, advisor.
         .target(name: "BGIntel", dependencies: ["BGState", "HSData"]),
         // Headless composition root: log lines in, timeline of view states and game records out.

@@ -28,6 +28,11 @@ final class LiveTrackingModel {
     /// The size of the followed session's Power.log, checked every few seconds.
     private(set) var powerLogBytes: Int64?
 
+    /// The minion pool the live pipeline infers tribes with.
+    @ObservationIgnored var pool: MinionPool? {
+        didSet { pipeline?.usePool(pool) }
+    }
+
     /// Called on the main actor when a game ends (log housekeeping runs then).
     @ObservationIgnored var onGameEnded: (@MainActor () -> Void)?
 
@@ -136,6 +141,7 @@ final class LiveTrackingModel {
             }
         }
         self.pipeline = pipeline
+        pipeline.usePool(pool)
         pipeline.start(logsDirectory: Self.locations(for: client).logsDirectory, launchDate: client.launchDate)
     }
 

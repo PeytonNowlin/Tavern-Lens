@@ -34,6 +34,8 @@ public struct Card: Codable, Hashable, Sendable {
     public var battlegroundsNormalDbfId: Int?
     public var heroPowerDbfId: Int?
     public var battlegroundsBuddyDbfId: Int?
+    /// For a hero skin, the dbfId of the hero it's a skin of.
+    public var battlegroundsSkinParentId: Int?
 
     public init(id: String, dbfId: Int, name: String) {
         self.id = id
