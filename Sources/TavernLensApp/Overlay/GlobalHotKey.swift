@@ -48,6 +48,7 @@ final class GlobalHotKey {
         )
         guard registered == noErr else {
             if let handler { RemoveEventHandler(handler) }
+            handler = nil  // deinit runs for a failed init too: don't remove it twice
             return nil
         }
     }

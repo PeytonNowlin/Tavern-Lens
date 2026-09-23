@@ -19,6 +19,8 @@ final class BuildDataModel {
 
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var started = false
+    /// Bumped by each compose, so an older one finishing last doesn't overwrite a newer catalog.
+    @ObservationIgnored private var composeGeneration = 0
     @ObservationIgnored private let log = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "builds")
 
     var statusText: String {
@@ -78,12 +80,15 @@ final class BuildDataModel {
         guard let pool = PoolDataModel.shared.pool, let data else { return }
         let overrides = BuildOverrides.current()
         let provenance = data.provenance(overridesPatch: overrides?.patch)
+        composeGeneration += 1
+        let generation = composeGeneration
         Task {
             let catalog = await Task.detached(priority: .userInitiated) {
                 BuildCatalog.compose(
                     stats: data.stats, strategies: data.strategies, overrides: overrides, pool: pool, provenance: provenance
                 )
             }.value
+            guard generation == composeGeneration else { return }
             for dropped in catalog.dropped {
                 log.info("Build \(dropped.id, privacy: .public) left out: \(dropped.reason, privacy: .public)")
             }

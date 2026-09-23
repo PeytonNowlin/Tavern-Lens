@@ -42,7 +42,11 @@ final class HeroPickScreenReader {
     var isEnabled: Bool {
         didSet {
             UserDefaults.standard.set(isEnabled, forKey: Self.enabledDefaultsKey)
-            if !isEnabled { stop() }
+            if !isEnabled {
+                stop()
+            } else if inHeroPick, task == nil {
+                beginHeroPick()  // turned on during a hero pick: the banner is still there
+            }
         }
     }
 
@@ -66,7 +70,7 @@ final class HeroPickScreenReader {
     /// Explains and asks for Screen Recording.
     func requestPermission() {
         permissionGranted = ScreenRecordingPermission.request()
-        if permissionGranted { stateChanged() }
+        if permissionGranted, inHeroPick, task == nil { beginHeroPick() }
     }
 
     /// Re-checks the permission (it can be granted or revoked in System Settings at any time).

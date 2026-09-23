@@ -15,7 +15,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRAMEWORKS="/Library/Developer/CommandLineTools/Library/Developer/Frameworks"
 
-if [[ -d "$FRAMEWORKS/Testing.framework" && ! -d "/Applications/Xcode.app" ]]; then
+# The active toolchain decides it (DEVELOPER_DIR, else xcode-select), not whether Xcode is installed.
+DEVELOPER="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}"
+if [[ -d "$FRAMEWORKS/Testing.framework" && "$DEVELOPER" == /Library/Developer/CommandLineTools* ]]; then
     exec swift test --package-path "$ROOT" -Xswiftc -F -Xswiftc "$FRAMEWORKS" "$@"
 else
     exec swift test --package-path "$ROOT" "$@"

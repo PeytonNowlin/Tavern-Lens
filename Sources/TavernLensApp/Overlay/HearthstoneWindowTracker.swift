@@ -73,6 +73,8 @@ enum HearthstoneWindowTracker {
         let window = element(app, kAXFocusedWindowAttribute) ?? element(app, kAXMainWindowAttribute)
             ?? firstWindow(app)
         guard let window else { return nil }
+        // Per element, not inherited: without it the window's reads wait out the 6 s default.
+        AXUIElementSetMessagingTimeout(window, 0.25)
         guard let origin = value(window, kAXPositionAttribute, type: .cgPoint, as: CGPoint.self),
               let size = value(window, kAXSizeAttribute, type: .cgSize, as: CGSize.self)
         else { return nil }

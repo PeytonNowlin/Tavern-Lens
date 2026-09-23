@@ -23,6 +23,8 @@ final class PoolDataModel {
     /// The first meta-period load has finished (it falls back to the bundled copy at worst),
     /// so a pool composed now isn't missing HSReplay's layer.
     @ObservationIgnored private var metaPeriodTried = false
+    /// Bumped by each compose, so an older one finishing last doesn't overwrite a newer pool.
+    @ObservationIgnored private var composeGeneration = 0
     @ObservationIgnored private let log = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "pool")
 
     var statusText: String {
@@ -86,10 +88,13 @@ final class PoolDataModel {
             cardBuild: cards.db.build, cardDataIsExact: cards.isExact, metaPeriodName: meta?.period.name,
             metaPeriodIsStale: meta?.isStale ?? true, overridesPatch: overrides?.patch
         )
+        composeGeneration += 1
+        let generation = composeGeneration
         Task {
             let pool = await Task.detached(priority: .userInitiated) {
                 MinionPool.compose(cards: cards.db, metaPeriod: meta?.period, overrides: overrides, provenance: provenance)
             }.value
+            guard generation == composeGeneration else { return }
             self.pool = pool
             onPoolChanged?(pool)
         }

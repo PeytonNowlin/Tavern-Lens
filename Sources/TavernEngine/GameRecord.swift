@@ -190,7 +190,8 @@ public struct GameRecordStore: Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let text = try decoder.singleValueContainer().decode(String.self)
-            if let date = try? dateStyle.parse(text) ?? Date.ISO8601FormatStyle().parse(text) { return date }
+            if let date = try? dateStyle.parse(text) { return date }
+            if let date = try? Date.ISO8601FormatStyle().parse(text) { return date }
             throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "not an ISO 8601 date: \(text)"))
         }
         return decoder
