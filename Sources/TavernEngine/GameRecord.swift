@@ -30,10 +30,14 @@ public struct GameRecord: Codable, Hashable, Sendable {
     public var updatedAt: Date?
     /// Moments the player bookmarked during this game (⌃⌥F), oldest first.
     public var bookmarks: [FeedbackBookmark]
+    /// The lobby's tribes as read from the hero-pick banner, in order, with where each came in:
+    /// evidence the log doesn't hold, so a resumed game takes it in again.
+    public var screenTribes: [LoggedScreenTribes]
 
     public init(
         summary: BGGameRecord, journal: BGGameJournal, sessions: [String] = [], startedAt: Date? = nil,
-        endedAt: Date? = nil, updatedAt: Date? = nil, bookmarks: [FeedbackBookmark] = []
+        endedAt: Date? = nil, updatedAt: Date? = nil, bookmarks: [FeedbackBookmark] = [],
+        screenTribes: [LoggedScreenTribes] = []
     ) {
         self.summary = summary
         self.journal = journal
@@ -42,13 +46,15 @@ public struct GameRecord: Codable, Hashable, Sendable {
         self.endedAt = endedAt
         self.updatedAt = updatedAt
         self.bookmarks = bookmarks
+        self.screenTribes = screenTribes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case format, summary, journal, sessions, startedAt, endedAt, updatedAt, bookmarks
+        case format, summary, journal, sessions, startedAt, endedAt, updatedAt, bookmarks, screenTribes
     }
 
-    /// Records written before bookmarks existed have no `bookmarks` key.
+    /// Records written before bookmarks (or screen readings) existed have no such key; with none,
+    /// `screenTribes` isn't written either.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         format = try c.decode(Int.self, forKey: .format)
@@ -59,6 +65,20 @@ public struct GameRecord: Codable, Hashable, Sendable {
         endedAt = try c.decodeIfPresent(Date.self, forKey: .endedAt)
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
         bookmarks = try c.decodeIfPresent([FeedbackBookmark].self, forKey: .bookmarks) ?? []
+        screenTribes = try c.decodeIfPresent([LoggedScreenTribes].self, forKey: .screenTribes) ?? []
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(format, forKey: .format)
+        try c.encode(summary, forKey: .summary)
+        try c.encode(journal, forKey: .journal)
+        try c.encode(sessions, forKey: .sessions)
+        try c.encodeIfPresent(startedAt, forKey: .startedAt)
+        try c.encodeIfPresent(endedAt, forKey: .endedAt)
+        try c.encodeIfPresent(updatedAt, forKey: .updatedAt)
+        try c.encode(bookmarks, forKey: .bookmarks)
+        if !screenTribes.isEmpty { try c.encode(screenTribes, forKey: .screenTribes) }
     }
 
     public var gameSeed: Int? { summary.gameSeed }

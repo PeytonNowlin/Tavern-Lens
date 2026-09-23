@@ -32,18 +32,32 @@ final class LiveTrackingModel {
 
     /// The minion pool the live pipeline infers tribes with.
     @ObservationIgnored var pool: MinionPool? {
-        didSet { pipeline?.usePool(pool) }
+        didSet {
+            Self.engineSetup.pool = pool
+            pipeline?.usePool(pool)
+        }
     }
 
     /// Firestone's hero stats and the card data the hero pick joins them with.
     @ObservationIgnored var heroStats: (stats: HeroStatsSet?, cards: CardDB?) = (nil, nil) {
-        didSet { pipeline?.useHeroStats(heroStats.stats, cards: heroStats.cards) }
+        didSet {
+            Self.engineSetup.heroStats = heroStats.stats
+            Self.engineSetup.heroCards = heroStats.cards
+            pipeline?.useHeroStats(heroStats.stats, cards: heroStats.cards)
+        }
     }
 
     /// The build catalog the live pipeline detects builds with.
     @ObservationIgnored var builds: BuildCatalog? {
-        didSet { pipeline?.useBuilds(builds) }
+        didSet {
+            Self.engineSetup.builds = builds
+            pipeline?.useBuilds(builds)
+        }
     }
+
+    /// The setup every live engine gets (pool, builds, hero stats): what the debug window's
+    /// bookmark replays and exports use, so they reach the state the overlay showed.
+    static private(set) var engineSetup = EngineSetup()
 
     /// Called on the main actor when a game ends (log housekeeping runs then).
     @ObservationIgnored var onGameEnded: (@MainActor () -> Void)?
@@ -180,16 +194,25 @@ final class LiveTrackingModel {
         pipeline?.ingestScreenTribes(reading)
     }
 
-    /// The moment on screen as a bookmark with no note yet; nil with no game shown.
+    /// The moment on screen as a bookmark with no note yet; nil with no game shown. Instant: no
+    /// log or disk access here.
     func captureBookmark() -> FeedbackBookmark? {
         pipeline?.captureBookmark()
     }
 
-    /// Stores a bookmark in its game's record. False when its game is unknown.
-    @discardableResult
-    func save(_ bookmark: FeedbackBookmark) -> Bool {
-        if let pipeline { return pipeline.save(bookmark) }
-        return (try? GameRecordStore.standard.add(bookmark)) == true
+    /// Stores a bookmark in its game's record, off the main thread; `completion` (on the main
+    /// actor) gets false when its game is unknown.
+    func save(_ bookmark: FeedbackBookmark, completion: @escaping @MainActor (Bool) -> Void) {
+        let done: @Sendable (Bool) -> Void = { saved in Task { @MainActor in completion(saved) } }
+        if let pipeline {
+            pipeline.save(bookmark, completion: done)
+        } else {
+            Task.detached(priority: .userInitiated) {
+                var bookmark = bookmark
+                if let path = bookmark.powerLog { bookmark.cut = bookmark.cut.locating(in: URL(filePath: path)) }
+                done((try? GameRecordStore.standard.add(bookmark)) == true)
+            }
+        }
     }
 
     private func stopFollowing() {

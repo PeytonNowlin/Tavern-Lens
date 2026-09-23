@@ -26,7 +26,8 @@ struct TribeTracker: Sendable {
     private var resolver: TribeResolver?
     private var collector = BGSightingCollector()
     private var evidence: [TribeEvidence] = []
-    private var gameIndex: Int?
+    /// The game being tracked (its index in the history), if any.
+    private(set) var gameIndex: Int?
     private var gameSeed: Int?
     private var gameDate: Date?
     /// Every drift adopted, across games.
@@ -94,10 +95,12 @@ struct TribeTracker: Sendable {
         for sighting in collector.taskListEnded(store, at: position) { add(sighting) }
     }
 
-    /// The hero-pick banner read from the screen.
-    mutating func add(_ reading: ScreenTribeReading) {
-        guard gameIndex != nil else { return }
+    /// The hero-pick banner read from the screen. False (ignored) outside a game.
+    @discardableResult
+    mutating func add(_ reading: ScreenTribeReading) -> Bool {
+        guard gameIndex != nil else { return false }
         record(.screen(reading))
+        return true
     }
 
     func view(bgTurn: Int) -> TribesView? {

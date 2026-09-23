@@ -8,6 +8,8 @@ import TavernEngine
 ///
 /// The moment is captured when the key is pressed, before the note is typed: the engine's
 /// published state, the Power.log stretch that replays to it, and what the overlay showed.
+/// Capturing copies state only; finding the stretch's byte offsets and saving happen off the
+/// main thread once the note is in.
 /// The note box is a non-activating panel, so it takes the keyboard without bringing
 /// Tavern Lens forward; Hearthstone stays the active app and gets the keyboard back when
 /// the box closes. Return saves, Esc discards, and clicking away saves what was typed.
@@ -67,10 +69,12 @@ final class FeedbackController {
         guard case .save(let note) = outcome else { return }
         var bookmark = bookmark
         bookmark.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        if live.save(bookmark) {
-            lastSaved = bookmark
-        } else {
-            NSSound.beep()
+        live.save(bookmark) { [weak self] saved in
+            if saved {
+                self?.lastSaved = bookmark
+            } else {
+                NSSound.beep()
+            }
         }
     }
 

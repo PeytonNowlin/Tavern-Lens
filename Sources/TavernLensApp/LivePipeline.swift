@@ -24,6 +24,11 @@ struct LiveUpdate: Sendable {
 /// app itself restarted, so a reconnect keeps its history. Game records are saved as
 /// they reach checkpoints, and `onGameEnded` is told once per game that ends (log
 /// housekeeping runs then).
+///
+/// Nothing here blocks the main thread: the data updates (`usePool`, `useBuilds`,
+/// `useHeroStats`), saving a bookmark and stopping run on a control queue, and a bookmark is
+/// captured from a snapshot of the last published moment, kept under a lock of its own, so
+/// the hotkey never waits for a batch of lines or for disk I/O.
 final class LivePipeline: @unchecked Sendable {
     static let minimumPublishInterval: Duration = .milliseconds(100)
 
@@ -38,12 +43,8 @@ final class LivePipeline: @unchecked Sendable {
     // Guarded by `lock`: written on the follower's queue, and read by deferred flushes.
     private var engine = TavernEngine()
     private var session: LogSession?
-    /// The minion pool for tribe inference; each new session's engine starts with it.
-    private var pool: MinionPool?
-    /// Firestone's hero stats and the card data for the hero pick; each new engine starts with them.
-    private var heroStats: (stats: HeroStatsSet?, cards: CardDB?) = (nil, nil)
-    /// The build catalog; each new session's engine starts with it.
-    private var builds: BuildCatalog?
+    /// The pool, builds and hero stats each new session's engine starts with (`TavernEngine(setup:)`).
+    private var setup = EngineSetup()
     private var lastPublished: LiveUpdate?
     private var lastPublishTime: ContinuousClock.Instant?
     private var pendingFlush = false
@@ -57,7 +58,14 @@ final class LivePipeline: @unchecked Sendable {
     private var lastAdvisorRequest: AdvisorRequest?
     private let clock = ContinuousClock()
     private let flushQueue = DispatchQueue(label: "TavernLens.LivePipeline.flush")
+    /// Data updates, bookmark saves and stopping, off the main thread and in order.
+    private let controlQueue = DispatchQueue(label: "TavernLens.LivePipeline.control", qos: .userInitiated)
     private let lock = NSLock()
+    /// The moment a bookmark would capture: the engine's last publish, as a bookmark with no
+    /// note, ID or time yet. Guarded by `momentLock` (held only to copy it).
+    private var moment: FeedbackBookmark?
+    private var momentTimelineCount = -1
+    private let momentLock = NSLock()
 
     /// - Parameter records: where game records are saved and resumed from; nil keeps them in memory.
     init(
@@ -86,12 +94,13 @@ final class LivePipeline: @unchecked Sendable {
         follower.start()
     }
 
+    /// Stops following; the records still unsaved are saved on the control queue.
     func stop() {
         follower?.stop()
         follower = nil
-        lock.lock()
-        defer { lock.unlock() }
-        saveRecords()
+        controlQueue.async { [self] in
+            lock.withLock { saveRecords() }
+        }
     }
 
     private func handle(_ event: LogSessionFollower.Event) {
@@ -103,8 +112,7 @@ final class LivePipeline: @unchecked Sendable {
             // A game the previous session left unfinished may be resumed in this one.
             let carried = engine.inProgressRecord ?? records?.latestInProgress()
             session = newSession
-            engine = TavernEngine(pool: pool, builds: builds, session: newSession)
-            engine.useHeroStats(heroStats.stats, cards: heroStats.cards)
+            engine = TavernEngine(setup: setup, session: newSession)
             combatRequestsSeen = 0
             if let carried { engine.resume(carried) }
             engine.beginCatchUp()
@@ -125,74 +133,101 @@ final class LivePipeline: @unchecked Sendable {
         if !engine.isCatchingUp { saveRecords() }
         dispatchCombatRequests()
         publishIfDue()
+        noteMoment()
     }
 
     /// Uses a new minion pool from now on, including for the game in progress.
     func usePool(_ newPool: MinionPool?) {
-        lock.lock()
-        defer { lock.unlock() }
-        pool = newPool
-        engine.usePool(newPool)
-        publishIfDue()
+        updateEngine {
+            $0.setup.pool = newPool
+            $0.engine.usePool(newPool)
+        }
     }
 
     /// The lobby's tribes read from the hero-pick banner, for the game in progress.
     func ingestScreenTribes(_ reading: ScreenTribeReading) {
-        lock.lock()
-        defer { lock.unlock() }
-        engine.ingestScreenTribes(reading)
-        publishIfDue()
+        updateEngine { $0.engine.ingestScreenTribes(reading) }
     }
 
     /// Uses new hero stats (and card data) from now on, including for a hero pick on screen.
     func useHeroStats(_ stats: HeroStatsSet?, cards: CardDB?) {
-        lock.lock()
-        defer { lock.unlock() }
-        heroStats = (stats, cards)
-        engine.useHeroStats(stats, cards: cards)
-        publishIfDue()
+        updateEngine {
+            $0.setup.heroStats = stats
+            $0.setup.heroCards = cards
+            $0.engine.useHeroStats(stats, cards: cards)
+        }
     }
 
     /// Uses a new build catalog from now on, including for the game in progress.
     func useBuilds(_ catalog: BuildCatalog?) {
-        lock.lock()
-        defer { lock.unlock() }
-        builds = catalog
-        engine.useBuilds(catalog)
-        publishIfDue()
+        updateEngine {
+            $0.setup.builds = catalog
+            $0.engine.useBuilds(catalog)
+        }
+    }
+
+    /// Changes the engine on the control queue, then publishes and saves what changed.
+    private func updateEngine(_ change: @escaping @Sendable (LivePipeline) -> Void) {
+        controlQueue.async { [self] in
+            lock.withLock {
+                change(self)
+                if !engine.isCatchingUp { saveRecords() }
+                publishIfDue()
+                // A screen reading may change the moment without a new publish.
+                momentTimelineCount = -2
+                noteMoment()
+            }
+        }
     }
 
     // MARK: - Bookmarks
 
-    /// The moment the engine last published, as a bookmark with no note yet: its state,
-    /// the game's seed, and the Power.log stretch (entry point to the published line, with
-    /// byte offsets) that replays to it. Nil while catching up or with no game shown.
+    /// The moment the engine last published, as a bookmark with no note yet: its state, the
+    /// game's seed, the Power.log stretch (entry point to the published line) that replays to
+    /// it, and the screen readings taken in along the way. Nil while catching up or with no
+    /// game shown. Instant: a copy of the snapshot taken at the last publish; the stretch's
+    /// byte offsets are found when it's saved (`save`).
     func captureBookmark(createdAt: Date = Date()) -> FeedbackBookmark? {
-        lock.lock()
-        let captured = engine.bookmark(createdAt: createdAt)
-        let powerLog = session?.powerLog
-        lock.unlock()
-        guard var bookmark = captured else { return nil }
-        if let powerLog {
-            bookmark.powerLog = powerLog.path(percentEncoded: false)
-            // Lines already read never move (the log only grows), so this can run outside the lock.
-            bookmark.cut = bookmark.cut.locating(in: powerLog)
-        }
+        guard var bookmark = momentLock.withLock({ moment }) else { return nil }
+        bookmark.id = UUID()
+        // Whole seconds, as `FeedbackBookmark.init` keeps them.
+        bookmark.createdAt = Date(timeIntervalSinceReferenceDate: createdAt.timeIntervalSinceReferenceDate.rounded(.down))
         return bookmark
     }
 
-    /// Stores a bookmark in its game's record and saves it. False when neither the engine
-    /// nor the record store knows its game.
-    @discardableResult
-    func save(_ bookmark: FeedbackBookmark) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        if engine.addBookmark(bookmark) {
-            saveRecords()
-            return true
+    /// Keeps the capturable moment current. Call with `lock` held.
+    private func noteMoment() {
+        let count = engine.isCatchingUp ? -1 : engine.timeline.count
+        guard count != momentTimelineCount || engine.isCatchingUp else { return }
+        var bookmark = engine.bookmark()
+        if var captured = bookmark, let powerLog = session?.powerLog {
+            captured.powerLog = powerLog.path(percentEncoded: false)
+            bookmark = captured
         }
-        // The session changed while the note was typed: the game is on disk, if anywhere.
-        return (try? records?.add(bookmark)) == true
+        momentTimelineCount = count
+        momentLock.withLock { moment = bookmark }
+    }
+
+    /// The setup the engines run with: what a bookmark's replay needs to reach the same state.
+    var engineSetup: EngineSetup { lock.withLock { setup } }
+
+    /// Stores a bookmark in its game's record and saves it, off the main thread: finds the log
+    /// stretch's byte offsets first (lines already read never move, since the log only grows).
+    /// `completion` gets false when neither the engine nor the record store knows its game.
+    func save(_ bookmark: FeedbackBookmark, completion: @escaping @Sendable (Bool) -> Void) {
+        controlQueue.async { [self] in
+            var bookmark = bookmark
+            if let path = bookmark.powerLog {
+                bookmark.cut = bookmark.cut.locating(in: URL(filePath: path))
+            }
+            let added = lock.withLock {
+                guard engine.addBookmark(bookmark) else { return false }
+                saveRecords()
+                return true
+            }
+            // The session changed while the note was typed: the game is on disk, if anywhere.
+            completion(added || (try? records?.add(bookmark)) == true)
+        }
     }
 
     /// Call with `lock` held.

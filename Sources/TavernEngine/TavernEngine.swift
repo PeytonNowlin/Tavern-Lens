@@ -40,6 +40,45 @@ public struct ReplayResult: Sendable {
     public var combatRequests: [CombatSimulationRequest] = []
 }
 
+/// The data an engine runs with besides the log: what the live pipeline gives each engine it
+/// makes, and what a replay of a bookmark needs to reach the same state (the tribes, builds and
+/// hero pick all depend on it).
+public struct EngineSetup: Sendable {
+    /// Card data for names; the live app runs without it (nil).
+    public var cards: CardDB?
+    public var pool: MinionPool?
+    public var builds: BuildCatalog?
+    /// Firestone's hero stats, and the card data the hero pick joins them with.
+    public var heroStats: HeroStatsSet?
+    public var heroCards: CardDB?
+
+    public init(
+        cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil, heroStats: HeroStatsSet? = nil,
+        heroCards: CardDB? = nil
+    ) {
+        self.cards = cards
+        self.pool = pool
+        self.builds = builds
+        self.heroStats = heroStats
+        self.heroCards = heroCards
+    }
+}
+
+/// A lobby-tribes reading from the hero-pick banner, where it came in: the session's log and the
+/// line the engine had read to. Kept in the game's record and in bookmarks, so a replay or a
+/// resumed game takes it in again at the same point.
+public struct LoggedScreenTribes: Codable, Hashable, Sendable {
+    public var session: String?
+    public var line: Int
+    public var reading: ScreenTribeReading
+
+    public init(session: String?, line: Int, reading: ScreenTribeReading) {
+        self.session = session
+        self.line = line
+        self.reading = reading
+    }
+}
+
 /// The headless composition root.
 ///
 /// Feed it Power.log lines in order; it emits a timeline of `ViewState`s and a list
@@ -107,7 +146,12 @@ public struct TavernEngine: Sendable {
         var updatedAt: Date?
         var reconnects = 0
         var bookmarks: [FeedbackBookmark] = []
+        var screenTribes: [LoggedScreenTribes] = []
     }
+
+    /// Screen readings of a game carried in with `resume(_:)`, taken in again once that game is
+    /// under way in this log (its index in `history.games`).
+    private var carriedScreenTribes: (index: Int, readings: [ScreenTribeReading])?
 
     /// - Parameters:
     ///   - cards: card data for resolving card IDs to names; nil leaves names out.
@@ -129,6 +173,14 @@ public struct TavernEngine: Sendable {
         seenPoolTribes = SeenPoolMinionTribes(cards: cards)
         sessionName = session?.name
         clock = session.map { LogClock(session: $0, timeZone: timeZone) }
+    }
+
+    /// An engine set up the way the live pipeline sets up each one: `setup`'s card data, pool
+    /// and builds, then its hero stats. Replays of bookmarks go through this too, so they reach
+    /// the state the live engine showed.
+    public init(setup: EngineSetup, session: LogSession? = nil, timeZone: TimeZone = .current) {
+        self.init(cards: setup.cards, pool: setup.pool, builds: setup.builds, session: session, timeZone: timeZone)
+        useHeroStats(setup.heroStats, cards: setup.heroCards)
     }
 
     public var games: [BGGameRecord] { history.games }
@@ -161,8 +213,14 @@ public struct TavernEngine: Sendable {
 
     /// The lobby's tribes read from the hero-pick banner: the strongest tribe evidence, which
     /// the log's own evidence cross-checks. Ignored outside a solo Battlegrounds game.
+    /// The reading is kept in the game's record (and so in bookmarks), with the line it came
+    /// in at, so replays and resumed games take it in again.
     public mutating func ingestScreenTribes(_ reading: ScreenTribeReading) {
-        tribes.add(reading)
+        if tribes.add(reading), let index = history.currentIndex {
+            while recordInfo.count <= index { recordInfo.append(RecordInfo()) }
+            recordInfo[index].screenTribes.append(LoggedScreenTribes(session: sessionName, line: linesRead, reading: reading))
+            unsaved.insert(index)
+        }
         if !isCatchingUp { publish() }
     }
 
@@ -201,7 +259,8 @@ public struct TavernEngine: Sendable {
         let info = index < recordInfo.count ? recordInfo[index] : RecordInfo()
         return GameRecord(
             summary: history.games[index], journal: history.journals[index], sessions: info.sessions,
-            startedAt: info.startedAt, endedAt: info.endedAt, updatedAt: info.updatedAt, bookmarks: info.bookmarks
+            startedAt: info.startedAt, endedAt: info.endedAt, updatedAt: info.updatedAt, bookmarks: info.bookmarks,
+            screenTribes: info.screenTribes
         )
     }
 
@@ -217,8 +276,12 @@ public struct TavernEngine: Sendable {
         while recordInfo.count < count { recordInfo.append(RecordInfo()) }
         recordInfo.append(RecordInfo(
             sessions: record.sessions, startedAt: record.startedAt, endedAt: record.endedAt,
-            updatedAt: record.updatedAt, reconnects: record.summary.reconnects.count, bookmarks: record.bookmarks
+            updatedAt: record.updatedAt, reconnects: record.summary.reconnects.count, bookmarks: record.bookmarks,
+            screenTribes: record.screenTribes
         ))
+        if !record.screenTribes.isEmpty {
+            carriedScreenTribes = (count, record.screenTribes.map(\.reading))
+        }
         var carried = record
         carried.bookmarks = []
         resumedRecord = carried
@@ -257,7 +320,17 @@ public struct TavernEngine: Sendable {
             session: sessionName, gameSeed: history.games[index].gameSeed, startLine: startLine,
             startByteOffset: startByteOffset, endLine: shown.position.line
         )
-        return FeedbackBookmark(id: id, createdAt: createdAt, note: note, cut: cut, shown: shown, resumed: resumedRecord)
+        // The readings this log's stretch doesn't hold: the ones taken in while reading it.
+        // (A carried-in game's earlier readings are in `resumed`.)
+        let carried = resumedRecord?.screenTribes.count ?? 0
+        let readings = index < recordInfo.count
+            ? Array(recordInfo[index].screenTribes.dropFirst(resumedRecord?.gameSeed == history.games[index].gameSeed ? carried : 0))
+                .filter { $0.line <= shown.position.line }
+            : []
+        return FeedbackBookmark(
+            id: id, createdAt: createdAt, note: note, cut: cut, shown: shown, resumed: resumedRecord,
+            screenTribes: readings.isEmpty ? nil : readings
+        )
     }
 
     /// Stores a bookmark in its game's record (by seed; the current game when unseeded),
@@ -335,6 +408,10 @@ public struct TavernEngine: Sendable {
             for change in changes {
                 history.observe(change, in: store, at: position)
                 tribes.observe(change, in: store, history: history, date: { clock?.currentDate })
+                if let carried = carriedScreenTribes, tribes.gameIndex == carried.index {
+                    carriedScreenTribes = nil
+                    for reading in carried.readings { tribes.add(reading) }
+                }
                 if history.combatStartCount != combatStartsSeen { noteCombatStart(at: position) }
             }
             history.observe(event, in: store)
@@ -514,7 +591,12 @@ extension TavernEngine {
     public static func replay(
         lines: some Sequence<String>, cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil
     ) -> ReplayResult {
-        var engine = TavernEngine(cards: cards, pool: pool, builds: builds)
+        replay(lines: lines, setup: EngineSetup(cards: cards, pool: pool, builds: builds))
+    }
+
+    /// Replays lines from memory with the engine set up as `setup` says.
+    public static func replay(lines: some Sequence<String>, setup: EngineSetup) -> ReplayResult {
+        var engine = TavernEngine(setup: setup)
         for line in lines { engine.ingest(line) }
         engine.finish()
         return engine.replayResult

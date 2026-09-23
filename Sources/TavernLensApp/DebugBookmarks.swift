@@ -41,9 +41,10 @@ final class DebugBookmarksModel {
             status[row.id] = "No Power.log path recorded"
             return
         }
-        let pool = PoolDataModel.shared.pool
+        // The live engines' pool, builds and hero stats, so the replay reaches the state shown.
+        let setup = LiveTrackingModel.engineSetup
         run(row) {
-            let replayed = try TavernEngine.replay(bookmark, powerLog: URL(filePath: path), pool: pool)
+            let replayed = try TavernEngine.replay(bookmark, powerLog: URL(filePath: path), setup: setup)
             return replayed.timeline.last == bookmark.shown
                 ? "Replays to the identical snapshot"
                 : "⚠︎ Replays to a different snapshot (line \(bookmark.cut.endLine))"
@@ -67,8 +68,9 @@ final class DebugBookmarksModel {
         if let saved = UserDefaults.standard.url(forKey: Self.exportRootKey) { panel.directoryURL = saved }
         guard panel.runModal() == .OK, let root = panel.url else { return }
         UserDefaults.standard.set(root, forKey: Self.exportRootKey)
+        let setup = LiveTrackingModel.engineSetup
         run(row) {
-            let exported = try BookmarkExport.export(bookmark, powerLog: URL(filePath: path), into: root)
+            let exported = try BookmarkExport.export(bookmark, powerLog: URL(filePath: path), into: root, setup: setup)
             return "Exported \(exported.goldenCase.name) (replay verified)"
         }
     }

@@ -105,11 +105,14 @@ public struct FeedbackBookmark: Codable, Hashable, Sendable, Identifiable {
     /// The state the advice was for (its `fingerprint`'s request), so the case can be re-scored
     /// under other weights without the log (`AdvisorTuning`).
     public var adviceRequest: AdvisorRequest?
+    /// The hero-pick banner readings taken in while reading `cut` (not in the log, so a replay
+    /// takes them in again at their lines); a carried-in game's earlier ones are in `resumed`.
+    public var screenTribes: [LoggedScreenTribes]?
 
     public init(
         id: UUID = UUID(), createdAt: Date = Date(), note: String = "", cut: LogCut, powerLog: String? = nil,
         shown: TimelineEntry, resumed: GameRecord? = nil, overlay: BookmarkOverlay? = nil, advice: AdviceView? = nil,
-        adviceRequest: AdvisorRequest? = nil
+        adviceRequest: AdvisorRequest? = nil, screenTribes: [LoggedScreenTribes]? = nil
     ) {
         self.id = id
         // Whole seconds, which survive the record store's ISO 8601 text exactly.
@@ -122,6 +125,7 @@ public struct FeedbackBookmark: Codable, Hashable, Sendable, Identifiable {
         self.overlay = overlay
         self.advice = advice
         self.adviceRequest = adviceRequest
+        self.screenTribes = screenTribes
     }
 
     public var gameSeed: Int? { cut.gameSeed }
@@ -154,27 +158,38 @@ public enum BookmarkReplayError: Error, Equatable, CustomStringConvertible {
 }
 
 extension TavernEngine {
-    /// Replays `cut` of the Power.log at `url` the way the live pipeline read it: carry in
-    /// `record` (the bookmark's `resumed`), start at the cut's first line, catch up to its
-    /// last, and publish once. The returned engine's `state` is the moment.
+    /// Replays `cut` of the Power.log at `url` the way the live pipeline read it: an engine set up
+    /// as the live one was (`setup`), carry in `record` (the bookmark's `resumed`), start at the
+    /// cut's first line, catch up to its last, taking in each screen reading at the line it came
+    /// in at, and publish once. The returned engine's `state` is the moment.
     public static func replay(
-        _ cut: LogCut, powerLog url: URL, resuming record: GameRecord? = nil, cards: CardDB? = nil,
-        pool: MinionPool? = nil, builds: BuildCatalog? = nil, timeZone: TimeZone = .current
+        _ cut: LogCut, powerLog url: URL, resuming record: GameRecord? = nil, screenTribes: [LoggedScreenTribes]? = nil,
+        setup: EngineSetup = EngineSetup(), timeZone: TimeZone = .current
     ) throws -> TavernEngine {
         guard cut.startLine >= 1, cut.endLine >= cut.startLine else { throw BookmarkReplayError.invalidCut }
         let session = cut.session.flatMap {
             LogSession(directory: URL(filePath: "/", directoryHint: .isDirectory).appending(path: $0), timeZone: timeZone)
         }
-        var engine = TavernEngine(cards: cards, pool: pool, builds: builds, session: session, timeZone: timeZone)
+        var engine = TavernEngine(setup: setup, session: session, timeZone: timeZone)
         if let record { engine.resume(record) }
         let start = cut.startByteOffset ?? cut.locating(in: url).startByteOffset
         guard let start else { throw BookmarkReplayError.logTooShort(lines: 0, needed: cut.startLine) }
         engine.start(at: PowerLogEntryPoint(byteOffset: start, line: cut.startLine, gameSeed: cut.gameSeed))
         engine.beginCatchUp()
+        var readings = (screenTribes ?? []).filter { $0.line <= cut.endLine }[...]
+        // Readings from before the first line read (the app attached after them).
+        while let next = readings.first, next.line < cut.startLine {
+            engine.ingestScreenTribes(next.reading)
+            readings = readings.dropFirst()
+        }
         struct Reached: Error {}
         do {
             try LogFileReader.forEachLine(in: url, from: start) { line in
                 engine.ingest(line)
+                while let next = readings.first, next.line <= engine.linesRead {
+                    engine.ingestScreenTribes(next.reading)
+                    readings = readings.dropFirst()
+                }
                 if engine.linesRead >= cut.endLine { throw Reached() }
             }
             throw BookmarkReplayError.logTooShort(lines: engine.linesRead, needed: cut.endLine)
@@ -187,27 +202,31 @@ extension TavernEngine {
     /// plan, seed and number of evaluations), so it comes out identical. Nil when there's no
     /// advice; throws `adviceForAnotherState` when the advice was for an earlier state.
     ///
-    /// The engine must be set up as it was live (card data, pool and build catalog), since the
+    /// `setup` must be the live engine's (card data, pool, builds and hero stats), since the
     /// request carries the builds and the lobby's tribes; a bookmark that kept its
     /// `adviceRequest` can be re-scored without the log at all (`AdviceView.replaying`).
     public static func replayAdvice(
         _ advice: AdviceView?, cut: LogCut, powerLog url: URL, resuming record: GameRecord? = nil,
-        cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil, simulate: AdvisorEvaluation.Simulate
+        screenTribes: [LoggedScreenTribes]? = nil, setup: EngineSetup = EngineSetup(),
+        simulate: AdvisorEvaluation.Simulate
     ) async throws -> AdviceView? {
         guard let advice else { return nil }
-        let engine = try replay(cut, powerLog: url, resuming: record, cards: cards, pool: pool, builds: builds, timeZone: .gmt)
+        let engine = try replay(
+            cut, powerLog: url, resuming: record, screenTribes: screenTribes, setup: setup, timeZone: .gmt
+        )
         guard let request = engine.advisorRequest, AdviceView.fingerprint(of: request) == advice.fingerprint else {
             throw BookmarkReplayError.adviceForAnotherState
         }
         return try await advice.replaying(request, simulate: simulate)
     }
 
-    /// Replays a bookmark's moment from its Power.log (or another copy of it at `url`).
-    /// With a pool, the moment's tribes come out as they did live if the pool is the same.
+    /// Replays a bookmark's moment from its Power.log (or another copy of it at `url`), with its
+    /// carried-in record and screen readings. With the live engine's `setup`, the moment comes out
+    /// exactly as it was shown.
     public static func replay(
-        _ bookmark: FeedbackBookmark, powerLog url: URL, cards: CardDB? = nil, pool: MinionPool? = nil
+        _ bookmark: FeedbackBookmark, powerLog url: URL, setup: EngineSetup = EngineSetup()
     ) throws -> TavernEngine {
-        try replay(bookmark.cut, powerLog: url, resuming: bookmark.resumed, cards: cards, pool: pool)
+        try replay(bookmark.cut, powerLog: url, resuming: bookmark.resumed, screenTribes: bookmark.screenTribes, setup: setup)
     }
 }
 
@@ -237,10 +256,13 @@ public struct BookmarkGoldenCase: Codable, Hashable, Sendable {
     /// The state `expectedAdvice` is for, so the case can be re-scored under other weights
     /// without its log (`AdvisorTuning`); it holds no names.
     public var adviceRequest: AdvisorRequest?
+    /// The bookmark's screen readings, taken in again at their lines.
+    public var screenTribes: [LoggedScreenTribes]?
 
     public init(
         name: String, note: String, bookmarkID: UUID? = nil, log: String, cut: LogCut, resumed: GameRecord? = nil,
-        expected: TimelineEntry, expectedAdvice: AdviceView? = nil, adviceRequest: AdvisorRequest? = nil
+        expected: TimelineEntry, expectedAdvice: AdviceView? = nil, adviceRequest: AdvisorRequest? = nil,
+        screenTribes: [LoggedScreenTribes]? = nil
     ) {
         self.name = name
         self.note = note
@@ -251,12 +273,26 @@ public struct BookmarkGoldenCase: Codable, Hashable, Sendable {
         self.expected = expected.redactingNames()
         self.expectedAdvice = expectedAdvice
         self.adviceRequest = adviceRequest
+        self.screenTribes = screenTribes
     }
 
     /// Replays the case from its log and returns the published moment, redacted like `expected`.
-    public func replay(powerLog url: URL, cards: CardDB? = nil) throws -> TimelineEntry? {
-        let engine = try TavernEngine.replay(cut, powerLog: url, resuming: resumed, cards: cards, timeZone: .gmt)
+    /// `setup` is the engine setup the bookmark was taken with (the live app's data).
+    public func replay(powerLog url: URL, setup: EngineSetup = EngineSetup()) throws -> TimelineEntry? {
+        let engine = try TavernEngine.replay(
+            cut, powerLog: url, resuming: resumed, screenTribes: screenTribes, setup: setup, timeZone: .gmt
+        )
         return engine.timeline.last?.redactingNames()
+    }
+
+    /// Re-scores the case's advice from its log (`TavernEngine.replayAdvice`).
+    public func replayAdvice(
+        powerLog url: URL, setup: EngineSetup = EngineSetup(), simulate: AdvisorEvaluation.Simulate
+    ) async throws -> AdviceView? {
+        try await TavernEngine.replayAdvice(
+            expectedAdvice, cut: cut, powerLog: url, resuming: resumed, screenTribes: screenTribes, setup: setup,
+            simulate: simulate
+        )
     }
 
     /// Pretty-printed with sorted keys, and dates as the record store writes them.
@@ -301,11 +337,11 @@ public enum BookmarkExport {
     ///   `fixtures/private-logs/bookmarks/<name>/Power.log` (private, git-ignored);
     /// - the redacted case to `Tests/TavernEngineTests/Golden/Bookmarks/<name>.json` (committed).
     ///
-    /// The copy is replayed before anything is written, and the export fails unless it
-    /// reaches the bookmarked state.
+    /// The copy is replayed, with the engine set up as the live one was (`setup`), before
+    /// anything is written, and the export fails unless it reaches the bookmarked state.
     @discardableResult
     public static func export(
-        _ bookmark: FeedbackBookmark, powerLog: URL, name: String? = nil, into root: URL
+        _ bookmark: FeedbackBookmark, powerLog: URL, name: String? = nil, into root: URL, setup: EngineSetup = EngineSetup()
     ) throws -> (goldenCase: BookmarkGoldenCase, caseFile: URL, logFile: URL) {
         let name = sanitized(name ?? defaultName(for: bookmark))
         guard FileManager.default.fileExists(atPath: powerLog.path(percentEncoded: false)) else {
@@ -319,12 +355,13 @@ public enum BookmarkExport {
         var sliceCut = cut
         sliceCut.startByteOffset = 0
         sliceCut.endByteOffset = UInt64(slice.count)
+        // The slice's line numbers are the original's (reading starts at the cut's first line).
 
         let logPath = "bookmarks/\(name)/Power.log"
         let goldenCase = BookmarkGoldenCase(
             name: name, note: bookmark.note, bookmarkID: bookmark.id, log: logPath, cut: sliceCut,
             resumed: bookmark.resumed, expected: bookmark.shown, expectedAdvice: bookmark.advice,
-            adviceRequest: bookmark.adviceRequest
+            adviceRequest: bookmark.adviceRequest, screenTribes: bookmark.screenTribes
         )
         let json = try goldenCase.encoded()
         guard !BookmarkGoldenCase.containsBattleTag(String(decoding: json, as: UTF8.self)) else {
@@ -336,7 +373,7 @@ public enum BookmarkExport {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: logFile.deletingLastPathComponent(), withIntermediateDirectories: true)
         try slice.write(to: logFile, options: .atomic)
-        guard try goldenCase.replay(powerLog: logFile) == goldenCase.expected else {
+        guard try goldenCase.replay(powerLog: logFile, setup: setup) == goldenCase.expected else {
             try? fileManager.removeItem(at: logFile.deletingLastPathComponent())
             throw BookmarkReplayError.replayDiffers
         }
