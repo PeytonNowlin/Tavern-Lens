@@ -28,10 +28,12 @@ public struct GameRecord: Codable, Hashable, Sendable {
     public var endedAt: Date?
     /// The time of the latest line of this game read so far.
     public var updatedAt: Date?
+    /// Moments the player bookmarked during this game (⌃⌥F), oldest first.
+    public var bookmarks: [FeedbackBookmark]
 
     public init(
         summary: BGGameRecord, journal: BGGameJournal, sessions: [String] = [], startedAt: Date? = nil,
-        endedAt: Date? = nil, updatedAt: Date? = nil
+        endedAt: Date? = nil, updatedAt: Date? = nil, bookmarks: [FeedbackBookmark] = []
     ) {
         self.summary = summary
         self.journal = journal
@@ -39,6 +41,24 @@ public struct GameRecord: Codable, Hashable, Sendable {
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.updatedAt = updatedAt
+        self.bookmarks = bookmarks
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case format, summary, journal, sessions, startedAt, endedAt, updatedAt, bookmarks
+    }
+
+    /// Records written before bookmarks existed have no `bookmarks` key.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        format = try c.decode(Int.self, forKey: .format)
+        summary = try c.decode(BGGameRecord.self, forKey: .summary)
+        journal = try c.decode(BGGameJournal.self, forKey: .journal)
+        sessions = try c.decode([String].self, forKey: .sessions)
+        startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
+        endedAt = try c.decodeIfPresent(Date.self, forKey: .endedAt)
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt)
+        bookmarks = try c.decodeIfPresent([FeedbackBookmark].self, forKey: .bookmarks) ?? []
     }
 
     public var gameSeed: Int? { summary.gameSeed }
@@ -77,9 +97,39 @@ public struct GameRecordStore: Sendable {
         return directory.appending(path: name)
     }
 
+    /// Saves a record, replacing its file. Bookmarks already on disk are kept even when
+    /// `record` lacks them (a later read of the same log doesn't know about them); a
+    /// bookmark in both is taken from `record`.
     public func save(_ record: GameRecord) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try Self.encoder.encode(record).write(to: url(for: record), options: .atomic)
+        let url = url(for: record)
+        var record = record
+        if let existing = (try? Data(contentsOf: url)).flatMap({ try? Self.decoder.decode(GameRecord.self, from: $0) }) {
+            let known = Set(record.bookmarks.map(\.id))
+            let kept = existing.bookmarks.filter { !known.contains($0.id) }
+            if !kept.isEmpty {
+                record.bookmarks = (kept + record.bookmarks).sorted { $0.createdAt < $1.createdAt }
+            }
+        }
+        try Self.encoder.encode(record).write(to: url, options: .atomic)
+    }
+
+    /// Adds a bookmark to its game's saved record, or replaces the one with its ID.
+    /// Returns false when there's no saved record of that game.
+    @discardableResult
+    public func add(_ bookmark: FeedbackBookmark) throws -> Bool {
+        guard let seed = bookmark.gameSeed, var record = load(seed: seed) else { return false }
+        record.bookmarks.removeAll { $0.id == bookmark.id }
+        record.bookmarks.append(bookmark)
+        record.bookmarks.sort { $0.createdAt < $1.createdAt }
+        try save(record)
+        return true
+    }
+
+    /// Every saved bookmark with its game's record, newest first.
+    public func allBookmarks() -> [(record: GameRecord, bookmark: FeedbackBookmark)] {
+        all().flatMap { record in record.bookmarks.map { (record, $0) } }
+            .sorted { $0.bookmark.createdAt > $1.bookmark.createdAt }
     }
 
     public func load(seed: Int) -> GameRecord? {

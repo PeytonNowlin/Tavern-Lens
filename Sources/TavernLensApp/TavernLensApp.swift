@@ -9,7 +9,10 @@ struct TavernLensApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarContent(live: appDelegate.live, overlay: appDelegate.overlay, debugReplay: debugReplay)
+            MenuBarContent(
+                live: appDelegate.live, overlay: appDelegate.overlay, feedback: appDelegate.feedback,
+                debugReplay: debugReplay
+            )
         } label: {
             MenuBarLabel(live: appDelegate.live)
         }
@@ -30,10 +33,12 @@ enum WindowID {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let live: LiveTrackingModel
     let overlay: OverlayController
+    let feedback: FeedbackController
 
     override init() {
         live = LiveTrackingModel()
         overlay = OverlayController(live: live)
+        feedback = FeedbackController(live: live, overlay: overlay)
         super.init()
     }
 
@@ -43,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         live.start()
         overlay.start()
+        feedback.start()
     }
 }
 
@@ -66,6 +72,7 @@ struct MenuBarLabel: View {
 struct MenuBarContent: View {
     let live: LiveTrackingModel
     let overlay: OverlayController
+    let feedback: FeedbackController
     let debugReplay: DebugReplayModel
     @Environment(\.openWindow) private var openWindow
 
@@ -85,6 +92,7 @@ struct MenuBarContent: View {
         }
         Divider()
         OverlayMenuSection(overlay: overlay)
+        FeedbackMenuSection(feedback: feedback)
         Divider()
         if debugReplay.isReplaying || debugReplay.result != nil {
             Text(debugReplay.menuStatus)
@@ -118,6 +126,18 @@ struct OverlayMenuSection: View {
             Button("Allow Accessibility for Better Window Tracking…") {
                 overlay.requestAccessibility()
             }
+        }
+    }
+}
+
+struct FeedbackMenuSection: View {
+    let feedback: FeedbackController
+
+    var body: some View {
+        Button("Bookmark This Moment…") { feedback.bookmarkNow() }
+            .keyboardShortcut("f", modifiers: [.control, .option])
+        if !feedback.hotKeyAvailable {
+            Text("⚠︎ The \(FeedbackController.hotKeyName) hotkey is in use by another app")
         }
     }
 }

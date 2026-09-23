@@ -65,6 +65,12 @@ public struct TavernEngine: Sendable {
     private var recordInfo: [RecordInfo] = []
     /// Games with checkpoints not yet handed out by `takeUnsavedRecords()`.
     private var unsaved: Set<Int> = []
+    /// Where reading started: the entry point's line and byte offset (line 1 at byte 0
+    /// unless `start(at:)` or `skipLines(_:)` said otherwise; the offset is nil after `skipLines`).
+    public private(set) var startLine = 1
+    public private(set) var startByteOffset: UInt64? = 0
+    /// The in-progress record carried in with `resume(_:)`, as it was then, when it was accepted.
+    public private(set) var resumedRecord: GameRecord?
 
     private struct RecordInfo: Sendable {
         var sessions: [String] = []
@@ -72,6 +78,7 @@ public struct TavernEngine: Sendable {
         var endedAt: Date?
         var updatedAt: Date?
         var reconnects = 0
+        var bookmarks: [FeedbackBookmark] = []
     }
 
     /// - Parameters:
@@ -113,7 +120,7 @@ public struct TavernEngine: Sendable {
         let info = index < recordInfo.count ? recordInfo[index] : RecordInfo()
         return GameRecord(
             summary: history.games[index], journal: history.journals[index], sessions: info.sessions,
-            startedAt: info.startedAt, endedAt: info.endedAt, updatedAt: info.updatedAt
+            startedAt: info.startedAt, endedAt: info.endedAt, updatedAt: info.updatedAt, bookmarks: info.bookmarks
         )
     }
 
@@ -129,8 +136,11 @@ public struct TavernEngine: Sendable {
         while recordInfo.count < count { recordInfo.append(RecordInfo()) }
         recordInfo.append(RecordInfo(
             sessions: record.sessions, startedAt: record.startedAt, endedAt: record.endedAt,
-            updatedAt: record.updatedAt, reconnects: record.summary.reconnects.count
+            updatedAt: record.updatedAt, reconnects: record.summary.reconnects.count, bookmarks: record.bookmarks
         ))
+        var carried = record
+        carried.bookmarks = []
+        resumedRecord = carried
         var metadata = GameMetadata()
         metadata.gameType = record.summary.gameType
         metadata.buildNumber = record.summary.buildNumber
@@ -142,6 +152,50 @@ public struct TavernEngine: Sendable {
     public mutating func skipLines(_ count: Int) {
         precondition(linesRead == 0, "skipLines must come before the first line")
         linesRead = count
+        startLine = count + 1
+        startByteOffset = count == 0 ? 0 : nil
+    }
+
+    /// Reading starts at the entry point (`PowerLogEntryPoint`): line numbers count from
+    /// its line, and bookmarks record its byte offset. Call before ingesting any line.
+    public mutating func start(at entry: PowerLogEntryPoint) {
+        skipLines(entry.line - 1)
+        startByteOffset = entry.byteOffset
+    }
+
+    // MARK: - Bookmarks
+
+    /// The moment on screen as a bookmark: the published state and the line it was
+    /// published at, the game's seed, where reading started and the record carried in.
+    /// Nil while catching up or before a game has been shown. The byte offset of the
+    /// last line isn't known here; `LogCut.locating(in:)` fills it in from the log.
+    public func bookmark(note: String = "", id: UUID = UUID(), createdAt: Date = Date()) -> FeedbackBookmark? {
+        guard !isCatchingUp, let shown = timeline.last, shown.state.game != nil, let index = history.currentIndex
+        else { return nil }
+        let cut = LogCut(
+            session: sessionName, gameSeed: history.games[index].gameSeed, startLine: startLine,
+            startByteOffset: startByteOffset, endLine: shown.position.line
+        )
+        return FeedbackBookmark(id: id, createdAt: createdAt, note: note, cut: cut, shown: shown, resumed: resumedRecord)
+    }
+
+    /// Stores a bookmark in its game's record (by seed; the current game when unseeded),
+    /// replacing one with the same ID, and queues the record for saving. False when the
+    /// game isn't one this engine knows.
+    @discardableResult
+    public mutating func addBookmark(_ bookmark: FeedbackBookmark) -> Bool {
+        let index: Int? = if let seed = bookmark.gameSeed {
+            history.games.indices.last { history.games[$0].gameSeed == seed }
+        } else {
+            history.currentIndex
+        }
+        guard let index else { return false }
+        while recordInfo.count <= index { recordInfo.append(RecordInfo()) }
+        recordInfo[index].bookmarks.removeAll { $0.id == bookmark.id }
+        recordInfo[index].bookmarks.append(bookmark)
+        recordInfo[index].bookmarks.sort { $0.createdAt < $1.createdAt }
+        unsaved.insert(index)
+        return true
     }
 
     /// From here until `endCatchUp()`, lines are reduced but no state is published.
