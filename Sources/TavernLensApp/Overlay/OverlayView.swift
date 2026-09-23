@@ -11,6 +11,8 @@ final class OverlayModel {
     var layout: OverlayLayout?
     var view: ViewState = .noGame
     var showsLayoutGuides = false
+    /// The latest combat's odds, from `CombatOddsModel`.
+    var combatOdds: CombatOddsView?
     @ObservationIgnored var hide: () -> Void = {}
 
     /// The status HUD shows during a solo Battlegrounds game and on its game-over screen.
@@ -19,6 +21,12 @@ final class OverlayModel {
         case .inGame, .gameOver: view.game
         case .noGame: nil
         }
+    }
+
+    /// The odds panel shows during the combat it was simulated for. It never takes clicks.
+    var shownCombatOdds: CombatOddsView? {
+        guard view.status == .inGame, let game = view.game, let odds = combatOdds, odds.isFor(game) else { return nil }
+        return odds
     }
 
     /// Where the cursor makes the panel take clicks, in content-local top-left points.
@@ -85,6 +93,12 @@ struct OverlayRootView: View {
                               metrics: layout.constants.hudMetrics, hide: model.hide)
                         .frame(width: layout.hud.width, height: layout.hud.height)
                         .offset(x: layout.hud.minX, y: layout.hud.minY)
+                }
+                if let odds = model.shownCombatOdds {
+                    CombatOddsPanel(odds: odds, scale: layout.panelScale, metrics: layout.constants.combatOddsMetrics)
+                        .frame(width: layout.combatOddsPanel.width, height: layout.combatOddsPanel.height)
+                        .offset(x: layout.combatOddsPanel.minX, y: layout.combatOddsPanel.minY)
+                        .allowsHitTesting(false)
                 }
                 if let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
@@ -224,6 +238,7 @@ struct LayoutGuides: View {
             for i in 0..<10 { stroke(layout.goldCoin(i), .yellow) }
             stroke(layout.hud, .white)
             stroke(layout.nextOpponentPreview, .white, dash: true)
+            stroke(layout.combatOddsPanel, .red.opacity(0.6), dash: true)
             stroke(layout.opponentPanel, .white, dash: true)
         }
         .allowsHitTesting(false)

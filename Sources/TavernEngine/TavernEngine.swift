@@ -1,3 +1,4 @@
+import BGIntel
 import BGState
 import EntityStore
 import Foundation
@@ -12,6 +13,10 @@ import PowerParser
 @_exported import struct PowerParser.LogPosition
 // Card data is an engine input (`TavernEngine(cards:)`), and the app loads it.
 @_exported import HSData
+// Combat simulation requests and their input, the tribe provider seam.
+@_exported import BGIntel
+// The simulator runtime, which runs the engine's combat requests.
+@_exported import SimulatorRuntime
 
 /// Counts of input the engine tolerated rather than understood.
 public struct EngineDiagnostics: Codable, Hashable, Sendable {
@@ -29,6 +34,8 @@ public struct ReplayResult: Sendable {
     public var entities: [EntityRow] = []
     /// The full record of each game in `games`, as it would be saved.
     public var records: [GameRecord] = []
+    /// The simulator input of every combat start, in order.
+    public var combatRequests: [CombatSimulationRequest] = []
 }
 
 /// The headless composition root.
@@ -57,6 +64,12 @@ public struct TavernEngine: Sendable {
     private var history = BGGameHistory()
     private var lastTimestamp: Substring = ""
     private let cards: CardDB?
+    private let tribes: any LobbyTribesProvider
+    /// The simulator input of every combat start seen, in order. Each is taken at the tag
+    /// 2022 1→0 edge, when both boards are final, and appended before the line's batch is
+    /// published, so a live runner can start simulating at once.
+    public private(set) var combatRequests: [CombatSimulationRequest] = []
+    private var combatStartsSeen = 0
     private let sessionName: String?
     private var clock: LogClock?
     /// Suppresses publishing while the existing log is replayed.
@@ -85,8 +98,14 @@ public struct TavernEngine: Sendable {
     ///   - cards: card data for resolving card IDs to names; nil leaves names out.
     ///   - session: the session folder the Power.log is from. It dates the game records
     ///     (the logs only carry times of day); nil leaves records undated.
-    public init(cards: CardDB? = nil, session: LogSession? = nil, timeZone: TimeZone = .current) {
+    ///   - tribes: the lobby's tribes for the combat simulator; nil uses the tribes of the
+    ///     single-tribe pool minions seen so far (`SeenPoolMinionTribes`, which needs `cards`).
+    public init(
+        cards: CardDB? = nil, session: LogSession? = nil, timeZone: TimeZone = .current,
+        tribes: (any LobbyTribesProvider)? = nil
+    ) {
         self.cards = cards
+        self.tribes = tribes ?? SeenPoolMinionTribes(cards: cards)
         sessionName = session?.name
         clock = session.map { LogClock(session: $0, timeZone: timeZone) }
     }
@@ -98,7 +117,9 @@ public struct TavernEngine: Sendable {
     }
 
     public var result: ReplayResult {
-        ReplayResult(timeline: timeline, games: games, diagnostics: diagnostics, records: records)
+        ReplayResult(
+            timeline: timeline, games: games, diagnostics: diagnostics, records: records, combatRequests: combatRequests
+        )
     }
 
     /// Every game's full record.
@@ -252,6 +273,7 @@ public struct TavernEngine: Sendable {
             store.apply(event, changes: { changes.append($0) })
             for change in changes {
                 history.observe(change, in: store, at: position)
+                if history.combatStartCount != combatStartsSeen { noteCombatStart(at: position) }
             }
             history.observe(event, in: store)
             if event == .taskListEnd, !isCatchingUp {
@@ -259,6 +281,21 @@ public struct TavernEngine: Sendable {
             }
         }
         if !history.changedGames.isEmpty { noteChangedGames() }
+    }
+
+    /// A combat just started (history accepted the tag 2022 1→0 edge): builds the simulator's input
+    /// from the store as it is at this line, before any Start of Combat effect.
+    private mutating func noteCombatStart(at position: LogPosition) {
+        combatStartsSeen = history.combatStartCount
+        guard let snapshot = BGSnapshot.project(store), let opponent = snapshot.combatOpponentPlayerID,
+              let input = BattleInputBuilder.build(
+                  store: store, snapshot: snapshot, validTribes: tribes.lobbyTribes(store: store, snapshot: snapshot)
+              )
+        else { return }
+        combatRequests.append(CombatSimulationRequest(
+            gameSeed: snapshot.gameSeed, bgTurn: snapshot.bgTurn, opponentPlayerID: opponent, position: position,
+            input: input
+        ))
     }
 
     /// Dates the games that reached a checkpoint and queues them for saving.

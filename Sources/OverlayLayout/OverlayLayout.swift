@@ -168,6 +168,15 @@ public struct OverlayLayout: Hashable, Sendable {
                       width: hud.width, height: constants.nextOpponentPreviewHeight * s)
     }
 
+    /// The combat odds panel: under the HUD in the right margin, where the next opponent's preview
+    /// sits during recruit (the two never show together).
+    public var combatOddsPanel: CGRect {
+        let s = panelScale
+        let hud = self.hud
+        return CGRect(x: hud.minX, y: hud.maxY + constants.panelGap * s,
+                      width: hud.width, height: constants.combatOddsPanelHeight * s)
+    }
+
     private func slotOffset(_ index: Int, of count: Int) -> CGFloat {
         (CGFloat(index) - CGFloat(count - 1) / 2) * constants.slotPitch
     }

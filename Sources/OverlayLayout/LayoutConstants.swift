@@ -116,6 +116,10 @@ public struct LayoutConstants: Hashable, Sendable {
     public var opponentPanelSize: CGSize
     /// The next opponent's board preview, under the HUD (in reference points; its width is the HUD's).
     public var nextOpponentPreviewHeight: CGFloat
+    /// The combat odds panel, under the HUD while combat runs (in reference points; its width is the HUD's).
+    /// Its content (`combatOddsMetrics`) must fit it (checked in the layout tests).
+    public var combatOddsPanelHeight: CGFloat = 104
+    public var combatOddsMetrics = CombatOddsMetrics()
     /// Space between stacked panels (in reference points).
     public var panelGap: CGFloat
 }
@@ -140,6 +144,27 @@ public struct HUDMetrics: Hashable, Sendable {
     public var itemSpacing: CGFloat = 9
     public var rowSpacing: CGFloat = 5
     /// Inside the HUD's edges.
+    public var padding: CGSize = CGSize(width: 9, height: 7)
+    public var cornerRadius: CGFloat = 10
+
+    public init() {}
+}
+
+/// The combat odds panel's type and spacing, in reference points (multiplied by `panelScale`).
+///
+/// Rows: win / tie / loss (a small label over each percentage), a bar of the three, the damage
+/// dealt and taken (average and range), then a footer with the lethal warning and the
+/// number of simulations so far.
+public struct CombatOddsMetrics: Hashable, Sendable {
+    public var labelFontSize: CGFloat = 9
+    public var percentFontSize: CGFloat = 13
+    /// Between the win, tie and loss columns.
+    public var columnSpacing: CGFloat = 4
+    public var barHeight: CGFloat = 4
+    public var damageFontSize: CGFloat = 11
+    public var warningFontSize: CGFloat = 10.5
+    public var footnoteFontSize: CGFloat = 9
+    public var rowSpacing: CGFloat = 4
     public var padding: CGSize = CGSize(width: 9, height: 7)
     public var cornerRadius: CGFloat = 10
 

@@ -78,18 +78,24 @@ sed -e "s|__BUNDLE_ID__|$BUNDLE_ID|" \
 plutil -lint -s "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-# SwiftPM resource bundles (none yet). When a module gains resources, its
-# <Package>_<Module>.bundle must be copied into Contents/Resources and looked up
-# from Bundle.main.resourceURL, because SwiftPM's generated accessor looks next to
-# the executable's bundle root, which code signing rejects.
+# SwiftPM resource bundles: each <Package>_<Module>.bundle is copied into Contents/Resources
+# and looked up from Bundle.main.resourceURL (see SimulatorResources), because SwiftPM's
+# generated accessor looks next to the executable's bundle root, which code signing rejects.
+for bundle in "$BIN_DIR"/TavernLens_*.bundle; do
+    [[ -d "$bundle" ]] || continue
+    ditto "$bundle" "$APP/Contents/Resources/$(basename "$bundle")"
+done
+
+# JavaScriptCore needs allow-jit to JIT the combat simulator (7x faster than interpreted).
+ENTITLEMENTS="$ROOT/Packaging/TavernLens.entitlements"
 
 echo "==> Signing"
 if security find-identity -p codesigning 2>/dev/null | grep -Fq "\"$IDENTITY\""; then
-    codesign --force --sign "$IDENTITY" --identifier "$BUNDLE_ID" "$APP"
+    codesign --force --sign "$IDENTITY" --identifier "$BUNDLE_ID" --entitlements "$ENTITLEMENTS" "$APP"
 else
     echo "warning: code-signing identity \"$IDENTITY\" not found; signing ad-hoc." >&2
     echo "warning: macOS will forget permission grants on every rebuild. See --help to create it." >&2
-    codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
+    codesign --force --sign - --identifier "$BUNDLE_ID" --entitlements "$ENTITLEMENTS" "$APP"
 fi
 codesign --verify --strict "$APP"
 codesign --display --verbose=2 "$APP" 2>&1 | grep -E '^(Identifier|Authority|Signature)=' || true

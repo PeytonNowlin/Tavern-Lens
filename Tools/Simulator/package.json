@@ -1,0 +1,16 @@
+{
+  "name": "tavern-lens-simulator-bundle",
+  "private": true,
+  "description": "Builds Sources/SimulatorRuntime/Resources/bgs-simulator.js from a pinned @firestone-hs/simulate-bgs-battle. Bump it only with scripts/update-simulator.sh.",
+  "license": "MIT",
+  "dependencies": {
+    "@firestone-hs/reference-data": "3.0.211",
+    "@firestone-hs/simulate-bgs-battle": "1.1.755"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "overrides": {
+    "@firestone-hs/reference-data": "$@firestone-hs/reference-data"
+  }
+}

@@ -30,6 +30,7 @@ final class LivePipeline: @unchecked Sendable {
     private let publish: @Sendable (LiveUpdate) -> Void
     private let records: GameRecordStore?
     private let onGameEnded: @Sendable (GameRecord) -> Void
+    private let onCombatRequest: @Sendable (CombatSimulationRequest) -> Void
     private var follower: LogSessionFollower?
 
     // Guarded by `lock`: written on the follower's queue, and read by deferred flushes.
@@ -40,6 +41,8 @@ final class LivePipeline: @unchecked Sendable {
     private var pendingFlush = false
     /// Seeds of games already reported to `onGameEnded`.
     private var endedGames: Set<Int> = []
+    /// How many of the engine's combat requests have been seen (dispatched, or skipped in catch-up).
+    private var combatRequestsSeen = 0
     private let clock = ContinuousClock()
     private let flushQueue = DispatchQueue(label: "TavernLens.LivePipeline.flush")
     private let lock = NSLock()
@@ -48,10 +51,12 @@ final class LivePipeline: @unchecked Sendable {
     init(
         records: GameRecordStore?,
         onGameEnded: @escaping @Sendable (GameRecord) -> Void = { _ in },
+        onCombatRequest: @escaping @Sendable (CombatSimulationRequest) -> Void = { _ in },
         publish: @escaping @Sendable (LiveUpdate) -> Void
     ) {
         self.records = records
         self.onGameEnded = onGameEnded
+        self.onCombatRequest = onCombatRequest
         self.publish = publish
     }
 
@@ -83,6 +88,7 @@ final class LivePipeline: @unchecked Sendable {
             let carried = engine.inProgressRecord ?? records?.latestInProgress()
             session = newSession
             engine = TavernEngine(session: newSession)
+            combatRequestsSeen = 0
             if let carried { engine.resume(carried) }
             engine.beginCatchUp()
         case .powerLogEntry(let entry):
@@ -100,6 +106,7 @@ final class LivePipeline: @unchecked Sendable {
             }
         }
         if !engine.isCatchingUp { saveRecords() }
+        dispatchCombatRequests()
         publishIfDue()
     }
 
@@ -144,6 +151,16 @@ final class LivePipeline: @unchecked Sendable {
                 onGameEnded(record)
             }
         }
+    }
+
+    /// A combat that started just now goes to the simulator at once, before the state is
+    /// published. One seen while catching up is already over (or can't be told apart from one
+    /// that is), so it isn't simulated. Call with `lock` held.
+    private func dispatchCombatRequests() {
+        let requests = engine.combatRequests
+        guard requests.count > combatRequestsSeen else { return }
+        combatRequestsSeen = requests.count
+        if !engine.isCatchingUp, let latest = requests.last { onCombatRequest(latest) }
     }
 
     /// Call with `lock` held.
