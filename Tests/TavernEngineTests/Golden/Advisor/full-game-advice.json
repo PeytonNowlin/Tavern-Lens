@@ -1,0 +1,626 @@
+{
+  "turn-10" : {
+    "advice" : {
+      "baseline" : {
+        "averageDamageDealt" : 14.97,
+        "averageDamageTaken" : 0,
+        "lethalRisk" : 0,
+        "lost" : 0,
+        "simulations" : 300,
+        "tied" : 0,
+        "won" : 100
+      },
+      "candidates" : 41,
+      "note" : "Scored vs turn 7 opponent (theirs is from turn 4)",
+      "scored" : 41,
+      "status" : "recommendation",
+      "suggestions" : [
+        {
+          "action" : {
+            "level" : {
+              "cost" : 9,
+              "toTier" : 6
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 4,
+          "odds" : {
+            "averageDamageDealt" : 14.97,
+            "averageDamageTaken" : 0,
+            "lethalRisk" : 0,
+            "lost" : 0,
+            "simulations" : 300,
+            "tied" : 0,
+            "won" : 100
+          },
+          "rank" : 1,
+          "reason" : "Good tempo to level (costs 9)",
+          "targets" : [
+            {
+              "kind" : "levelButton"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 0,
+            "economy" : 4
+          }
+        }
+      ]
+    },
+    "bgTurn" : 10,
+    "evaluations" : 54,
+    "fingerprint" : "6769f82c602f3b15",
+    "isComplete" : true,
+    "isUpdating" : false,
+    "opponentPlayerID" : 8,
+    "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
+      "refineSimulations" : 200,
+      "refinedGroups" : 2,
+      "seed" : 430797136,
+      "simulations" : 100,
+      "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
+        "combat" : 1,
+        "damageDealtPerHealth" : 0.5,
+        "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
+        "highZ" : 3,
+        "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
+        "mediumZ" : 1.5,
+        "minimumGain" : 1,
+        "minimumSimulations" : 150,
+        "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
+        "staleAfterTurns" : 3,
+        "suggestions" : 3,
+        "tierTurnValue" : 5
+      }
+    },
+    "requestID" : "1172082863/10/P8"
+  },
+  "turn-11" : {
+    "advice" : {
+      "baseline" : {
+        "averageDamageDealt" : 11.54,
+        "averageDamageTaken" : 0.35,
+        "lethalRisk" : 0,
+        "lost" : 4,
+        "simulations" : 300,
+        "tied" : 9.67,
+        "won" : 86.33
+      },
+      "candidates" : 36,
+      "note" : "Options are close · Scored vs last opponent (theirs is from turn 7)",
+      "scored" : 36,
+      "status" : "noStrongRecommendation",
+      "suggestions" : [
+        {
+          "action" : {
+            "move" : {
+              "board" : 2,
+              "cardID" : "BG36_109",
+              "to" : 0
+            }
+          },
+          "confidence" : "low",
+          "gain" : 4.53,
+          "odds" : {
+            "averageDamageDealt" : 12.24,
+            "averageDamageTaken" : 0,
+            "lethalRisk" : 0,
+            "lost" : 0,
+            "simulations" : 100,
+            "tied" : 10,
+            "won" : 90
+          },
+          "rank" : 1,
+          "reason" : "+4% win vs last opponent",
+          "targets" : [
+            {
+              "index" : 2,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 4.53,
+            "economy" : 0,
+            "lobby" : 0
+          }
+        },
+        {
+          "action" : {
+            "cast" : {
+              "cardID" : "BG36_301t",
+              "from" : "hand",
+              "index" : 2,
+              "option" : 0
+            }
+          },
+          "confidence" : "low",
+          "gain" : 4.49,
+          "odds" : {
+            "averageDamageDealt" : 12.28,
+            "averageDamageTaken" : 0.06,
+            "lethalRisk" : 0,
+            "lost" : 1,
+            "simulations" : 100,
+            "tied" : 8,
+            "won" : 91
+          },
+          "rank" : 2,
+          "reason" : "+5% win vs last opponent",
+          "targets" : [
+            {
+              "index" : 2,
+              "kind" : "hand"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 4.49,
+            "economy" : 0,
+            "lobby" : 0
+          }
+        },
+        {
+          "action" : {
+            "move" : {
+              "board" : 6,
+              "cardID" : "BG25_354",
+              "to" : 0
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 3.35,
+          "odds" : {
+            "averageDamageDealt" : 11.5,
+            "averageDamageTaken" : 0.14,
+            "lethalRisk" : 0,
+            "lost" : 1.67,
+            "simulations" : 300,
+            "tied" : 8,
+            "won" : 90.33
+          },
+          "rank" : 3,
+          "reason" : "+4% win vs last opponent",
+          "targets" : [
+            {
+              "index" : 6,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 3.35,
+            "economy" : 0
+          }
+        }
+      ]
+    },
+    "bgTurn" : 11,
+    "evaluations" : 49,
+    "fingerprint" : "546c6484c50134",
+    "isComplete" : true,
+    "isUpdating" : false,
+    "opponentPlayerID" : 7,
+    "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
+      "refineSimulations" : 200,
+      "refinedGroups" : 2,
+      "seed" : 430797136,
+      "simulations" : 100,
+      "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
+        "combat" : 1,
+        "damageDealtPerHealth" : 0.5,
+        "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
+        "highZ" : 3,
+        "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
+        "mediumZ" : 1.5,
+        "minimumGain" : 1,
+        "minimumSimulations" : 150,
+        "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
+        "staleAfterTurns" : 3,
+        "suggestions" : 3,
+        "tierTurnValue" : 5
+      }
+    },
+    "requestID" : "1172082863/11/P7"
+  },
+  "turn-12" : {
+    "advice" : {
+      "baseline" : {
+        "averageDamageDealt" : 1.09,
+        "averageDamageTaken" : 6.39,
+        "lethalRisk" : 66.67,
+        "lost" : 66.67,
+        "simulations" : 300,
+        "tied" : 22.67,
+        "won" : 10.67
+      },
+      "candidates" : 37,
+      "note" : "Options are close · Scored vs last opponent (theirs is from turn 6)",
+      "sanity" : [
+        {
+          "candidate" : "roll",
+          "effect" : "veto",
+          "rule" : "rollPastImprovement"
+        }
+      ],
+      "scored" : 37,
+      "status" : "noStrongRecommendation",
+      "suggestions" : [
+        {
+          "action" : {
+            "swap" : {
+              "cardID" : "BG36_245",
+              "sell" : 0,
+              "shop" : 1,
+              "soldCardID" : "BG36_102"
+            }
+          },
+          "confidence" : "low",
+          "gain" : 19.79,
+          "odds" : {
+            "averageDamageDealt" : 1.19,
+            "averageDamageTaken" : 4.94,
+            "lethalRisk" : 54,
+            "lost" : 54,
+            "simulations" : 100,
+            "tied" : 35,
+            "won" : 11
+          },
+          "rank" : 1,
+          "reason" : "Cuts lethal risk 67% → 54%",
+          "targets" : [
+            {
+              "index" : 1,
+              "kind" : "shop"
+            },
+            {
+              "index" : 0,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 20.67,
+            "economy" : 0,
+            "lobby" : -0.88
+          }
+        },
+        {
+          "action" : {
+            "move" : {
+              "board" : 0,
+              "cardID" : "BG36_102",
+              "to" : 6
+            }
+          },
+          "confidence" : "low",
+          "gain" : 13.24,
+          "odds" : {
+            "averageDamageDealt" : 1.46,
+            "averageDamageTaken" : 5.67,
+            "lethalRisk" : 59,
+            "lost" : 59,
+            "simulations" : 100,
+            "tied" : 28,
+            "won" : 13
+          },
+          "rank" : 2,
+          "reason" : "Cuts lethal risk 67% → 59%",
+          "targets" : [
+            {
+              "index" : 0,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 13.57,
+            "economy" : 0,
+            "lobby" : -0.33
+          }
+        },
+        {
+          "action" : {
+            "cast" : {
+              "cardID" : "BG31_881",
+              "from" : "shop",
+              "index" : 6,
+              "option" : 0
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 12.95,
+          "odds" : {
+            "averageDamageDealt" : 1.34,
+            "averageDamageTaken" : 5.9,
+            "lethalRisk" : 59,
+            "lost" : 59,
+            "simulations" : 300,
+            "tied" : 28.67,
+            "won" : 12.33
+          },
+          "rank" : 3,
+          "reason" : "Cuts lethal risk 67% → 59%",
+          "targets" : [
+            {
+              "index" : 6,
+              "kind" : "shop"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 12.95,
+            "economy" : 0
+          }
+        }
+      ]
+    },
+    "bgTurn" : 12,
+    "evaluations" : 44,
+    "fingerprint" : "afa8900a3b255dda",
+    "isComplete" : true,
+    "isUpdating" : false,
+    "opponentPlayerID" : 3,
+    "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
+      "refineSimulations" : 200,
+      "refinedGroups" : 2,
+      "seed" : 430797136,
+      "simulations" : 100,
+      "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
+        "combat" : 1,
+        "damageDealtPerHealth" : 0.5,
+        "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
+        "highZ" : 3,
+        "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
+        "mediumZ" : 1.5,
+        "minimumGain" : 1,
+        "minimumSimulations" : 150,
+        "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
+        "staleAfterTurns" : 3,
+        "suggestions" : 3,
+        "tierTurnValue" : 5
+      }
+    },
+    "requestID" : "1172082863/12/P3"
+  },
+  "turn-8" : {
+    "advice" : {
+      "baseline" : {
+        "averageDamageDealt" : 12.95,
+        "averageDamageTaken" : 0,
+        "lethalRisk" : 0,
+        "lost" : 0,
+        "simulations" : 300,
+        "tied" : 0,
+        "won" : 100
+      },
+      "candidates" : 41,
+      "note" : "Scored vs last opponent (theirs is from turn 1)",
+      "scored" : 41,
+      "status" : "recommendation",
+      "suggestions" : [
+        {
+          "action" : {
+            "level" : {
+              "cost" : 8,
+              "toTier" : 5
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 4,
+          "odds" : {
+            "averageDamageDealt" : 12.95,
+            "averageDamageTaken" : 0,
+            "lethalRisk" : 0,
+            "lost" : 0,
+            "simulations" : 300,
+            "tied" : 0,
+            "won" : 100
+          },
+          "rank" : 1,
+          "reason" : "Good tempo to level (costs 8)",
+          "targets" : [
+            {
+              "kind" : "levelButton"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 0,
+            "economy" : 4
+          }
+        }
+      ]
+    },
+    "bgTurn" : 8,
+    "evaluations" : 59,
+    "fingerprint" : "a24a4fd7fde68d4d",
+    "isComplete" : true,
+    "isUpdating" : false,
+    "opponentPlayerID" : 5,
+    "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
+      "refineSimulations" : 200,
+      "refinedGroups" : 2,
+      "seed" : 430797136,
+      "simulations" : 100,
+      "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
+        "combat" : 1,
+        "damageDealtPerHealth" : 0.5,
+        "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
+        "highZ" : 3,
+        "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
+        "mediumZ" : 1.5,
+        "minimumGain" : 1,
+        "minimumSimulations" : 150,
+        "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
+        "staleAfterTurns" : 3,
+        "suggestions" : 3,
+        "tierTurnValue" : 5
+      }
+    },
+    "requestID" : "1172082863/8/P5"
+  },
+  "turn-9" : {
+    "advice" : {
+      "baseline" : {
+        "averageDamageDealt" : 14.67,
+        "averageDamageTaken" : 0,
+        "lethalRisk" : 0,
+        "lost" : 0,
+        "simulations" : 300,
+        "tied" : 0,
+        "won" : 100
+      },
+      "candidates" : 36,
+      "note" : "Scored vs last opponent (theirs is from turn 2)",
+      "scored" : 36,
+      "status" : "recommendation",
+      "suggestions" : [
+        {
+          "action" : {
+            "level" : {
+              "cost" : 10,
+              "toTier" : 6
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 4,
+          "odds" : {
+            "averageDamageDealt" : 14.67,
+            "averageDamageTaken" : 0,
+            "lethalRisk" : 0,
+            "lost" : 0,
+            "simulations" : 300,
+            "tied" : 0,
+            "won" : 100
+          },
+          "rank" : 1,
+          "reason" : "Good tempo to level (costs 10)",
+          "targets" : [
+            {
+              "kind" : "levelButton"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 0,
+            "economy" : 4
+          }
+        }
+      ]
+    },
+    "bgTurn" : 9,
+    "evaluations" : 54,
+    "fingerprint" : "b49755e65e8f4527",
+    "isComplete" : true,
+    "isUpdating" : false,
+    "opponentPlayerID" : 2,
+    "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
+      "refineSimulations" : 200,
+      "refinedGroups" : 2,
+      "seed" : 430797136,
+      "simulations" : 100,
+      "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
+        "combat" : 1,
+        "damageDealtPerHealth" : 0.5,
+        "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
+        "highZ" : 3,
+        "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
+        "mediumZ" : 1.5,
+        "minimumGain" : 1,
+        "minimumSimulations" : 150,
+        "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
+        "staleAfterTurns" : 3,
+        "suggestions" : 3,
+        "tierTurnValue" : 5
+      }
+    },
+    "requestID" : "1172082863/9/P2"
+  }
+}
