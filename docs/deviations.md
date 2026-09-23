@@ -45,14 +45,17 @@ The consequence is that a board change that's only good against the rest of the 
 against the next opponent, can't be suggested. That is the intended trade: the next combat is the
 one the advice is about.
 
-## Against an unseen next opponent, the advisor scores against a stand-in (stories 48–52)
+## Against an unseen next opponent or an old board, the advisor scores against a stand-in (stories 48–52)
 
 The spec's advice is about the next combat against the next opponent's last-seen board. When the
-next opponent hasn't been fought yet, the advisor scores the combat term against the most recently
-seen opponent's board instead (the odds preview still shows no data). See `docs/advisor/scoring.md`,
-"An unseen next opponent".
+next opponent hasn't been fought yet, or their board is 3 or more turns old, the advisor scores the
+combat term against the most recently seen opponent's board instead (the odds preview still shows
+the next opponent's own board, or no data). See `docs/advisor/scoring.md`, "An unseen next
+opponent, or an old board".
 
 Why: matchmaking avoids recent opponents, so the next opponent is often one not fought yet. A game
 with a new opponent every turn for its first seven turns (a playtest on 2026-09-23) had no advice at
 all. A recent board is a fair guess at what boards look like now, so advice against it is better
 than none. It is marked as a guess: at most medium confidence, reasons that name it, and a note.
+Likewise a board 3-5 turns old: in a later playtest the advisor gave a 100% win against such boards
+on three turns that were lost, the last one lethally; against the freshest board it gave 0-1%.

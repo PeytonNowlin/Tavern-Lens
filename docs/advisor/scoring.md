@@ -35,16 +35,21 @@ per opponent: every candidate would be about 180 evaluations late in a game, far
 budget, and the other terms have already ranked the rest too low for the lobby to change the top
 (`docs/deviations.md`).
 
-### An unseen next opponent: a stand-in
+### An unseen next opponent, or an old board: a stand-in
 
 Matchmaking avoids recent opponents, so early in a game the next opponent is usually one not fought
-yet, and has no board to simulate against. Then the combat term fights a **stand-in**
-(`AdvisorRequest.standIn`): the most recently seen living opponent's board (a combat-start side
-before a rebuilt one, then the lower PlayerID), with the next opponent's health and tier. It is
-usually last turn's opponent, the freshest sample of how strong boards are now. The stand-in leaves
-the lobby term, which covers the rest. Its advice is capped at medium confidence, the reasons name it
-("+8% win vs last opponent"), and the note says the next opponent hasn't been fought. Only with no
-opponent seen at all (turn 1) is there no data.
+yet, and has no board to simulate against. Later, their last-seen board is often several turns old,
+far weaker than theirs now: in a playtest the advisor gave a 100% win against boards 3-5 turns old
+on three turns that were lost, the last one lethally, and so suggested nothing but levelling.
+
+So when the next opponent is unseen, or their board is `AdvisorRequest.staleBoardTurns` (3) or more
+turns old, the combat term fights a **stand-in** (`AdvisorRequest.standIn`): the most recently seen
+living opponent's board, if fresher than theirs (a combat-start side before a rebuilt one, then the
+lower PlayerID), with the next opponent's health and tier. It is usually last turn's opponent, the
+freshest sample of how strong boards are now. The stand-in leaves the lobby term; the next opponent's
+old board joins it. Its advice is capped at medium confidence, the reasons name it ("+8% win vs last
+opponent"), and the note says why ("Next opponent unseen · scored vs last opponent", "Their board is
+from turn 5 · scored vs last opponent"). Only with no opponent seen at all (turn 1) is there no data.
 
 ### Builds
 

@@ -24,6 +24,8 @@ public struct AdvisorMetrics: Hashable, Sendable {
     public var headerHeight: CGFloat = 34
     /// Lines a reason may wrap to before it's cut.
     public var reasonLines = 2
+    /// Lines the note under the list may wrap to.
+    public var noteLines = 2
     /// The whole panel when expanded, right-aligned with the HUD but wider (it reaches left into
     /// the free space beside the board, clear of the shop and the minions); the header, `rows`
     /// rows and a note line must fit (checked in the layout tests).

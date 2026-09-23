@@ -576,8 +576,10 @@ extension Advisor {
             status = .noStrongRecommendation
             note = "Options are close"
         } else if let top = suggestions.first, top.confidence != .low {
-            if request.standIn != nil {
-                note = "Next opponent not fought yet: scored vs your \(request.opponentLabel)"
+            if let seen = request.replacedSeenTurn {
+                note = "Their board is from turn \(seen) · scored vs \(request.opponentLabel)"
+            } else if request.standIn != nil {
+                note = "Next opponent unseen · scored vs \(request.opponentLabel)"
             } else if capped, let seen = request.preview.opponentSeenTurn {
                 note = "Their board is from turn \(seen)"
             }
@@ -662,6 +664,9 @@ extension Advisor {
         }
         let win = tally.winPercent - base.winPercent
         if abs(win) >= 1 { return "\(signed(win))% win vs \(opponent)" }
+        // Win unchanged but a loss turned into a tie (or back): say so, not the damage.
+        let loss = tally.lossPercent - base.lossPercent
+        if abs(loss) >= 1 { return "\(signed(loss))% loss vs \(opponent)" }
         let taken = base.averageDamageTaken - tally.averageDamageTaken
         let dealt = tally.averageDamageDealt - base.averageDamageDealt
         if taken >= 1, taken >= abs(dealt) { return "Takes \(Int(taken.rounded())) less damage vs \(opponent)" }

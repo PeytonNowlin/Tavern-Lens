@@ -13,6 +13,8 @@ enum Fixtures {
     static let abandonedGame = "Hearthstone_2026_09_22_21_59_59/Power.log"
     /// A different opponent in each of its seven BG turns: the next one is never one already fought.
     static let freshOpponentsGame = "Hearthstone_2026_09_23_07_23_18/Power.log"
+    /// Lost turns 8, 9 and 11 (the last one lethal) against next opponents last seen 3-5 turns before.
+    static let oldBoardsGame = "Hearthstone_2026_09_23_12_03_32/Power.log"
 
     static let directory: URL? = {
         if let override = ProcessInfo.processInfo.environment["TAVERN_FIXTURES_DIR"], !override.isEmpty {

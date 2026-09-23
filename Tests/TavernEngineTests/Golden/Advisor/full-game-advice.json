@@ -2,7 +2,7 @@
   "turn-10" : {
     "advice" : {
       "baseline" : {
-        "averageDamageDealt" : 15,
+        "averageDamageDealt" : 14.97,
         "averageDamageTaken" : 0,
         "lethalRisk" : 0,
         "lost" : 0,
@@ -10,9 +10,9 @@
         "tied" : 0,
         "won" : 100
       },
-      "candidates" : 47,
-      "note" : "Their board is from turn 4",
-      "scored" : 47,
+      "candidates" : 41,
+      "note" : "Their board is from turn 4 · scored vs turn 7 opponent",
+      "scored" : 41,
       "status" : "recommendation",
       "suggestions" : [
         {
@@ -25,7 +25,7 @@
           "confidence" : "medium",
           "gain" : 4,
           "odds" : {
-            "averageDamageDealt" : 15,
+            "averageDamageDealt" : 14.97,
             "averageDamageTaken" : 0,
             "lethalRisk" : 0,
             "lost" : 0,
@@ -49,8 +49,8 @@
       ]
     },
     "bgTurn" : 10,
-    "evaluations" : 60,
-    "fingerprint" : "6c6cc45f01f95a6c",
+    "evaluations" : 54,
+    "fingerprint" : "6769f82c602f3b15",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 8,
@@ -96,25 +96,126 @@
   "turn-11" : {
     "advice" : {
       "baseline" : {
-        "averageDamageDealt" : 14.99,
-        "averageDamageTaken" : 0,
+        "averageDamageDealt" : 11.54,
+        "averageDamageTaken" : 0.35,
         "lethalRisk" : 0,
-        "lost" : 0,
+        "lost" : 4,
         "simulations" : 300,
-        "tied" : 0,
-        "won" : 100
+        "tied" : 9.67,
+        "won" : 86.33
       },
       "candidates" : 36,
-      "note" : "Nothing clearly improves your odds",
+      "note" : "Options are close",
       "scored" : 36,
       "status" : "noStrongRecommendation",
       "suggestions" : [
-
+        {
+          "action" : {
+            "move" : {
+              "board" : 2,
+              "cardID" : "BG36_109",
+              "to" : 0
+            }
+          },
+          "confidence" : "low",
+          "gain" : 4.53,
+          "odds" : {
+            "averageDamageDealt" : 12.24,
+            "averageDamageTaken" : 0,
+            "lethalRisk" : 0,
+            "lost" : 0,
+            "simulations" : 100,
+            "tied" : 10,
+            "won" : 90
+          },
+          "rank" : 1,
+          "reason" : "+4% win vs last opponent",
+          "targets" : [
+            {
+              "index" : 2,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 4.53,
+            "economy" : 0,
+            "lobby" : 0
+          }
+        },
+        {
+          "action" : {
+            "cast" : {
+              "cardID" : "BG36_301t",
+              "from" : "hand",
+              "index" : 2,
+              "option" : 0
+            }
+          },
+          "confidence" : "low",
+          "gain" : 4.49,
+          "odds" : {
+            "averageDamageDealt" : 12.28,
+            "averageDamageTaken" : 0.06,
+            "lethalRisk" : 0,
+            "lost" : 1,
+            "simulations" : 100,
+            "tied" : 8,
+            "won" : 91
+          },
+          "rank" : 2,
+          "reason" : "+5% win vs last opponent",
+          "targets" : [
+            {
+              "index" : 2,
+              "kind" : "hand"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 4.49,
+            "economy" : 0,
+            "lobby" : 0
+          }
+        },
+        {
+          "action" : {
+            "move" : {
+              "board" : 6,
+              "cardID" : "BG25_354",
+              "to" : 0
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 3.35,
+          "odds" : {
+            "averageDamageDealt" : 11.5,
+            "averageDamageTaken" : 0.14,
+            "lethalRisk" : 0,
+            "lost" : 1.67,
+            "simulations" : 300,
+            "tied" : 8,
+            "won" : 90.33
+          },
+          "rank" : 3,
+          "reason" : "+4% win vs last opponent",
+          "targets" : [
+            {
+              "index" : 6,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 3.35,
+            "economy" : 0
+          }
+        }
       ]
     },
     "bgTurn" : 11,
     "evaluations" : 49,
-    "fingerprint" : "d097f4772db142c8",
+    "fingerprint" : "546c6484c50134",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 7,
@@ -160,53 +261,138 @@
   "turn-12" : {
     "advice" : {
       "baseline" : {
-        "averageDamageDealt" : 29.89,
-        "averageDamageTaken" : 0,
-        "lethalRisk" : 0,
-        "lost" : 0,
+        "averageDamageDealt" : 1.09,
+        "averageDamageTaken" : 6.39,
+        "lethalRisk" : 66.67,
+        "lost" : 66.67,
         "simulations" : 300,
-        "tied" : 0,
-        "won" : 100
+        "tied" : 22.67,
+        "won" : 10.67
       },
-      "candidates" : 31,
-      "note" : "No option stands out",
-      "scored" : 31,
+      "candidates" : 37,
+      "note" : "Options are close",
+      "sanity" : [
+        {
+          "candidate" : "roll",
+          "effect" : "veto",
+          "rule" : "rollPastImprovement"
+        }
+      ],
+      "scored" : 37,
       "status" : "noStrongRecommendation",
       "suggestions" : [
         {
           "action" : {
-            "freeze" : {
-
+            "swap" : {
+              "cardID" : "BG36_245",
+              "sell" : 0,
+              "shop" : 1,
+              "soldCardID" : "BG36_102"
             }
           },
           "confidence" : "low",
-          "gain" : 1,
+          "gain" : 19.79,
           "odds" : {
-            "averageDamageDealt" : 29.89,
-            "averageDamageTaken" : 0,
-            "lethalRisk" : 0,
-            "lost" : 0,
-            "simulations" : 300,
-            "tied" : 0,
-            "won" : 100
+            "averageDamageDealt" : 1.19,
+            "averageDamageTaken" : 4.94,
+            "lethalRisk" : 54,
+            "lost" : 54,
+            "simulations" : 100,
+            "tied" : 35,
+            "won" : 11
           },
           "rank" : 1,
-          "reason" : "Keeps a build card for next turn",
+          "reason" : "Cuts lethal risk 67% → 54%",
           "targets" : [
             {
-              "kind" : "freezeButton"
+              "index" : 1,
+              "kind" : "shop"
+            },
+            {
+              "index" : 0,
+              "kind" : "board"
             }
           ],
           "terms" : {
-            "combat" : 0,
-            "economy" : 1
+            "build" : 0,
+            "combat" : 20.67,
+            "economy" : 0,
+            "lobby" : -0.88
+          }
+        },
+        {
+          "action" : {
+            "move" : {
+              "board" : 0,
+              "cardID" : "BG36_102",
+              "to" : 6
+            }
+          },
+          "confidence" : "low",
+          "gain" : 13.24,
+          "odds" : {
+            "averageDamageDealt" : 1.46,
+            "averageDamageTaken" : 5.67,
+            "lethalRisk" : 59,
+            "lost" : 59,
+            "simulations" : 100,
+            "tied" : 28,
+            "won" : 13
+          },
+          "rank" : 2,
+          "reason" : "Cuts lethal risk 67% → 59%",
+          "targets" : [
+            {
+              "index" : 0,
+              "kind" : "board"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 13.57,
+            "economy" : 0,
+            "lobby" : -0.33
+          }
+        },
+        {
+          "action" : {
+            "cast" : {
+              "cardID" : "BG31_881",
+              "from" : "shop",
+              "index" : 6,
+              "option" : 0
+            }
+          },
+          "confidence" : "medium",
+          "gain" : 12.95,
+          "odds" : {
+            "averageDamageDealt" : 1.34,
+            "averageDamageTaken" : 5.9,
+            "lethalRisk" : 59,
+            "lost" : 59,
+            "simulations" : 300,
+            "tied" : 28.67,
+            "won" : 12.33
+          },
+          "rank" : 3,
+          "reason" : "Cuts lethal risk 67% → 59%",
+          "targets" : [
+            {
+              "index" : 6,
+              "kind" : "shop"
+            }
+          ],
+          "terms" : {
+            "build" : 0,
+            "combat" : 12.95,
+            "economy" : 0
           }
         }
       ]
     },
     "bgTurn" : 12,
-    "evaluations" : 38,
-    "fingerprint" : "97cd815d74457f71",
+    "evaluations" : 44,
+    "fingerprint" : "afa8900a3b255dda",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 3,
@@ -252,7 +438,7 @@
   "turn-8" : {
     "advice" : {
       "baseline" : {
-        "averageDamageDealt" : 15,
+        "averageDamageDealt" : 12.95,
         "averageDamageTaken" : 0,
         "lethalRisk" : 0,
         "lost" : 0,
@@ -260,9 +446,9 @@
         "tied" : 0,
         "won" : 100
       },
-      "candidates" : 47,
-      "note" : "Their board is from turn 1",
-      "scored" : 47,
+      "candidates" : 41,
+      "note" : "Their board is from turn 1 · scored vs last opponent",
+      "scored" : 41,
       "status" : "recommendation",
       "suggestions" : [
         {
@@ -275,7 +461,7 @@
           "confidence" : "medium",
           "gain" : 4,
           "odds" : {
-            "averageDamageDealt" : 15,
+            "averageDamageDealt" : 12.95,
             "averageDamageTaken" : 0,
             "lethalRisk" : 0,
             "lost" : 0,
@@ -299,8 +485,8 @@
       ]
     },
     "bgTurn" : 8,
-    "evaluations" : 65,
-    "fingerprint" : "9fc4b16010218e4b",
+    "evaluations" : 59,
+    "fingerprint" : "a24a4fd7fde68d4d",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 5,
@@ -346,7 +532,7 @@
   "turn-9" : {
     "advice" : {
       "baseline" : {
-        "averageDamageDealt" : 15,
+        "averageDamageDealt" : 14.67,
         "averageDamageTaken" : 0,
         "lethalRisk" : 0,
         "lost" : 0,
@@ -354,9 +540,9 @@
         "tied" : 0,
         "won" : 100
       },
-      "candidates" : 42,
-      "note" : "Their board is from turn 2",
-      "scored" : 42,
+      "candidates" : 36,
+      "note" : "Their board is from turn 2 · scored vs last opponent",
+      "scored" : 36,
       "status" : "recommendation",
       "suggestions" : [
         {
@@ -369,7 +555,7 @@
           "confidence" : "medium",
           "gain" : 4,
           "odds" : {
-            "averageDamageDealt" : 15,
+            "averageDamageDealt" : 14.67,
             "averageDamageTaken" : 0,
             "lethalRisk" : 0,
             "lost" : 0,
@@ -393,8 +579,8 @@
       ]
     },
     "bgTurn" : 9,
-    "evaluations" : 60,
-    "fingerprint" : "790b08169a1b64d2",
+    "evaluations" : 54,
+    "fingerprint" : "b49755e65e8f4527",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 2,

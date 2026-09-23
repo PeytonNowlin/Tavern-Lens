@@ -44,10 +44,11 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     /// The base card of every golden card in the request (`…_G` or `TB_BaconUps_*` → the normal
     /// card), when it isn't simply the ID without `_G`; for matching build cards and pairs.
     public var baseCardIDs: [String: String]?
-    /// When the next opponent hasn't been fought yet: the opponent whose last-seen side the
-    /// combat term fights in their place (the most recently seen one), with the next opponent's
-    /// health and tier. `preview.input` is against it, and it isn't in `lobby`. Nil when the next
-    /// opponent's own board is used.
+    /// When the next opponent hasn't been fought yet, or their board is `staleBoardTurns` or more
+    /// turns old: the opponent whose last-seen side the combat term fights in their place (the
+    /// most recently seen one, fresher than theirs), with the next opponent's health and tier.
+    /// `preview.input` is against it, and it isn't in `lobby`; the next opponent's old board is.
+    /// Nil when the next opponent's own board is used.
     public var standIn: AdvisorLobbyOpponent?
 
     public static let boardLimit = 7
@@ -90,6 +91,17 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
         if let base = baseCardIDs?[cardID] { return base }
         if cardID.hasSuffix("_G") { return String(cardID.dropLast(2)) }
         return cardID
+    }
+
+    /// A next opponent's board this many turns old is too weak a guess at theirs now (boards
+    /// grow every turn): a fresher one stands in.
+    public static let staleBoardTurns = 3
+
+    /// The BG turn the next opponent's own board is from, when a stand-in replaced it because it
+    /// was old; nil when they haven't been seen or there's no stand-in.
+    public var replacedSeenTurn: Int? {
+        guard standIn != nil else { return nil }
+        return lobby?.first { $0.playerID == preview.opponentPlayerID }?.seenTurn
     }
 
     /// Who the combat term fights, for the reasons shown: "next opponent", or the stand-in's

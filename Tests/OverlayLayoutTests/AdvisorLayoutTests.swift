@@ -35,7 +35,7 @@ struct AdvisorLayoutTests {
     }
 
     /// The expanded panel's content: `rows` rows (a title line and up to `reasonLines` reason
-    /// lines, beside the rank badge), a note line, the divider and the header.
+    /// lines, beside the rank badge), the note (`noteLines`), the divider and the header.
     static func contentHeight(_ m: AdvisorMetrics, scale s: CGFloat) -> CGFloat {
         let title = HUDFitTests.lineHeight(m.titleFontSize * s, .semibold)
         let reason = HUDFitTests.lineHeight(m.reasonFontSize * s, .regular)
@@ -44,7 +44,7 @@ struct AdvisorLayoutTests {
         // Between the rows, the note, the divider and the header: rows + 2 gaps.
         let gaps = CGFloat(m.rows + 2) * m.rowSpacing * s
         let header = HUDFitTests.lineHeight(m.headerFontSize * s, .semibold)
-        return rows + reason + 1 + gaps + header + 2 * m.padding.height * s
+        return rows + CGFloat(m.noteLines) * reason + 1 + gaps + header + 2 * m.padding.height * s
     }
 
     @Test("Three suggestions, a note and the header fit the list; the reasons fit their lines",
@@ -67,10 +67,19 @@ struct AdvisorLayoutTests {
             "Core card for Aberration Tavern Spells", "Add-on for Aberration Tavern Spells",
             "Opens tier 6 for a core card you need", "Keeps a build card for next turn", "Stronger vs the rest of the lobby",
             "Behind the levelling curve (tier 4)", "Good tempo to level (costs 10)", "Frees the gold to level now",
-            "No shop card helps (100% win)",
+            "No shop card helps (100% win)", "-100% loss vs turn 10 opponent", "+100% win vs turn 10 opponent",
         ] {
             let width = HUDFitTests.text(reason, m.reasonFontSize * s, .regular)
             #expect(width <= CGFloat(m.reasonLines) * column * 0.9, "\"\(reason)\" is \(width) pt; \(m.reasonLines) lines of \(column)")
+        }
+        // The notes fit their lines, at the panel's width less its padding.
+        let noteWidth = l.advisorPanel.width - 2 * m.padding.width * s
+        for note in [
+            "Their board is from turn 12 · scored vs turn 10 opponent", "Next opponent unseen · scored vs turn 10 opponent",
+            "Nothing clearly improves your odds", "Their board is from turn 12",
+        ] {
+            let width = HUDFitTests.text(note, m.reasonFontSize * s, .regular)
+            #expect(width <= CGFloat(m.noteLines) * noteWidth * 0.9, "\"\(note)\" is \(width) pt; \(m.noteLines) lines of \(noteWidth)")
         }
         // The confidence label always shows beside a title (longer titles are cut to fit).
         let title = HUDFitTests.text("Level to tier 6", m.titleFontSize * s, .semibold)

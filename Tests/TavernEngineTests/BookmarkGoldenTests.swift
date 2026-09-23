@@ -62,12 +62,13 @@ struct BookmarkGoldenTests {
         var goldenCase = try BookmarkGoldenCase.decode(Data(contentsOf: url))
         guard let expected = goldenCase.expectedAdvice, let log = Fixtures.url(goldenCase.log) else { return }
         let simulator = try CombatGoldens.makeSimulator()
-        let replayed = try await goldenCase.replayAdvice(powerLog: log, simulate: AdvisorEvaluation.simulate(on: { simulator }))
+        let simulate = AdvisorEvaluation.simulate(on: { simulator })
         if GoldenHarness.isRecording {
-            goldenCase.expectedAdvice = replayed
+            try await goldenCase.rescoreAdvice(powerLog: log, simulate: simulate)
             try goldenCase.encoded().write(to: url)
             return
         }
+        let replayed = try await goldenCase.replayAdvice(powerLog: log, simulate: simulate)
         #expect(replayed == expected, "\(goldenCase.name): \(goldenCase.note)")
     }
 }

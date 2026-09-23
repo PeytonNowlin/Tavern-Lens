@@ -23,8 +23,9 @@ extension Advisor {
     public static func lobbyOpponents(for request: AdvisorRequest) -> [AdvisorLobbyOpponent] {
         (request.lobby ?? [])
             .filter {
-                $0.playerID != request.preview.opponentPlayerID && $0.playerID != request.standIn?.playerID
-                    && $0.side.player.hpLeft > 0
+                // The combat term's opponent: the stand-in when there is one (the next opponent's
+                // old board, if any, is then the lobby's).
+                $0.playerID != (request.standIn?.playerID ?? request.preview.opponentPlayerID) && $0.side.player.hpLeft > 0
             }
             .sorted { $0.playerID < $1.playerID }
     }

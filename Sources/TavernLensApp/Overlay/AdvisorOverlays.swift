@@ -162,7 +162,8 @@ struct AdvisorPanel: View {
                     Text(note)
                         .font(.system(size: m.reasonFontSize * s))
                         .foregroundStyle(.tertiary)
-                        .lineLimit(1)
+                        .lineLimit(m.noteLines)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Divider().opacity(0.5)
             }

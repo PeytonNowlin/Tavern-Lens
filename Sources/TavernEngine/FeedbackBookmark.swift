@@ -295,6 +295,21 @@ public struct BookmarkGoldenCase: Codable, Hashable, Sendable {
         )
     }
 
+    /// Re-records the advice and its request for the state the log replays to now, scored as far
+    /// as the advice was (same plan and evaluations): after an intended change to the request,
+    /// when `replayAdvice` no longer matches the state the advice was for.
+    public mutating func rescoreAdvice(
+        powerLog url: URL, setup: EngineSetup = EngineSetup(), simulate: AdvisorEvaluation.Simulate
+    ) async throws {
+        guard let advice = expectedAdvice else { return }
+        let engine = try TavernEngine.replay(
+            cut, powerLog: url, resuming: resumed, screenTribes: screenTribes, setup: setup, timeZone: .gmt
+        )
+        guard let request = engine.advisorRequest else { throw BookmarkReplayError.adviceForAnotherState }
+        expectedAdvice = try await advice.replaying(request, simulate: simulate)
+        if adviceRequest != nil { adviceRequest = request }
+    }
+
     /// Pretty-printed with sorted keys, and dates as the record store writes them.
     public func encoded() throws -> Data {
         let encoder = JSONEncoder()

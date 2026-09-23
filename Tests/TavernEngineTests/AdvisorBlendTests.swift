@@ -73,10 +73,25 @@ struct AdvisorBlendTests {
         let top = try #require(advice.suggestions.first)
         #expect(top.reason == "+20% win vs last opponent")
         #expect(top.confidence == .medium, "a stand-in's board is a guess: no more than medium")
-        #expect(advice.note == "Next opponent not fought yet: scored vs your last opponent")
+        #expect(advice.note == "Next opponent unseen · scored vs last opponent")
 
         request.standIn?.seenTurn = 8
         #expect(request.opponentLabel == "turn 8 opponent")
+    }
+
+    @Test("A stand-in for the next opponent's old board: their old board is the lobby term's, and the note says how old")
+    func standInForOldBoard() async throws {
+        let shop = [S.shopMinion(901, attack: 2, health: 2), S.shopMinion(902, attack: 20, health: 20)]
+        let standIn = try S.lobbyOpponent(3, seenTurn: 10)
+        // P7 (the next opponent) was last seen on turn 5.
+        var request = try S.request(boardCount: 5, shop: shop, gold: 3, lobby: [try S.lobbyOpponent(7, seenTurn: 5), standIn])
+        request.standIn = standIn
+        #expect(request.replacedSeenTurn == 5)
+        #expect(Advisor.lobbyOpponents(for: request).map(\.playerID) == [7])
+
+        let advice = try await Self.run(request, AdvisorSyntheticTests.stub(request))
+        #expect(advice.note == "Their board is from turn 5 · scored vs last opponent")
+        #expect(advice.suggestions.first?.reason == "+20% win vs last opponent")
     }
 
     @Test("A buy that's even against the next opponent but strong against the rest of the lobby comes first")

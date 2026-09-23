@@ -49,7 +49,8 @@ struct AdvisorFixtureTests {
             #expect(AdvisorSanity.violations(done.advice, request: request).isEmpty, "turn \(turn)")
             // The lobby term: every living opponent seen but the next one, as they are now.
             let lobby = try #require(request.lobby, "turn \(turn)")
-            #expect(!lobby.isEmpty && !lobby.contains { $0.playerID == request.preview.opponentPlayerID })
+            let combatOpponent = request.standIn?.playerID ?? request.preview.opponentPlayerID
+            #expect(!lobby.isEmpty && !lobby.contains { $0.playerID == combatOpponent })
             #expect(lobby.allSatisfy { $0.seenTurn < turn && $0.side.player.hpLeft > 0 })
             #expect(request.builds?.isEmpty == false, "turn \(turn): a build detected (Aberration Discard from turn 7)")
             advice["turn-\(turn)"] = AdviceView(
@@ -64,6 +65,11 @@ struct AdvisorFixtureTests {
         let combat = try CombatGoldens.input(CombatGoldens.fullGameTurn11)
         request.preview.input?.opponentBoard = combat.opponentBoard
         request.preview.opponentSeenTurn = 10
+        // Their own board now, so no stand-in: it goes back to the lobby, their old board leaves it.
+        let standIn = try #require(request.standIn, "P7 was last seen on turn 7")
+        request.standIn = nil
+        request.lobby = (request.lobby ?? []).filter { $0.playerID != request.preview.opponentPlayerID } + [standIn]
+        request.lobby?.sort { $0.playerID < $1.playerID }
         try AdvisorFixture.verify(request, golden: "\(AdvisorSimulatorTests.turn11).request")
     }
 
@@ -89,6 +95,30 @@ struct AdvisorFixtureTests {
                 #expect(AdvisorSanity.violations(done.advice, request: request).isEmpty)
             }
         }
+    }
+
+    @Test("Next opponents seen 3 or more turns ago are scored against the freshest board, their own in the lobby",
+          .enabled(if: Fixtures.isAvailable(Fixtures.oldBoardsGame), "private fixture log not present"))
+    func oldBoards() async throws {
+        let replay = try AdvisorFixture.replay(Fixtures.oldBoardsGame)
+        let simulate = try AdvisorFixture.simulate()
+        // Turn: (next opponent, the turn their board is from, the stand-in).
+        let cases = [8: (8, 3, 6), 9: (7, 5, 8), 11: (8, 8, 7)]
+        for (turn, (next, seen, stand)) in cases.sorted(by: { $0.key < $1.key }) {
+            let request = try #require(replay.mostGold[turn], "turn \(turn)")
+            #expect(request.preview.opponentPlayerID == next)
+            #expect(request.standIn?.playerID == stand, "turn \(turn)")
+            #expect(request.replacedSeenTurn == seen, "turn \(turn)")
+            #expect(Advisor.lobbyOpponents(for: request).contains { $0.playerID == next }, "turn \(turn)")
+            let done = try await AdvisorEvaluation.run(request, plan: AdvisorFixture.plan, simulate: simulate)
+            // Against their old board the board looked sure to win (100%); every one was lost.
+            let baseline = try #require(done.advice.baseline)
+            #expect(baseline.won < 100, "turn \(turn): \(baseline)")
+            #expect(AdvisorSanity.violations(done.advice, request: request).isEmpty)
+            print("oldBoards turn \(turn): base \(baseline.won)% win \(baseline.lost)% loss —", done.advice.status, done.advice.note ?? "", done.advice.suggestions.map { "\($0.action) — \($0.reason)" })
+        }
+        // Turn 7: P6, never fought, against the last opponent.
+        #expect(replay.mostGold[7]?.standIn?.seenTurn == 6 && replay.mostGold[7]?.replacedSeenTurn == nil)
     }
 
     @Test("A bookmark keeps the advice shown, in its game's record, and replays to exactly that advice",
