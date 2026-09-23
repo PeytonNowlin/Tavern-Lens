@@ -25,6 +25,8 @@ final class LiveTrackingModel {
     private(set) var update = LiveUpdate(session: nil, state: .noGame, scene: nil) {
         didSet { if oldValue.session != update.session { refreshPowerLogSize() } }
     }
+    /// The odds of the latest combat, simulated as it starts.
+    let combatOdds = CombatOddsModel()
     /// The size of the followed session's Power.log, checked every few seconds.
     private(set) var powerLogBytes: Int64?
 
@@ -63,6 +65,7 @@ final class LiveTrackingModel {
 
     /// Starts watching. Call once, at launch.
     func start() {
+        combatOdds.warmUp()
         let center = NSWorkspace.shared.notificationCenter
         for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -138,6 +141,11 @@ final class LiveTrackingModel {
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
                 self.onGameEnded?()
+            }
+        }, onCombatRequest: { [weak self] request in
+            Task { @MainActor in
+                guard let self, self.generation == token else { return }
+                self.combatOdds.start(request)
             }
         }) { [weak self] update in
             Task { @MainActor in

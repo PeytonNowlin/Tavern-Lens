@@ -13,6 +13,10 @@ import PowerParser
 @_exported import struct PowerParser.LogPosition
 // Card data is an engine input (`TavernEngine(cards:)`), and the app loads it.
 @_exported import HSData
+// Combat simulation requests and their input, the tribe provider seam.
+@_exported import BGIntel
+// The simulator runtime, which runs the engine's combat requests.
+@_exported import SimulatorRuntime
 
 /// Counts of input the engine tolerated rather than understood.
 public struct EngineDiagnostics: Codable, Hashable, Sendable {
@@ -32,6 +36,8 @@ public struct ReplayResult: Sendable {
     public var records: [GameRecord] = []
     /// Cards the game flagged as pool minions that the pool lacked (added for their game).
     public var poolDrift: [PoolDrift] = []
+    /// The simulator input of every combat start, in order.
+    public var combatRequests: [CombatSimulationRequest] = []
 }
 
 /// The headless composition root.
@@ -60,6 +66,15 @@ public struct TavernEngine: Sendable {
     private var history = BGGameHistory()
     private var lastTimestamp: Substring = ""
     private let cards: CardDB?
+    /// An injected tribe source for the simulator, which wins over the inferred tribes.
+    private let simulatorTribes: (any LobbyTribesProvider)?
+    /// The simulator's tribe source when there's neither an injected one nor a pool.
+    private let seenPoolTribes: SeenPoolMinionTribes
+    /// The simulator input of every combat start seen, in order. Each is taken at the tag
+    /// 2022 1→0 edge, when both boards are final, and appended before the line's batch is
+    /// published, so a live runner can start simulating at once.
+    public private(set) var combatRequests: [CombatSimulationRequest] = []
+    private var combatStartsSeen = 0
     private let sessionName: String?
     private var clock: LogClock?
     /// Suppresses publishing while the existing log is replayed.
@@ -94,11 +109,17 @@ public struct TavernEngine: Sendable {
     ///   - pool: the live minion pool, for inferring the lobby's tribes; nil leaves tribes out.
     ///   - session: the session folder the Power.log is from. It dates the game records
     ///     (the logs only carry times of day); nil leaves records undated.
+    ///   - simulatorTribes: the lobby's tribes for the combat simulator. nil uses the tribe
+    ///     inference's answer when there's a pool, else the tribes of the single-tribe pool
+    ///     minions seen so far (`SeenPoolMinionTribes`, which needs `cards`).
     public init(
-        cards: CardDB? = nil, pool: MinionPool? = nil, session: LogSession? = nil, timeZone: TimeZone = .current
+        cards: CardDB? = nil, pool: MinionPool? = nil, session: LogSession? = nil, timeZone: TimeZone = .current,
+        simulatorTribes: (any LobbyTribesProvider)? = nil
     ) {
         self.cards = cards
         tribes = TribeTracker(pool: pool)
+        self.simulatorTribes = simulatorTribes
+        seenPoolTribes = SeenPoolMinionTribes(cards: cards)
         sessionName = session?.name
         clock = session.map { LogClock(session: $0, timeZone: timeZone) }
     }
@@ -111,7 +132,8 @@ public struct TavernEngine: Sendable {
 
     public var result: ReplayResult {
         ReplayResult(
-            timeline: timeline, games: games, diagnostics: diagnostics, records: records, poolDrift: tribes.drift
+            timeline: timeline, games: games, diagnostics: diagnostics, records: records, poolDrift: tribes.drift,
+            combatRequests: combatRequests
         )
     }
 
@@ -298,6 +320,7 @@ public struct TavernEngine: Sendable {
             for change in changes {
                 history.observe(change, in: store, at: position)
                 tribes.observe(change, in: store, history: history, date: { clock?.currentDate })
+                if history.combatStartCount != combatStartsSeen { noteCombatStart(at: position) }
             }
             history.observe(event, in: store)
             tribes.observe(event)
@@ -308,6 +331,29 @@ public struct TavernEngine: Sendable {
             }
         }
         if !history.changedGames.isEmpty { noteChangedGames() }
+    }
+
+    /// A combat just started (history accepted the tag 2022 1→0 edge): builds the simulator's input
+    /// from the store as it is at this line, before any Start of Combat effect.
+    private mutating func noteCombatStart(at position: LogPosition) {
+        combatStartsSeen = history.combatStartCount
+        guard let snapshot = BGSnapshot.project(store), let opponent = snapshot.combatOpponentPlayerID,
+              let input = BattleInputBuilder.build(
+                  store: store, snapshot: snapshot, validTribes: simulatorLobbyTribes(snapshot)
+              )
+        else { return }
+        combatRequests.append(CombatSimulationRequest(
+            gameSeed: snapshot.gameSeed, bgTurn: snapshot.bgTurn, opponentPlayerID: opponent, position: position,
+            input: input
+        ))
+    }
+
+    /// The lobby's tribes for the simulator: the injected source's, else the tribe inference's
+    /// confirmed and likely tribes (while there's a pool), else the seen pool minions' tribes.
+    private func simulatorLobbyTribes(_ snapshot: BGSnapshot) -> Set<HS.Race>? {
+        if let simulatorTribes { return simulatorTribes.lobbyTribes(store: store, snapshot: snapshot) }
+        if tribes.hasResolver { return tribes.simulatorLobby }
+        return seenPoolTribes.lobbyTribes(store: store, snapshot: snapshot)
     }
 
     /// Dates the games that reached a checkpoint and queues them for saving.

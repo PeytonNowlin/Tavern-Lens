@@ -29,11 +29,14 @@ let package = Package(
             plugins: ["HSEnumsPlugin"]
         ),
         // Tribes, builds, shop highlights, hero-pick stats, simulator adapter, advisor.
-        .target(name: "BGIntel", dependencies: ["BGState", "HSData"]),
+        .target(name: "BGIntel", dependencies: ["BGState", "HSData", "EntityStore", "PowerParser"]),
+        // Firestone's combat simulator (pinned npm package bundled by scripts/update-simulator.sh)
+        // in a JavaScriptCore context, with its pinned card data.
+        .target(name: "SimulatorRuntime", dependencies: ["HSLog"], resources: [.copy("Resources")]),
         // Headless composition root: log lines in, timeline of view states and game records out.
         .target(
             name: "TavernEngine",
-            dependencies: ["HSLog", "PowerParser", "EntityStore", "BGState", "HSData", "BGIntel"]
+            dependencies: ["HSLog", "PowerParser", "EntityStore", "BGState", "HSData", "BGIntel", "SimulatorRuntime"]
         ),
         // Pure overlay geometry: Hearthstone's content frame -> element rects (seam 2).
         .target(name: "OverlayLayout"),

@@ -68,6 +68,9 @@ public struct BGGameHistory: Sendable {
     public private(set) var changedGames: Set<Int> = []
     /// What the current game's lobby has revealed; empty outside a solo Battlegrounds game.
     public private(set) var lobby = BGLobbyMemory()
+    /// How many combat starts (accepted tag 2022 1→0 edges) have been seen; it goes up at the
+    /// moment both boards are final, once per combat, for layers that act on combat start.
+    public private(set) var combatStartCount = 0
 
     /// Game entity `TURN` when the latest recruit phase started (the shopping-turn guard).
     private var shoppingStartTurn = 0
@@ -281,6 +284,7 @@ public struct BGGameHistory: Sendable {
               let opponent = BGSnapshot.combatOpponent(store), let slot = store.otherPlayer
         else { return }
         snapshotTurn = turn
+        combatStartCount += 1
         let hero = store[slot.entityID]?.int(.heroEntity).flatMap { store[$0] }
         let board = BGOpponentBoard(
             playerID: opponent,

@@ -39,6 +39,18 @@ struct TribeTracker: Sendable {
 
     var estimate: TribeEstimate? { resolver?.estimate() }
 
+    /// There's a pool to infer the tribes with (for the game in progress).
+    var hasResolver: Bool { gameIndex != nil && resolver != nil }
+
+    /// The lobby's tribes for the combat simulator: the confirmed and likely tribes, when
+    /// they make up a whole lobby; nil otherwise (the simulator then allows every tribe).
+    var simulatorLobby: Set<HS.Race>? {
+        guard gameIndex != nil, let resolver, resolver.lobbyCount > 0 else { return nil }
+        let estimate = resolver.estimate()
+        let sure = Set(estimate.tribes.filter { $0.confidence == .confirmed || $0.confidence == .likely }.map(\.tribe))
+        return sure.count == estimate.mostLikely.count ? sure : nil
+    }
+
     mutating func usePool(_ newPool: MinionPool?) {
         basePool = newPool
         pool = newPool

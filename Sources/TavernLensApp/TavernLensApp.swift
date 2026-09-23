@@ -56,6 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--simulator-benchmark") {
+            Self.runSimulatorBenchmark()
+            return
+        }
         // Menu-bar only. The bundle's Info.plist sets LSUIElement too; this also
         // covers running the bare executable with `swift run`.
         NSApp.setActivationPolicy(.accessory)
@@ -73,6 +77,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         live.onGameEnded = { [housekeeping] in housekeeping.run() }
         housekeeping.run()
     }
+
+    /// `TavernLens --simulator-benchmark`: runs the bundled simulator once, prints the time to the
+    /// first and the final result, and quits. It checks the packaged app gets JavaScriptCore's JIT
+    /// (its allow-jit entitlement): the final result should take well under a second.
+    private static func runSimulatorBenchmark() {
+        Task.detached {
+            let clock = ContinuousClock()
+            let start = clock.now
+            do {
+                let simulator = try CombatSimulator()
+                let cards = try simulator.loadPinnedCards()
+                let loaded = clock.now - start
+                let first = Locked<Duration?>(nil)
+                let simulated = clock.now
+                let odds = try await simulator.simulate(input: CombatSimulator.benchmarkInput) { _ in
+                    first.update { $0 = $0 ?? (clock.now - simulated) }
+                }
+                print("simulator \(SimulatorResources.pin?.simulator ?? "?"): \(cards) cards loaded in \(loaded)")
+                print("first result after \(first.value.map { "\($0)" } ?? "-"), \(odds.simulations) simulations in \(odds.elapsedMilliseconds) ms")
+                print("won \(odds.won)% tied \(odds.tied)% lost \(odds.lost)%")
+                exit(0)
+            } catch {
+                print("simulator failed: \(error)")
+                exit(1)
+            }
+        }
+    }
+}
+
+/// A value shared with a `@Sendable` callback.
+private final class Locked<Value: Sendable>: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: Value
+
+    init(_ value: Value) { stored = value }
+
+    var value: Value { lock.withLock { stored } }
+
+    func update(_ body: (inout Value) -> Void) { lock.withLock { body(&stored) } }
 }
 
 struct MenuBarLabel: View {

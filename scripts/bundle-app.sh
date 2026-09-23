@@ -84,13 +84,24 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 mkdir -p "$APP/Contents/Resources/HSData"
 cp -R "$BIN_DIR/TavernLens_HSData.bundle/bg-pool" "$APP/Contents/Resources/HSData/"
 
+# The other SwiftPM resource bundles (e.g. TavernLens_SimulatorRuntime.bundle) are copied whole
+# into Contents/Resources and looked up from Bundle.main.resourceURL (see SimulatorResources).
+for bundle in "$BIN_DIR"/TavernLens_*.bundle; do
+    [[ -d "$bundle" ]] || continue
+    [[ "$(basename "$bundle")" == TavernLens_HSData.bundle ]] && continue
+    ditto "$bundle" "$APP/Contents/Resources/$(basename "$bundle")"
+done
+
+# JavaScriptCore needs allow-jit to JIT the combat simulator (7x faster than interpreted).
+ENTITLEMENTS="$ROOT/Packaging/TavernLens.entitlements"
+
 echo "==> Signing"
 if security find-identity -p codesigning 2>/dev/null | grep -Fq "\"$IDENTITY\""; then
-    codesign --force --sign "$IDENTITY" --identifier "$BUNDLE_ID" "$APP"
+    codesign --force --sign "$IDENTITY" --identifier "$BUNDLE_ID" --entitlements "$ENTITLEMENTS" "$APP"
 else
     echo "warning: code-signing identity \"$IDENTITY\" not found; signing ad-hoc." >&2
     echo "warning: macOS will forget permission grants on every rebuild. See --help to create it." >&2
-    codesign --force --sign - --identifier "$BUNDLE_ID" "$APP"
+    codesign --force --sign - --identifier "$BUNDLE_ID" --entitlements "$ENTITLEMENTS" "$APP"
 fi
 codesign --verify --strict "$APP"
 codesign --display --verbose=2 "$APP" 2>&1 | grep -E '^(Identifier|Authority|Signature)=' || true
