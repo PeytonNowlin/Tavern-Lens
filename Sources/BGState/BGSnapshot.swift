@@ -24,8 +24,8 @@ public enum BattlegroundsMode: String, Codable, Hashable, Sendable {
 
 /// A pure projection of the entity store onto the Battlegrounds state shown to the player.
 ///
-/// Later layers add to it: the lobby and opponents next to `local`, and per-player
-/// mechanics on `BGLocalPlayer` (and on each lobby entry).
+/// Later layers add to it: the lobby and opponents next to `local`, per-player
+/// mechanics on `BGLocalPlayer` and for the combat opponent, and game-wide mechanics.
 public struct BGSnapshot: Hashable, Sendable {
     public var gameType: String
     public var gameSeed: Int?
@@ -46,6 +46,13 @@ public struct BGSnapshot: Hashable, Sendable {
     public var nextOpponentPlayerID: Int?
     /// The PlayerID being fought right now; nil outside combat.
     public var combatOpponentPlayerID: Int?
+    /// Game-wide mechanics: the damage cap, anomaly and Deity.
+    public var mechanics = BGGameMechanics(
+        damageCap: nil, damageCapEnabled: false, anomalyDbfID: nil, deityDbfID: nil, playersAlive: 0
+    )
+    /// The combat opponent's mechanics while fighting them (the bartender slot holds them
+    /// then); nil outside combat.
+    public var combatOpponentMechanics: BGPlayerMechanics?
 
     /// Nil until a hero is picked (the placeholder hero doesn't count).
     public var localHero: BGHeroState? { local?.hero }
@@ -64,6 +71,7 @@ public struct BGSnapshot: Hashable, Sendable {
         let turn = game?.int(.turn) ?? 0
         let phase = BGPhase(turn: turn)
         let local = localPlayer(store)
+        let lobbyEntries = lobby(store, local: local)
         return BGSnapshot(
             gameType: gameType,
             gameSeed: game?.int(.gameSeed),
@@ -76,9 +84,11 @@ public struct BGSnapshot: Hashable, Sendable {
             // `TURN` turns even a few task lists before the client clears the shop;
             // from then on the old shop is no longer for sale.
             shop: phase == .recruit ? shop(store) : .empty,
-            lobby: lobby(store, local: local),
+            lobby: lobbyEntries,
             nextOpponentPlayerID: nextOpponent(store),
-            combatOpponentPlayerID: combatOpponent(store)
+            combatOpponentPlayerID: combatOpponent(store),
+            mechanics: BGGameMechanics(game: game, lobby: lobbyEntries),
+            combatOpponentMechanics: combatOpponentMechanics(store)
         )
     }
 
@@ -97,7 +107,10 @@ public struct BGSnapshot: Hashable, Sendable {
             tier: hero?.tier ?? player?.int(.playerTechLevel),
             board: BGCard.cards(in: store, controller: slot.playerID, zone: "PLAY") { kind, _ in kind == .minion },
             // Hero-pick options sit in HAND until the pick resolves.
-            hand: BGCard.cards(in: store, controller: slot.playerID, zone: "HAND") { _, type in type != "HERO" }
+            hand: BGCard.cards(in: store, controller: slot.playerID, zone: "HAND") { _, type in type != "HERO" },
+            mechanics: BGPlayerMechanics.read(
+                store, playerID: slot.playerID, playerEntityID: slot.entityID, useTagTransfer: false
+            )
         )
     }
 

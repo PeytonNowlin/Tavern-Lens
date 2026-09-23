@@ -44,10 +44,15 @@ public struct BGTurnSnapshot: Codable, Hashable, Sendable {
     /// Every lobby hero, ordered by place.
     public var lobby: [BGLobbyEntry]
     public var nextOpponentPlayerID: Int?
+    /// The local player's mechanics; nil in records written before mechanics were tracked.
+    public var mechanics: BGPlayerMechanics?
+    /// Game-wide mechanics (damage cap, anomaly, Deity); nil in older records.
+    public var gameMechanics: BGGameMechanics?
 
     public init(
         bgTurn: Int, position: LogPosition, hero: BGHeroState?, gold: BGGold, tier: Int?, board: [BGCard],
-        lobby: [BGLobbyEntry], nextOpponentPlayerID: Int?
+        lobby: [BGLobbyEntry], nextOpponentPlayerID: Int?, mechanics: BGPlayerMechanics? = nil,
+        gameMechanics: BGGameMechanics? = nil
     ) {
         self.bgTurn = bgTurn
         self.position = position
@@ -57,6 +62,8 @@ public struct BGTurnSnapshot: Codable, Hashable, Sendable {
         self.board = board
         self.lobby = lobby
         self.nextOpponentPlayerID = nextOpponentPlayerID
+        self.mechanics = mechanics
+        self.gameMechanics = gameMechanics
     }
 }
 

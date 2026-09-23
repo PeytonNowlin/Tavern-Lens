@@ -196,6 +196,8 @@ public struct BGLocalPlayer: Hashable, Sendable {
     public var board: [BGCard]
     /// Cards in `HAND`, left to right. Hero-pick options are left out.
     public var hand: [BGCard]
+    /// Hero powers, trinkets, the Deity, quests and counters.
+    public var mechanics = BGPlayerMechanics()
 }
 
 /// Bob's shop during a recruit phase.

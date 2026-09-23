@@ -236,7 +236,9 @@ public struct BGGameHistory: Sendable {
             tier: local.tier,
             board: local.board,
             lobby: snapshot.lobby,
-            nextOpponentPlayerID: snapshot.nextOpponentPlayerID
+            nextOpponentPlayerID: snapshot.nextOpponentPlayerID,
+            mechanics: local.mechanics,
+            gameMechanics: snapshot.mechanics
         ))
         journals[index].turns.sort { $0.bgTurn < $1.bgTurn }
         changedGames.insert(index)
@@ -285,7 +287,8 @@ public struct BGGameHistory: Sendable {
             bgTurn: (turn + 1) / 2,
             heroCardID: hero.map(\.cardID).flatMap { $0.isEmpty ? nil : $0 },
             cards: BGCard.cards(in: store, controller: slot.playerID, zone: "PLAY") { kind, _ in kind == .minion },
-            position: position
+            position: position,
+            mechanics: BGSnapshot.combatOpponentMechanics(store)
         )
         lobby.lastSeenBoards[opponent] = board
         // One board per opponent per combat, even when a log is read again.

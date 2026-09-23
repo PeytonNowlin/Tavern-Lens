@@ -40,7 +40,33 @@
                   "tier" : 1
                 }
               ],
-              "heroCardID" : "TB_BaconShop_HERO_11"
+              "heroCardID" : "TB_BaconShop_HERO_11",
+              "mechanics" : {
+                "counters" : {
+                  "4212" : 3
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_087",
+                    "scriptData" : [
+                      11,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "used" : false
+                  }
+                ]
+              }
             },
             "place" : 1,
             "playerID" : 5,
@@ -100,7 +126,26 @@
                   "tier" : 2
                 }
               ],
-              "heroCardID" : "TB_BaconShop_HERO_40"
+              "heroCardID" : "TB_BaconShop_HERO_40",
+              "mechanics" : {
+                "counters" : {
+                  "3491" : 1,
+                  "4212" : 12
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_101",
+                    "used" : false
+                  }
+                ]
+              }
             },
             "place" : 2,
             "playerID" : 1,
@@ -153,7 +198,36 @@
                   "tier" : 2
                 }
               ],
-              "heroCardID" : "BG36_HERO_002"
+              "heroCardID" : "BG36_HERO_002",
+              "mechanics" : {
+                "counters" : {
+                  "3236" : 1,
+                  "3873" : 1,
+                  "4212" : 19,
+                  "4768" : 3
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 3,
+                  "dbfID" : 130610,
+                  "health" : 3,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "BG36_HERO_002p",
+                    "scriptData" : [
+                      0,
+                      0,
+                      3,
+                      0,
+                      0,
+                      0
+                    ],
+                    "used" : true
+                  }
+                ]
+              }
             },
             "place" : 3,
             "playerID" : 8,
@@ -220,7 +294,43 @@
                   "tier" : 2
                 }
               ],
-              "heroCardID" : "TB_BaconShop_HERO_94_SKIN_F"
+              "heroCardID" : "TB_BaconShop_HERO_94_SKIN_F",
+              "mechanics" : {
+                "counters" : {
+                  "3088" : 2,
+                  "3491" : 2,
+                  "3989" : 1,
+                  "3990" : 1,
+                  "4212" : 25,
+                  "4639" : 2,
+                  "4640" : 2
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_106",
+                    "scriptData" : [
+                      3,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "used" : false
+                  }
+                ],
+                "tavernSpellBuff" : {
+                  "attack" : 1,
+                  "health" : 1
+                }
+              }
             },
             "place" : 4,
             "playerID" : 4,
@@ -268,7 +378,26 @@
                   "tier" : 1
                 }
               ],
-              "heroCardID" : "TB_BaconShop_HERO_76"
+              "heroCardID" : "TB_BaconShop_HERO_76",
+              "mechanics" : {
+                "counters" : {
+                  "3088" : 1,
+                  "4212" : 7
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_086",
+                    "used" : true
+                  }
+                ]
+              }
             },
             "place" : 6,
             "playerID" : 2,
@@ -307,6 +436,12 @@
         ],
         "localHeroCardID" : "TB_BaconShop_HERO_15",
         "localPlayerID" : 6,
+        "mechanics" : {
+          "damageCap" : 10,
+          "damageCapEnabled" : true,
+          "deityDbfID" : 130610,
+          "playersAlive" : 8
+        },
         "nextOpponentPlayerID" : 3,
         "phase" : "combat",
         "player" : {
@@ -375,6 +510,43 @@
             "health" : 30,
             "hp" : 25,
             "triples" : 1
+          },
+          "mechanics" : {
+            "counters" : {
+              "1780" : 5,
+              "3088" : 4,
+              "3491" : 2,
+              "4212" : 34,
+              "4639" : 3,
+              "4640" : 3,
+              "4799" : 1
+            },
+            "deity" : {
+              "attack" : 5,
+              "dbfID" : 130610,
+              "health" : 5,
+              "progress" : 3
+            },
+            "heroPowers" : [
+              {
+                "cardID" : "TB_BaconShop_HP_010",
+                "used" : true
+              }
+            ],
+            "trinkets" : [
+              {
+                "cardID" : "BG36_MagicItem_404",
+                "scriptData" : [
+                  4,
+                  4,
+                  0,
+                  126,
+                  0,
+                  1
+                ],
+                "slot" : 1
+              }
+            ]
           },
           "tier" : 4
         },

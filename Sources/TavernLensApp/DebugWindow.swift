@@ -247,6 +247,7 @@ struct DebugWindow: View {
         }
         lines.append("Shop (\(game.shop.cards.count))\(game.shop.isFrozen ? ", frozen" : ""):")
         lines += game.shop.cards.map { "  " + describe($0) }
+        lines += DebugMechanicsPane.lines(game)
         return lines.joined(separator: "\n")
     }
 

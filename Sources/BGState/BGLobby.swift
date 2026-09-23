@@ -38,6 +38,9 @@ public struct BGOpponentBoard: Codable, Hashable, Sendable {
     public var cards: [BGCard]
     /// The line of the tag 2022 1→0 edge the board was captured at.
     public var position: LogPosition
+    /// Their hero powers, trinkets, Deity, quests and counters at that moment; nil in
+    /// records written before mechanics were tracked.
+    public var mechanics: BGPlayerMechanics?
 }
 
 /// Where a game's final placement came from.

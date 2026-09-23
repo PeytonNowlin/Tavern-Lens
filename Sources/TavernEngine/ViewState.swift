@@ -46,12 +46,17 @@ public struct GameView: Codable, Hashable, Sendable {
     public var combatOpponentPlayerID: Int?
     /// The local player's final place; nil until the game ends.
     public var placement: PlacementView?
+    /// The damage cap, anomaly and Deity of the lobby.
+    public var mechanics: GameMechanicsView?
+    /// The combat opponent's hero powers, trinkets, Deity and counters while fighting them.
+    public var combatOpponentMechanics: MechanicsView?
 
     public init(
         gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int,
         phase: BGPhase = .heroPick, player: PlayerView? = nil, shop: ShopView = ShopView(),
         lobby: [LobbyEntryView] = [], nextOpponentPlayerID: Int? = nil, combatOpponentPlayerID: Int? = nil,
-        placement: PlacementView? = nil
+        placement: PlacementView? = nil, mechanics: GameMechanicsView? = nil,
+        combatOpponentMechanics: MechanicsView? = nil
     ) {
         self.gameType = gameType
         self.localPlayerID = localPlayerID
@@ -65,6 +70,8 @@ public struct GameView: Codable, Hashable, Sendable {
         self.nextOpponentPlayerID = nextOpponentPlayerID
         self.combatOpponentPlayerID = combatOpponentPlayerID
         self.placement = placement
+        self.mechanics = mechanics
+        self.combatOpponentMechanics = combatOpponentMechanics
     }
 
     /// The next opponent's lobby entry.
@@ -116,11 +123,14 @@ public struct LastSeenBoardView: Codable, Hashable, Sendable {
     public var heroCardID: String?
     /// Minions left to right.
     public var cards: [CardView]
+    /// Their hero powers, trinkets, Deity and counters at that combat.
+    public var mechanics: MechanicsView?
 
-    public init(bgTurn: Int, heroCardID: String?, cards: [CardView]) {
+    public init(bgTurn: Int, heroCardID: String?, cards: [CardView], mechanics: MechanicsView? = nil) {
         self.bgTurn = bgTurn
         self.heroCardID = heroCardID
         self.cards = cards
+        self.mechanics = mechanics
     }
 }
 
@@ -147,13 +157,19 @@ public struct PlayerView: Codable, Hashable, Sendable {
     public var board: [CardView]
     /// Cards in hand, left to right.
     public var hand: [CardView]
+    /// Hero powers, trinkets, the Deity, quests and counters.
+    public var mechanics: MechanicsView?
 
-    public init(hero: HeroStatsView?, gold: GoldView, tier: Int?, board: [CardView], hand: [CardView]) {
+    public init(
+        hero: HeroStatsView?, gold: GoldView, tier: Int?, board: [CardView], hand: [CardView],
+        mechanics: MechanicsView? = nil
+    ) {
         self.hero = hero
         self.gold = gold
         self.tier = tier
         self.board = board
         self.hand = hand
+        self.mechanics = mechanics
     }
 }
 
@@ -301,7 +317,9 @@ extension GameView {
             combatOpponentPlayerID: snapshot.combatOpponentPlayerID,
             placement: record.placement.map {
                 PlacementView(place: $0, isEstimated: record.placementSource == .concedeEstimate)
-            }
+            },
+            mechanics: GameMechanicsView(snapshot.mechanics, cards: cards),
+            combatOpponentMechanics: snapshot.combatOpponentMechanics.map { MechanicsView($0, cards: cards) }
         )
     }
 }
@@ -321,7 +339,8 @@ extension LobbyEntryView {
             lastSeenBoard: entry.isLocal ? nil : memory.lastSeenBoards[entry.playerID].map { board in
                 LastSeenBoardView(
                     bgTurn: board.bgTurn, heroCardID: board.heroCardID,
-                    cards: board.cards.map { CardView($0, cards: cards) }
+                    cards: board.cards.map { CardView($0, cards: cards) },
+                    mechanics: board.mechanics.map { MechanicsView($0, cards: cards) }
                 )
             }
         )
@@ -338,7 +357,8 @@ extension PlayerView {
             ),
             tier: local.tier,
             board: local.board.map { CardView($0, cards: cards) },
-            hand: local.hand.map { CardView($0, cards: cards) }
+            hand: local.hand.map { CardView($0, cards: cards) },
+            mechanics: MechanicsView(local.mechanics, cards: cards)
         )
     }
 }
