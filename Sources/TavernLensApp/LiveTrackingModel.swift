@@ -157,6 +157,11 @@ final class LiveTrackingModel {
                 guard let self, self.generation == token else { return }
                 self.combatOdds.preview(preview)
             }
+        }, onAdvisorRequest: { [weak self] request in
+            Task { @MainActor in
+                guard let self, self.generation == token else { return }
+                self.combatOdds.advise(request)
+            }
         }) { [weak self] update in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }

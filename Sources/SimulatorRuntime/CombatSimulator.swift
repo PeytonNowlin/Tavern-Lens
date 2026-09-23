@@ -92,6 +92,9 @@ public enum CombatSimulatorError: Error, Equatable, CustomStringConvertible {
 /// one simulation at a time; the card DB
 /// is loaded once and kept. A simulation runs in steps of `intermediateResults` simulations
 /// and reports each step, so results refine in place; cancelling the task stops it at the next step.
+/// A simulation given a `seed` draws its random numbers from a seeded generator, so the same
+/// input, budget and seed give the same result every time (the advisor's scores are replayable);
+/// without one it uses JavaScript's own `Math.random`.
 ///
 /// JavaScriptCore only JITs in a process signed with `com.apple.security.cs.allow-jit`
 /// (Packaging/TavernLens.entitlements); without it, as under `swift test`, it interprets and
@@ -121,6 +124,8 @@ public final class CombatSimulator: @unchecked Sendable {
         var failure: CombatSimulatorError?
         queue.sync {
             installConsole()
+            // Before the bundle, which binds `Math.random` once at load (its `nativeMathRandom`).
+            context.evaluateScript(Self.seedablePrelude, withSourceURL: URL(string: "tavern-seed.js"))
             context.evaluateScript(source, withSourceURL: URL(string: "bgs-simulator.js"))
             if let error = takeException() {
                 failure = error
@@ -174,8 +179,12 @@ public final class CombatSimulator: @unchecked Sendable {
 
     /// Runs one simulation of `input` (a `BgsBattleInfo` as JSON), reporting each partial result.
     /// Returns the final result; throws `CancellationError` if the task was cancelled first.
+    ///
+    /// - Parameter seed: seeds the simulation's random numbers, so it's reproducible (as long as the
+    ///   budget's time limit doesn't cut it short); nil uses `Math.random`.
     public func simulate(
-        input: Data, budget: SimulationBudget = .standard, progress: @escaping @Sendable (CombatOdds) -> Void = { _ in }
+        input: Data, budget: SimulationBudget = .standard, seed: UInt32? = nil,
+        progress: @escaping @Sendable (CombatOdds) -> Void = { _ in }
     ) async throws -> CombatOdds {
         let cancelled = CancelFlag()
         let inputText = String(decoding: input, as: UTF8.self)
@@ -187,7 +196,7 @@ public final class CombatSimulator: @unchecked Sendable {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<CombatOdds, any Error>) in
                 queue.async { [self] in
                     continuation.resume(with: Result {
-                        try run(input: inputText, options: options, cancelled: cancelled, progress: progress)
+                        try run(input: inputText, options: options, seed: seed, cancelled: cancelled, progress: progress)
                     })
                 }
             }
@@ -198,13 +207,22 @@ public final class CombatSimulator: @unchecked Sendable {
 
     /// Call on `queue`.
     private func run(
-        input: String, options: String, cancelled: CancelFlag, progress: @Sendable (CombatOdds) -> Void
+        input: String, options: String, seed: UInt32?, cancelled: CancelFlag, progress: @Sendable (CombatOdds) -> Void
     ) throws -> CombatOdds {
         guard cardCount > 0 else { throw CombatSimulatorError.cardsNotLoaded }
         if cancelled.isSet { throw CancellationError() }
         let handle = api.invokeMethod("start", withArguments: [input, options])
         if let error = takeException() { throw error }
         guard let handle else { throw CombatSimulatorError.badResult("no handle") }
+        // Seeded after `start`, which may set up cached card data (drawing randomness only the
+        // first time), and before the first step, which runs the first simulation. One run at a
+        // time holds the queue, so no other run draws from the seeded generator.
+        let seedFunction = context.objectForKeyedSubscript("__tavernSeed")
+        seedFunction?.call(withArguments: [seed.map { NSNumber(value: $0) } ?? NSNull()])
+        defer {
+            seedFunction?.call(withArguments: [NSNull()])
+            _ = takeException()
+        }
         while true {
             if cancelled.isSet {
                 api.invokeMethod("cancel", withArguments: [handle])
@@ -245,6 +263,27 @@ public final class CombatSimulator: @unchecked Sendable {
     }
 
     // MARK: - Context plumbing (on `queue`)
+
+    /// Makes `Math.random` switchable to a seeded generator (mulberry32, the simulator's own
+    /// `createSeededRng`): `__tavernSeed(n)` seeds it, `__tavernSeed(null)` goes back to the native one.
+    static let seedablePrelude = """
+        (function () {
+            var native = Math.random;
+            var next = null;
+            Math.random = function () { return next ? next() : native(); };
+            globalThis.__tavernSeed = function (seed) {
+                if (seed === null || seed === undefined) { next = null; return; }
+                var state = seed >>> 0;
+                next = function () {
+                    state = (state + 1831565813) >>> 0;
+                    var t = state;
+                    t = Math.imul(t ^ (t >>> 15), t | 1);
+                    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+                    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+                };
+            };
+        })();
+        """
 
     private func takeException() -> CombatSimulatorError? {
         guard let exception = context.exception else { return nil }

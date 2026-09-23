@@ -17,7 +17,18 @@ final class OverlayModel {
     var combatOdds: CombatOddsView?
     /// The recruit-phase odds preview, from `CombatOddsModel`.
     var oddsPreview: OddsPreviewView?
+    /// The advisor's suggestions, from `CombatOddsModel`.
+    var advice: AdviceView?
+    /// The player collapsed the advisor's list to its header. Remembered across launches.
+    var advisorCollapsed = false
     @ObservationIgnored var hide: () -> Void = {}
+    @ObservationIgnored var toggleAdvisor: () -> Void = {}
+
+    /// The advisor shows during the recruit phase it was scored for.
+    var shownAdvice: AdviceView? {
+        guard view.status == .inGame, let game = view.game, let advice, advice.isFor(game) else { return nil }
+        return advice
+    }
 
     /// The preview's odds show in the next opponent preview during the recruit phase they're for.
     var shownOddsPreview: OddsPreviewView? {
@@ -43,7 +54,8 @@ final class OverlayModel {
     /// Where the cursor makes the panel take clicks, in content-local top-left points.
     var interactiveRegions: [CGRect] {
         guard let layout, game != nil else { return [] }
-        return [layout.hud]
+        // The advisor's header collapses and expands its list.
+        return [layout.hud] + (shownAdvice == nil ? [] : [layout.advisorHeader])
     }
 
     /// The leaderboard slot under the cursor, set by `OverlayController` from mouse moves.
@@ -125,6 +137,12 @@ struct OverlayRootView: View {
                 if let game = model.game, model.view.status == .inGame, game.phase == .recruit, let builds = game.builds {
                     BuildOverlays(
                         builds: builds, shopCount: game.shop.cards.count, layout: layout, cards: CardDataModel.shared.cards
+                    )
+                }
+                if let advice = model.shownAdvice, let game = model.game {
+                    AdvisorOverlays(
+                        advice: advice, game: game, layout: layout, collapsed: model.advisorCollapsed,
+                        cards: CardDataModel.shared.cards, toggle: model.toggleAdvisor
                     )
                 }
                 if let game = model.leaderboardGame {
@@ -279,6 +297,12 @@ struct LayoutGuides: View {
                 stroke(layout.heroPickPlate(i, of: 4), .purple)
             }
             stroke(layout.buildTipsPanel, .white, dash: true)
+            stroke(layout.advisorPanel, .blue.opacity(0.7), dash: true)
+            stroke(layout.advisorHeader, .blue.opacity(0.7))
+            for k in 0..<7 { stroke(layout.advisorBadge(.shop(index: k, count: 7)), .blue.opacity(0.7)) }
+            for button in [OverlayLayout.AdvisorElement.levelButton, .rollButton, .freezeButton] {
+                stroke(layout.advisorBadge(button), .blue.opacity(0.7))
+            }
         }
         .allowsHitTesting(false)
     }

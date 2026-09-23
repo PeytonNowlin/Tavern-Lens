@@ -54,6 +54,25 @@ struct BookmarkGoldenTests {
         }
         #expect(replayed == goldenCase.expected, "\(goldenCase.name): \(goldenCase.note)")
     }
+
+    @Test("Each case with advice re-scores to the advice shown", .enabled(if: anyCaseRunnable, "no case's log is present"),
+          arguments: caseFiles)
+    func adviceReplays(file: String) async throws {
+        let url = Self.directory.appending(path: file)
+        var goldenCase = try BookmarkGoldenCase.decode(Data(contentsOf: url))
+        guard let expected = goldenCase.expectedAdvice, let log = Fixtures.url(goldenCase.log) else { return }
+        let simulator = try CombatGoldens.makeSimulator()
+        let replayed = try await TavernEngine.replayAdvice(
+            expected, cut: goldenCase.cut, powerLog: log, resuming: goldenCase.resumed,
+            simulate: AdvisorEvaluation.simulate(on: { simulator })
+        )
+        if GoldenHarness.isRecording {
+            goldenCase.expectedAdvice = replayed
+            try goldenCase.encoded().write(to: url)
+            return
+        }
+        #expect(replayed == expected, "\(goldenCase.name): \(goldenCase.note)")
+    }
 }
 
 /// Bookmarks on the captured full game, attached mid-game like the live app.

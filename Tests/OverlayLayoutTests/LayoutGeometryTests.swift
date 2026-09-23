@@ -322,7 +322,7 @@ struct PanelTests {
         let panels: [(String, CGRect)] = [
             ("hud", l.hud), ("next opponent preview", l.nextOpponentPreview), ("combat odds", l.combatOddsPanel),
             ("tribes", l.tribesPanel), ("misaligned notice", l.alignmentWarning), ("build tips", l.buildTipsPanel),
-            ("opponent hover panel", l.opponentPanel),
+            ("opponent hover panel", l.opponentPanel), ("advisor", l.advisorPanel),
         ]
         // The combat odds take the preview's place: the preview shows in recruit only, the odds in combat only.
         let exclusive: Set<[String]> = [["next opponent preview", "combat odds"]]
@@ -339,6 +339,7 @@ struct PanelTests {
         // Top to bottom in the right margin, in this order.
         #expect(l.combatOddsPanel.maxY < l.tribesPanel.minY)
         #expect(l.tribesPanel.maxY < l.alignmentWarning.minY && l.alignmentWarning.maxY < l.buildTipsPanel.minY)
+        #expect(l.buildTipsPanel.maxY < l.advisorPanel.minY)
     }
 
     @Test("Panel scale follows height, clamped to 0.8…1.3")

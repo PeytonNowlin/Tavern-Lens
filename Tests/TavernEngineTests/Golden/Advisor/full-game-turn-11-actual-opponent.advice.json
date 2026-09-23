@@ -1,0 +1,72 @@
+{
+  "advice" : {
+    "baseline" : {
+      "averageDamageDealt" : 0,
+      "averageDamageTaken" : 11.93,
+      "lethalRisk" : 0,
+      "lost" : 100,
+      "simulations" : 300,
+      "tied" : 0,
+      "won" : 0
+    },
+    "candidates" : 36,
+    "scored" : 36,
+    "status" : "recommendation",
+    "suggestions" : [
+      {
+        "action" : {
+          "roll" : {
+            "cost" : 1
+          }
+        },
+        "confidence" : "medium",
+        "gain" : 0,
+        "odds" : {
+          "averageDamageDealt" : 0,
+          "averageDamageTaken" : 11.93,
+          "lethalRisk" : 0,
+          "lost" : 100,
+          "simulations" : 300,
+          "tied" : 0,
+          "won" : 0
+        },
+        "rank" : 1,
+        "reason" : "No shop card improves your odds (0% win)",
+        "targets" : [
+          {
+            "kind" : "rollButton"
+          }
+        ],
+        "terms" : {
+          "combat" : 0
+        }
+      }
+    ]
+  },
+  "bgTurn" : 11,
+  "evaluations" : 37,
+  "fingerprint" : "35d138aef863aad7",
+  "isComplete" : true,
+  "isUpdating" : false,
+  "opponentPlayerID" : 7,
+  "plan" : {
+    "refineSimulations" : 200,
+    "refinedGroups" : 2,
+    "seed" : 430797136,
+    "simulations" : 100,
+    "weights" : {
+      "combat" : 1,
+      "damageDealtPerHealth" : 0.5,
+      "damageTakenPerHealth" : 1,
+      "highZ" : 3,
+      "lethalRisk" : 1,
+      "mediumZ" : 1.5,
+      "minimumGain" : 1,
+      "minimumSimulations" : 150,
+      "minimumZ" : 1,
+      "staleAfterTurns" : 3,
+      "suggestions" : 3
+    }
+  },
+  "requestID" : "1172082863/11/P7"
+}

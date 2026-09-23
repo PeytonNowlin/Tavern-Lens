@@ -182,6 +182,17 @@ struct DebugBookmarksView: View {
                     + (o.drewShownState ? "" : ", overlay was a frame behind")
             )
         }
+        if let advice = b.advice {
+            let suggestions = advice.advice.suggestions.map {
+                "\($0.rank). \($0.action.title()) (\($0.reason), \($0.confidence.rawValue))"
+            }
+            lines.append(
+                "Advisor: \(advice.advice.status.rawValue)\(advice.advice.note.map { " – \($0)" } ?? ""), "
+                    + "\(advice.evaluations) evaluations\(advice.isComplete ? "" : ", partway")"
+                    + (advice.isUpdating ? ", was updating" : "")
+                    + (suggestions.isEmpty ? "" : "\n  " + suggestions.joined(separator: "\n  "))
+            )
+        }
         lines.append("Game outcome: \(row.record.outcome.rawValue)")
         return lines.joined(separator: "\n")
     }

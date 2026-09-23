@@ -48,6 +48,7 @@ final class FeedbackController {
             return
         }
         bookmark.overlay = overlay.bookmarkContext(shown: bookmark.shown.state)
+        bookmark.advice = overlay.bookmarkAdvice(shown: bookmark.shown.state)
         let captured = bookmark
         let box = NoteBoxPanel(bookmark: captured) { [weak self] outcome in
             self?.finish(captured, outcome)

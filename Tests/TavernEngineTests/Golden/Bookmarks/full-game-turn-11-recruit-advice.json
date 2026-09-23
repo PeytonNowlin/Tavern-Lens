@@ -1,0 +1,1166 @@
+{
+  "cut" : {
+    "endByteOffset" : 25171629,
+    "endLine" : 190183,
+    "gameSeed" : 1172082863,
+    "startByteOffset" : 0,
+    "startLine" : 1
+  },
+  "expected" : {
+    "position" : {
+      "line" : 190183,
+      "time" : "21:28:10.8105290"
+    },
+    "state" : {
+      "game" : {
+        "bgTurn" : 11,
+        "gameType" : "GT_BATTLEGROUNDS",
+        "lobby" : [
+          {
+            "displayName" : "Opp-P7",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 3,
+              "health" : 30,
+              "hp" : 27,
+              "triples" : 1
+            },
+            "heroCardID" : "BG36_HERO_000",
+            "isDead" : false,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 7,
+              "cards" : [
+                {
+                  "attack" : 3,
+                  "cardID" : "BG36_311",
+                  "health" : 4,
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 8,
+                  "cardID" : "BG36_108",
+                  "health" : 16,
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 6,
+                  "cardID" : "BG36_108",
+                  "health" : 9,
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 1,
+                  "cardID" : "BG36_101",
+                  "health" : 1,
+                  "keywords" : [
+                    "deathrattle"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 6,
+                  "cardID" : "BG36_113",
+                  "health" : 9,
+                  "keywords" : [
+                    "reborn",
+                    "deathrattle"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 7,
+                  "cardID" : "BG36_101",
+                  "health" : 10,
+                  "keywords" : [
+                    "deathrattle"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 2
+                }
+              ],
+              "heroCardID" : "BG36_HERO_000",
+              "mechanics" : {
+                "counters" : {
+                  "3088" : 7,
+                  "3236" : 2,
+                  "3491" : 3,
+                  "3873" : 2,
+                  "4212" : 42,
+                  "4639" : 3,
+                  "4640" : 3,
+                  "4768" : 6
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 30,
+                  "dbfID" : 130610,
+                  "health" : 44,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "BG36_HERO_000p",
+                    "used" : true
+                  }
+                ],
+                "trinkets" : [
+                  {
+                    "cardID" : "BG36_MagicItem_404",
+                    "scriptData" : [
+                      4,
+                      4,
+                      0,
+                      126,
+                      0,
+                      1
+                    ],
+                    "slot" : 1
+                  }
+                ]
+              }
+            },
+            "place" : 1,
+            "playerID" : 7,
+            "tier" : 4
+          },
+          {
+            "hero" : {
+              "armor" : 0,
+              "damage" : 14,
+              "health" : 30,
+              "hp" : 16,
+              "triples" : 2
+            },
+            "heroCardID" : "TB_BaconShop_HERO_15",
+            "isDead" : false,
+            "isLocal" : true,
+            "place" : 2,
+            "playerID" : 6,
+            "tier" : 6
+          },
+          {
+            "displayName" : "Opp-P8",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 15,
+              "health" : 30,
+              "hp" : 15,
+              "triples" : 2
+            },
+            "heroCardID" : "BG36_HERO_002",
+            "isDead" : false,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 10,
+              "cards" : [
+                {
+                  "attack" : 67,
+                  "cardID" : "BG36_102",
+                  "health" : 59,
+                  "kind" : "minion",
+                  "tier" : 5
+                },
+                {
+                  "attack" : 95,
+                  "cardID" : "BG36_115_G",
+                  "golden" : true,
+                  "health" : 82,
+                  "keywords" : [
+                    "taunt",
+                    "divineShield",
+                    "deathrattle",
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 4
+                },
+                {
+                  "attack" : 29,
+                  "cardID" : "BG36_099_G",
+                  "golden" : true,
+                  "health" : 31,
+                  "keywords" : [
+                    "divineShield"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 32,
+                  "cardID" : "BG36_108",
+                  "health" : 56,
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 18,
+                  "cardID" : "BG36_312",
+                  "health" : 14,
+                  "kind" : "minion",
+                  "tier" : 4
+                },
+                {
+                  "attack" : 7,
+                  "cardID" : "BG36_097",
+                  "health" : 13,
+                  "kind" : "minion",
+                  "tier" : 5
+                },
+                {
+                  "attack" : 20,
+                  "cardID" : "BG36_114",
+                  "health" : 22,
+                  "keywords" : [
+                    "divineShield"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 4
+                }
+              ],
+              "heroCardID" : "BG36_HERO_002",
+              "mechanics" : {
+                "counters" : {
+                  "3088" : 14,
+                  "3236" : 4,
+                  "3491" : 6,
+                  "3873" : 4,
+                  "3989" : 1,
+                  "3990" : 1,
+                  "4212" : 85,
+                  "4639" : 10,
+                  "4640" : 10,
+                  "4768" : 17,
+                  "4799" : 2
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 42,
+                  "dbfID" : 130610,
+                  "health" : 64,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "BG36_HERO_002p",
+                    "scriptData" : [
+                      0,
+                      0,
+                      7,
+                      0,
+                      0,
+                      0
+                    ],
+                    "used" : true
+                  }
+                ],
+                "tavernSpellBuff" : {
+                  "attack" : 1,
+                  "health" : 1
+                },
+                "trinkets" : [
+                  {
+                    "cardID" : "BG36_MagicItem_811",
+                    "scriptData" : [
+                      0,
+                      0,
+                      0,
+                      43,
+                      0,
+                      1
+                    ],
+                    "slot" : 1
+                  },
+                  {
+                    "cardID" : "BG36_MagicItem_418",
+                    "scriptData" : [
+                      1,
+                      3,
+                      1,
+                      126,
+                      0,
+                      2
+                    ],
+                    "slot" : 2
+                  }
+                ]
+              }
+            },
+            "place" : 3,
+            "playerID" : 8,
+            "tier" : 5
+          },
+          {
+            "displayName" : "Opp-P4",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 17,
+              "health" : 30,
+              "hp" : 13,
+              "triples" : 0
+            },
+            "heroCardID" : "TB_BaconShop_HERO_94_SKIN_F",
+            "isDead" : false,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 5,
+              "cards" : [
+                {
+                  "attack" : 3,
+                  "cardID" : "BG20_101",
+                  "health" : 5,
+                  "keywords" : [
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 2,
+                  "cardID" : "BG33_886",
+                  "health" : 3,
+                  "keywords" : [
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 6,
+                  "cardID" : "BG31_326",
+                  "health" : 6,
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 2,
+                  "cardID" : "BG33_430",
+                  "health" : 5,
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 2,
+                  "cardID" : "BG36_101",
+                  "health" : 5,
+                  "keywords" : [
+                    "taunt",
+                    "deathrattle"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 2
+                }
+              ],
+              "heroCardID" : "TB_BaconShop_HERO_94_SKIN_F",
+              "mechanics" : {
+                "counters" : {
+                  "3088" : 2,
+                  "3491" : 2,
+                  "3989" : 1,
+                  "3990" : 1,
+                  "4212" : 25,
+                  "4639" : 2,
+                  "4640" : 2
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_106",
+                    "scriptData" : [
+                      3,
+                      0,
+                      0,
+                      0,
+                      0,
+                      0
+                    ],
+                    "used" : false
+                  }
+                ],
+                "tavernSpellBuff" : {
+                  "attack" : 1,
+                  "health" : 1
+                }
+              }
+            },
+            "place" : 4,
+            "playerID" : 4,
+            "tier" : 5
+          },
+          {
+            "displayName" : "Opp-P3",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 25,
+              "health" : 30,
+              "hp" : 5,
+              "triples" : 3
+            },
+            "heroCardID" : "BG20_HERO_202_SKIN_B4",
+            "isDead" : false,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 6,
+              "cards" : [
+                {
+                  "attack" : 24,
+                  "cardID" : "BGS_126",
+                  "health" : 37,
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 3,
+                  "cardID" : "BG28_582",
+                  "health" : 3,
+                  "keywords" : [
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 2,
+                  "cardID" : "BG33_886",
+                  "health" : 3,
+                  "keywords" : [
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 3,
+                  "cardID" : "BG36_354",
+                  "health" : 4,
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 5,
+                  "cardID" : "BG34_683",
+                  "health" : 3,
+                  "keywords" : [
+                    "battlecry"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 3,
+                  "cardID" : "BG30_121",
+                  "health" : 7,
+                  "kind" : "minion",
+                  "tier" : 4
+                }
+              ],
+              "heroCardID" : "BG20_HERO_202_SKIN_B4",
+              "mechanics" : {
+                "bloodGem" : {
+                  "attack" : 0,
+                  "health" : 1
+                },
+                "counters" : {
+                  "2827" : 1,
+                  "2878" : 1,
+                  "3088" : 4,
+                  "3236" : 2,
+                  "3491" : 10,
+                  "3873" : 2,
+                  "4212" : 35,
+                  "4768" : 2
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_075",
+                    "used" : true
+                  }
+                ],
+                "trinkets" : [
+                  {
+                    "cardID" : "BG36_MagicItem_206",
+                    "scriptData" : [
+                      2,
+                      0,
+                      0,
+                      43,
+                      0,
+                      1
+                    ],
+                    "slot" : 1
+                  }
+                ]
+              }
+            },
+            "place" : 5,
+            "playerID" : 3,
+            "tier" : 5
+          },
+          {
+            "displayName" : "Opp-P1",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 25,
+              "health" : 30,
+              "hp" : 5,
+              "triples" : 0
+            },
+            "heroCardID" : "TB_BaconShop_HERO_40",
+            "isDead" : false,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 3,
+              "cards" : [
+                {
+                  "attack" : 2,
+                  "cardID" : "BG33_886",
+                  "health" : 3,
+                  "keywords" : [
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 2,
+                  "cardID" : "BG25_001",
+                  "health" : 1,
+                  "keywords" : [
+                    "taunt",
+                    "reborn"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 0,
+                  "cardID" : "BGFYM_002t",
+                  "health" : 2,
+                  "keywords" : [
+                    "taunt"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 2,
+                  "cardID" : "BG33_430",
+                  "health" : 5,
+                  "kind" : "minion",
+                  "tier" : 2
+                }
+              ],
+              "heroCardID" : "TB_BaconShop_HERO_40",
+              "mechanics" : {
+                "counters" : {
+                  "3491" : 1,
+                  "4212" : 12
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_101",
+                    "used" : false
+                  }
+                ]
+              }
+            },
+            "place" : 6,
+            "playerID" : 1,
+            "tier" : 6
+          },
+          {
+            "displayName" : "Opp-P2",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 32,
+              "health" : 30,
+              "hp" : -2,
+              "triples" : 2
+            },
+            "heroCardID" : "TB_BaconShop_HERO_76",
+            "isDead" : true,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 9,
+              "cards" : [
+                {
+                  "attack" : 55,
+                  "cardID" : "BG36_352",
+                  "health" : 72,
+                  "kind" : "minion",
+                  "tier" : 6
+                },
+                {
+                  "attack" : 15,
+                  "cardID" : "BG34_856",
+                  "health" : 11,
+                  "keywords" : [
+                    "deathrattle"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 3
+                },
+                {
+                  "attack" : 4,
+                  "cardID" : "BG35_881",
+                  "health" : 6,
+                  "keywords" : [
+                    "deathrattle",
+                    "battlecry"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 4
+                },
+                {
+                  "attack" : 6,
+                  "cardID" : "BG35_881",
+                  "health" : 8,
+                  "keywords" : [
+                    "deathrattle",
+                    "battlecry"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 4
+                },
+                {
+                  "attack" : 17,
+                  "cardID" : "BG28_707",
+                  "health" : 16,
+                  "keywords" : [
+                    "divineShield"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 5
+                },
+                {
+                  "attack" : 3,
+                  "cardID" : "BG34_858",
+                  "health" : 6,
+                  "kind" : "minion",
+                  "tier" : 5
+                },
+                {
+                  "attack" : 3,
+                  "cardID" : "BG31_812",
+                  "health" : 1,
+                  "keywords" : [
+                    "divineShield"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 4
+                }
+              ],
+              "heroCardID" : "TB_BaconShop_HERO_76",
+              "mechanics" : {
+                "counters" : {
+                  "2878" : 16,
+                  "3088" : 15,
+                  "3236" : 8,
+                  "3491" : 2,
+                  "3873" : 8,
+                  "4212" : 78,
+                  "4639" : 3,
+                  "4640" : 3,
+                  "4799" : 2
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_086",
+                    "used" : true
+                  }
+                ],
+                "trinkets" : [
+                  {
+                    "cardID" : "BG36_MagicItem_300",
+                    "scriptData" : [
+                      0,
+                      0,
+                      0,
+                      18,
+                      0,
+                      1
+                    ],
+                    "slot" : 1
+                  },
+                  {
+                    "cardID" : "BG30_MagicItem_544t",
+                    "scriptData" : [
+                      5,
+                      5,
+                      0,
+                      18,
+                      0,
+                      2
+                    ],
+                    "slot" : 2
+                  }
+                ]
+              }
+            },
+            "place" : 7,
+            "playerID" : 2,
+            "tier" : 5
+          },
+          {
+            "displayName" : "Opp-P5",
+            "hero" : {
+              "armor" : 0,
+              "damage" : 38,
+              "health" : 30,
+              "hp" : -8,
+              "triples" : 2
+            },
+            "heroCardID" : "TB_BaconShop_HERO_11",
+            "isDead" : true,
+            "isLocal" : false,
+            "lastSeenBoard" : {
+              "bgTurn" : 8,
+              "cards" : [
+                {
+                  "attack" : 19,
+                  "cardID" : "BG21_015",
+                  "health" : 18,
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 19,
+                  "cardID" : "BG29_888_G",
+                  "golden" : true,
+                  "health" : 20,
+                  "keywords" : [
+                    "rally"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 18,
+                  "cardID" : "BG35_814",
+                  "health" : 15,
+                  "keywords" : [
+                    "divineShield"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 1
+                },
+                {
+                  "attack" : 14,
+                  "cardID" : "BGS_034",
+                  "health" : 10,
+                  "keywords" : [
+                    "divineShield",
+                    "reborn"
+                  ],
+                  "kind" : "minion",
+                  "tier" : 2
+                },
+                {
+                  "attack" : 5,
+                  "cardID" : "BG_LOE_077",
+                  "health" : 6,
+                  "kind" : "minion",
+                  "tier" : 5
+                },
+                {
+                  "attack" : 13,
+                  "cardID" : "BG36_243",
+                  "health" : 15,
+                  "kind" : "minion",
+                  "tier" : 4
+                },
+                {
+                  "attack" : 17,
+                  "cardID" : "BG29_816",
+                  "health" : 22,
+                  "kind" : "minion",
+                  "tier" : 3
+                }
+              ],
+              "heroCardID" : "TB_BaconShop_HERO_11",
+              "mechanics" : {
+                "counters" : {
+                  "3088" : 6,
+                  "3491" : 3,
+                  "4212" : 65,
+                  "4799" : 1
+                },
+                "countersFromTagTransfer" : true,
+                "deity" : {
+                  "attack" : 1,
+                  "dbfID" : 130610,
+                  "health" : 1,
+                  "progress" : 3
+                },
+                "heroPowers" : [
+                  {
+                    "cardID" : "TB_BaconShop_HP_087t",
+                    "used" : false
+                  }
+                ],
+                "trinkets" : [
+                  {
+                    "cardID" : "BG36_MagicItem_407",
+                    "scriptData" : [
+                      2,
+                      13,
+                      0,
+                      24,
+                      0,
+                      1
+                    ],
+                    "slot" : 1
+                  }
+                ]
+              }
+            },
+            "place" : 8,
+            "playerID" : 5,
+            "tier" : 4
+          }
+        ],
+        "localHeroCardID" : "TB_BaconShop_HERO_15",
+        "localPlayerID" : 6,
+        "mechanics" : {
+          "damageCap" : 15,
+          "damageCapEnabled" : true,
+          "deityDbfID" : 130610,
+          "playersAlive" : 6
+        },
+        "nextOpponentPlayerID" : 7,
+        "phase" : "recruit",
+        "player" : {
+          "board" : [
+            {
+              "attack" : 62,
+              "cardID" : "BG36_113",
+              "health" : 10,
+              "keywords" : [
+                "reborn",
+                "deathrattle"
+              ],
+              "kind" : "minion",
+              "tier" : 3
+            },
+            {
+              "attack" : 87,
+              "cardID" : "BG36_101_G",
+              "golden" : true,
+              "health" : 17,
+              "keywords" : [
+                "divineShield",
+                "deathrattle"
+              ],
+              "kind" : "minion",
+              "tier" : 2
+            },
+            {
+              "attack" : 7,
+              "cardID" : "BG36_109",
+              "health" : 9,
+              "kind" : "minion",
+              "tier" : 6
+            },
+            {
+              "attack" : 66,
+              "cardID" : "BG36_106",
+              "health" : 66,
+              "keywords" : [
+                "divineShield"
+              ],
+              "kind" : "minion",
+              "tier" : 4
+            },
+            {
+              "attack" : 13,
+              "cardID" : "BG36_098_G",
+              "golden" : true,
+              "health" : 11,
+              "keywords" : [
+                "divineShield"
+              ],
+              "kind" : "minion",
+              "tier" : 1
+            },
+            {
+              "attack" : 13,
+              "cardID" : "BG35_123",
+              "health" : 17,
+              "keywords" : [
+                "divineShield"
+              ],
+              "kind" : "minion",
+              "tier" : 5
+            },
+            {
+              "attack" : 4,
+              "cardID" : "BG25_354",
+              "health" : 10,
+              "keywords" : [
+                "divineShield"
+              ],
+              "kind" : "minion",
+              "tier" : 5
+            }
+          ],
+          "gold" : {
+            "available" : 10,
+            "cap" : 10,
+            "temporary" : 0,
+            "thisTurn" : 10,
+            "used" : 0
+          },
+          "hand" : [
+            {
+              "cardID" : "BG28_884",
+              "kind" : "tavernSpell",
+              "tier" : 3
+            },
+            {
+              "cardID" : "BG36_371",
+              "kind" : "tavernSpell",
+              "tier" : 5
+            },
+            {
+              "cardID" : "BG36_301t",
+              "kind" : "tavernSpell",
+              "tier" : 4
+            }
+          ],
+          "hero" : {
+            "armor" : 0,
+            "damage" : 14,
+            "health" : 30,
+            "hp" : 16,
+            "triples" : 2
+          },
+          "mechanics" : {
+            "counters" : {
+              "1780" : 15,
+              "3088" : 15,
+              "4212" : 75,
+              "4639" : 24,
+              "4640" : 24,
+              "4768" : 2,
+              "4799" : 2
+            },
+            "deity" : {
+              "attack" : 154,
+              "dbfID" : 130610,
+              "health" : 140,
+              "progress" : 0
+            },
+            "heroPowers" : [
+              {
+                "cardID" : "TB_BaconShop_HP_010",
+                "used" : false
+              }
+            ],
+            "trinkets" : [
+              {
+                "cardID" : "BG36_MagicItem_404",
+                "scriptData" : [
+                  4,
+                  4,
+                  0,
+                  126,
+                  0,
+                  1
+                ],
+                "slot" : 1
+              },
+              {
+                "cardID" : "BG36_MagicItem_404t",
+                "scriptData" : [
+                  10,
+                  10,
+                  0,
+                  126,
+                  0,
+                  2
+                ],
+                "slot" : 2
+              }
+            ]
+          },
+          "tier" : 6
+        },
+        "shop" : {
+          "cards" : [
+            {
+              "attack" : 6,
+              "cardID" : "BG32_880",
+              "health" : 3,
+              "keywords" : [
+                "deathrattle"
+              ],
+              "kind" : "minion",
+              "tier" : 4
+            },
+            {
+              "attack" : 6,
+              "cardID" : "BG36_109",
+              "health" : 8,
+              "kind" : "minion",
+              "tier" : 6
+            },
+            {
+              "attack" : 2,
+              "cardID" : "BG36_113",
+              "health" : 1,
+              "keywords" : [
+                "reborn",
+                "deathrattle"
+              ],
+              "kind" : "minion",
+              "tier" : 3
+            },
+            {
+              "attack" : 4,
+              "cardID" : "BG36_102",
+              "health" : 8,
+              "kind" : "minion",
+              "tier" : 5
+            },
+            {
+              "attack" : 1,
+              "cardID" : "BG29_888",
+              "health" : 4,
+              "keywords" : [
+                "rally"
+              ],
+              "kind" : "minion",
+              "tier" : 1
+            },
+            {
+              "attack" : 4,
+              "cardID" : "BG34_690",
+              "health" : 2,
+              "keywords" : [
+                "deathrattle"
+              ],
+              "kind" : "minion",
+              "tier" : 4
+            },
+            {
+              "cardID" : "BG28_966",
+              "kind" : "tavernSpell",
+              "tier" : 1
+            }
+          ],
+          "isFrozen" : false
+        }
+      },
+      "status" : "inGame"
+    }
+  },
+  "expectedAdvice" : {
+    "advice" : {
+      "baseline" : {
+        "averageDamageDealt" : 15,
+        "averageDamageTaken" : 0,
+        "lethalRisk" : 0,
+        "lost" : 0,
+        "simulations" : 100,
+        "tied" : 0,
+        "won" : 100
+      },
+      "candidates" : 18,
+      "note" : "Too few simulations yet",
+      "scored" : 14,
+      "status" : "noStrongRecommendation",
+      "suggestions" : [
+        {
+          "action" : {
+            "roll" : {
+              "cost" : 1
+            }
+          },
+          "confidence" : "low",
+          "gain" : 0,
+          "odds" : {
+            "averageDamageDealt" : 15,
+            "averageDamageTaken" : 0,
+            "lethalRisk" : 0,
+            "lost" : 0,
+            "simulations" : 100,
+            "tied" : 0,
+            "won" : 100
+          },
+          "rank" : 1,
+          "reason" : "No shop card improves your odds (100% win)",
+          "targets" : [
+            {
+              "kind" : "rollButton"
+            }
+          ],
+          "terms" : {
+            "combat" : 0
+          }
+        }
+      ]
+    },
+    "bgTurn" : 11,
+    "evaluations" : 12,
+    "fingerprint" : "6b96f95b974e3d9b",
+    "isComplete" : false,
+    "isUpdating" : false,
+    "opponentPlayerID" : 7,
+    "plan" : {
+      "refineSimulations" : 200,
+      "refinedGroups" : 2,
+      "seed" : 430797136,
+      "simulations" : 100,
+      "weights" : {
+        "combat" : 1,
+        "damageDealtPerHealth" : 0.5,
+        "damageTakenPerHealth" : 1,
+        "highZ" : 3,
+        "lethalRisk" : 1,
+        "mediumZ" : 1.5,
+        "minimumGain" : 1,
+        "minimumSimulations" : 150,
+        "minimumZ" : 1,
+        "staleAfterTurns" : 3,
+        "suggestions" : 3
+      }
+    },
+    "requestID" : "1172082863/11/P7"
+  },
+  "format" : 1,
+  "log" : "Hearthstone_2026_09_22_21_08_40/Power.log",
+  "name" : "full-game-turn-11-recruit-advice",
+  "note" : "Fixture: turn 11 recruit as the shop opened, with the advisor partway"
+}

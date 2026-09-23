@@ -391,6 +391,15 @@ public struct TavernEngine: Sendable {
         )
     }
 
+    /// The advisor's view of the recruit phase now: the odds preview's combat plus the gold, board,
+    /// hand, shop and tavern buttons the candidate actions are built from. Nil outside the recruit
+    /// phase or without a next opponent; without data (and so without candidates) when that
+    /// opponent hasn't been seen. Built on demand from the store, like `oddsPreview`.
+    public var advisorRequest: AdvisorRequest? {
+        guard let preview = oddsPreview, let snapshot = BGSnapshot.project(store) else { return nil }
+        return BattleInputBuilder.advisorRequest(store: store, snapshot: snapshot, preview: preview)
+    }
+
     /// The lobby's tribes for the simulator: the injected source's, else the tribe inference's
     /// confirmed and likely tribes (while there's a pool), else the seen pool minions' tribes.
     private func simulatorLobbyTribes(_ snapshot: BGSnapshot) -> Set<HS.Race>? {

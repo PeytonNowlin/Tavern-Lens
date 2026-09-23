@@ -28,6 +28,19 @@ final class CombatOddsModel {
         return runner
     }()
 
+    /// The advisor's ranked suggestions for the recruit phase on screen.
+    private(set) var advice: AdviceView?
+    /// Scores the advisor's candidate actions on the same simulator (debounced, latest state
+    /// only, within a time budget per state).
+    @ObservationIgnored private(set) lazy var advisorRunner: AdvisorRunner = {
+        let runner = AdvisorRunner(simulator: { [weak self] in
+            guard let task = await self?.simulator else { throw CancellationError() }
+            return try await task.value
+        })
+        runner.onChange = { [weak self] view in self?.advice = view }
+        return runner
+    }()
+
     @ObservationIgnored private var simulator: Task<CombatSimulator, any Error>?
     @ObservationIgnored private var running: Task<Void, Never>?
     static let refreshInterval: Duration = .milliseconds(100)
@@ -53,8 +66,9 @@ final class CombatOddsModel {
     func start(_ request: CombatSimulationRequest) {
         guard current?.requestID != request.id else { return }
         warmUp()
-        // The combat's odds come first: the preview shares the simulator's one thread.
+        // The combat's odds come first: the preview and the advisor share the simulator's one thread.
         previewRunner.cancel()
+        advisorRunner.cancel()
         running?.cancel()
         current = CombatOddsView(request: request)
         let id = request.id
@@ -83,6 +97,12 @@ final class CombatOddsModel {
     func preview(_ request: OddsPreviewRequest?) {
         if request != nil { warmUp() }
         previewRunner.update(request)
+    }
+
+    /// The advisor's latest state (nil outside recruit).
+    func advise(_ request: AdvisorRequest?) {
+        if request != nil { warmUp() }
+        advisorRunner.update(request)
     }
 
     private func update(_ id: String, odds: CombatOdds) {

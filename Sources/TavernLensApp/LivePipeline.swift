@@ -32,6 +32,7 @@ final class LivePipeline: @unchecked Sendable {
     private let onGameEnded: @Sendable (GameRecord) -> Void
     private let onCombatRequest: @Sendable (CombatSimulationRequest) -> Void
     private let onOddsPreview: @Sendable (OddsPreviewRequest?) -> Void
+    private let onAdvisorRequest: @Sendable (AdvisorRequest?) -> Void
     private var follower: LogSessionFollower?
 
     // Guarded by `lock`: written on the follower's queue, and read by deferred flushes.
@@ -52,6 +53,8 @@ final class LivePipeline: @unchecked Sendable {
     private var combatRequestsSeen = 0
     /// The odds preview last sent to `onOddsPreview`.
     private var lastOddsPreview: OddsPreviewRequest?
+    /// The advisor request last sent to `onAdvisorRequest`.
+    private var lastAdvisorRequest: AdvisorRequest?
     private let clock = ContinuousClock()
     private let flushQueue = DispatchQueue(label: "TavernLens.LivePipeline.flush")
     private let lock = NSLock()
@@ -62,12 +65,14 @@ final class LivePipeline: @unchecked Sendable {
         onGameEnded: @escaping @Sendable (GameRecord) -> Void = { _ in },
         onCombatRequest: @escaping @Sendable (CombatSimulationRequest) -> Void = { _ in },
         onOddsPreview: @escaping @Sendable (OddsPreviewRequest?) -> Void = { _ in },
+        onAdvisorRequest: @escaping @Sendable (AdvisorRequest?) -> Void = { _ in },
         publish: @escaping @Sendable (LiveUpdate) -> Void
     ) {
         self.records = records
         self.onGameEnded = onGameEnded
         self.onCombatRequest = onCombatRequest
         self.onOddsPreview = onOddsPreview
+        self.onAdvisorRequest = onAdvisorRequest
         self.publish = publish
     }
 
@@ -239,9 +244,16 @@ final class LivePipeline: @unchecked Sendable {
     /// each publish, so at most about 10 times a second. Call with `lock` held.
     private func dispatchOddsPreview() {
         let preview = engine.isCatchingUp ? nil : engine.oddsPreview
-        guard preview != lastOddsPreview else { return }
-        lastOddsPreview = preview
-        onOddsPreview(preview)
+        if preview != lastOddsPreview {
+            lastOddsPreview = preview
+            onOddsPreview(preview)
+        }
+        // The advisor's state: the same combat, plus the gold, shop, hand and buttons.
+        let advisor = preview == nil ? nil : engine.advisorRequest
+        if advisor != lastAdvisorRequest {
+            lastAdvisorRequest = advisor
+            onAdvisorRequest(advisor)
+        }
     }
 
     private func isPublished(_ update: LiveUpdate) -> Bool {

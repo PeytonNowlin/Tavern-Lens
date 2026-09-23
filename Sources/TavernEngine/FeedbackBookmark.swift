@@ -99,10 +99,13 @@ public struct FeedbackBookmark: Codable, Hashable, Sendable, Identifiable {
     /// after a client or app restart), without its bookmarks; replays need it too.
     public var resumed: GameRecord?
     public var overlay: BookmarkOverlay?
+    /// What the advisor showed (recruit only): its ranked suggestions and how far scoring had got,
+    /// which `TavernEngine.replayAdvice` reproduces.
+    public var advice: AdviceView?
 
     public init(
         id: UUID = UUID(), createdAt: Date = Date(), note: String = "", cut: LogCut, powerLog: String? = nil,
-        shown: TimelineEntry, resumed: GameRecord? = nil, overlay: BookmarkOverlay? = nil
+        shown: TimelineEntry, resumed: GameRecord? = nil, overlay: BookmarkOverlay? = nil, advice: AdviceView? = nil
     ) {
         self.id = id
         // Whole seconds, which survive the record store's ISO 8601 text exactly.
@@ -113,6 +116,7 @@ public struct FeedbackBookmark: Codable, Hashable, Sendable, Identifiable {
         self.shown = shown
         self.resumed = resumed
         self.overlay = overlay
+        self.advice = advice
     }
 
     public var gameSeed: Int? { cut.gameSeed }
@@ -129,6 +133,8 @@ public enum BookmarkReplayError: Error, Equatable, CustomStringConvertible {
     /// The case JSON would contain a `Name#1234` BattleTag (in the note?).
     case containsBattleTag
     case missingLog(String)
+    /// The advice shown was for another state than the bookmarked one (it was still catching up).
+    case adviceForAnotherState
 
     public var description: String {
         switch self {
@@ -137,6 +143,7 @@ public enum BookmarkReplayError: Error, Equatable, CustomStringConvertible {
         case .replayDiffers: "replaying the log doesn't reach the bookmarked state"
         case .containsBattleTag: "the case would contain a BattleTag; remove it from the note"
         case .missingLog(let path): "the log \(path) isn't there any more"
+        case .adviceForAnotherState: "the advice shown was for an earlier state than the bookmarked one"
         }
     }
 }
@@ -171,6 +178,21 @@ extension TavernEngine {
         return engine
     }
 
+    /// Re-scores `advice` for the moment `cut` replays to, exactly as far as it was scored (same
+    /// plan, seed and number of evaluations), so it comes out identical. Nil when there's no
+    /// advice; throws `adviceForAnotherState` when the advice was for an earlier state.
+    public static func replayAdvice(
+        _ advice: AdviceView?, cut: LogCut, powerLog url: URL, resuming record: GameRecord? = nil,
+        simulate: AdvisorEvaluation.Simulate
+    ) async throws -> AdviceView? {
+        guard let advice else { return nil }
+        let engine = try replay(cut, powerLog: url, resuming: record, timeZone: .gmt)
+        guard let request = engine.advisorRequest, AdviceView.fingerprint(of: request) == advice.fingerprint else {
+            throw BookmarkReplayError.adviceForAnotherState
+        }
+        return try await advice.replaying(request, simulate: simulate)
+    }
+
     /// Replays a bookmark's moment from its Power.log (or another copy of it at `url`).
     /// With a pool, the moment's tribes come out as they did live if the pool is the same.
     public static func replay(
@@ -200,10 +222,13 @@ public struct BookmarkGoldenCase: Codable, Hashable, Sendable {
     /// Redacted like `expected`.
     public var resumed: GameRecord?
     public var expected: TimelineEntry
+    /// The advice shown at the moment, when there was any: replaying the case re-scores it
+    /// (`TavernEngine.replayAdvice`) and must give exactly this.
+    public var expectedAdvice: AdviceView?
 
     public init(
         name: String, note: String, bookmarkID: UUID? = nil, log: String, cut: LogCut, resumed: GameRecord? = nil,
-        expected: TimelineEntry
+        expected: TimelineEntry, expectedAdvice: AdviceView? = nil
     ) {
         self.name = name
         self.note = note
@@ -212,6 +237,7 @@ public struct BookmarkGoldenCase: Codable, Hashable, Sendable {
         self.cut = cut
         self.resumed = resumed.map { $0.redactingNames() }
         self.expected = expected.redactingNames()
+        self.expectedAdvice = expectedAdvice
     }
 
     /// Replays the case from its log and returns the published moment, redacted like `expected`.
@@ -284,7 +310,7 @@ public enum BookmarkExport {
         let logPath = "bookmarks/\(name)/Power.log"
         let goldenCase = BookmarkGoldenCase(
             name: name, note: bookmark.note, bookmarkID: bookmark.id, log: logPath, cut: sliceCut,
-            resumed: bookmark.resumed, expected: bookmark.shown
+            resumed: bookmark.resumed, expected: bookmark.shown, expectedAdvice: bookmark.advice
         )
         let json = try goldenCase.encoded()
         guard !BookmarkGoldenCase.containsBattleTag(String(decoding: json, as: UTF8.self)) else {

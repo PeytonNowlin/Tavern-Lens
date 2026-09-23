@@ -23,6 +23,7 @@ final class OverlayController {
     static let hotKeyName = "⌃⌥H"
     private static let hiddenDefaultsKey = "overlayHiddenByUser"
     private static let guidesDefaultsKey = "overlayShowsLayoutGuides"
+    private static let advisorCollapsedDefaultsKey = "advisorCollapsed"
 
     /// The player hid the overlay (hotkey or HUD button). Remembered across launches.
     private(set) var isHiddenByUser: Bool
@@ -59,10 +60,16 @@ final class OverlayController {
         self.live = live
         isHiddenByUser = UserDefaults.standard.bool(forKey: Self.hiddenDefaultsKey)
         model.showsLayoutGuides = UserDefaults.standard.bool(forKey: Self.guidesDefaultsKey)
+        model.advisorCollapsed = UserDefaults.standard.bool(forKey: Self.advisorCollapsedDefaultsKey)
     }
 
     func start() {
         model.hide = { [weak self] in self?.setHidden(true) }
+        model.toggleAdvisor = { [weak self] in
+            guard let self else { return }
+            model.advisorCollapsed.toggle()
+            UserDefaults.standard.set(model.advisorCollapsed, forKey: Self.advisorCollapsedDefaultsKey)
+        }
         // Card names for the opponent panels; the live engine runs without card data.
         CardDataModel.shared.loadIfNeeded()
         let panel = OverlayPanel()
@@ -146,6 +153,10 @@ final class OverlayController {
             if model.heroPick != nil { panels.append("heroPickPlates") }
             if model.heroPick != nil, model.hoveredHeroPlate != nil { panels.append("heroPickChart") }
             if model.shownCombatOdds != nil { panels.append("combatOdds") }
+            if let advice = model.shownAdvice {
+                panels.append(model.advisorCollapsed ? "advisorHeader" : "advisor")
+                if advice.advice.status == .recommendation, !advice.isUpdating { panels.append("advisorHighlights") }
+            }
         }
         return BookmarkOverlay(
             visible: isShown, hiddenByUser: isHiddenByUser, showsLayoutGuides: showsLayoutGuides,
@@ -154,6 +165,13 @@ final class OverlayController {
             fullscreen: window?.isFullscreen, layoutVersion: model.layout?.constants.version, panels: panels,
             hoveredPlayerID: isShown ? model.hoveredOpponent?.playerID : nil, drewShownState: model.view == shown
         )
+    }
+
+    /// The advisor's output while it's for `shown` (the recruit phase on screen), for a bookmark.
+    func bookmarkAdvice(shown: ViewState) -> AdviceView? {
+        guard let game = shown.game, shown.status == .inGame, let advice = live.combatOdds.advice, advice.isFor(game)
+        else { return nil }
+        return advice
     }
 
     /// Hearthstone's client area in AppKit screen coordinates, while the overlay is on it.
@@ -170,6 +188,7 @@ final class OverlayController {
             _ = live.update.state
             _ = live.combatOdds.current
             _ = live.combatOdds.preview
+            _ = live.combatOdds.advice
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -193,6 +212,7 @@ final class OverlayController {
         if model.view != live.update.state { model.view = live.update.state }
         if model.combatOdds != live.combatOdds.current { model.combatOdds = live.combatOdds.current }
         if model.oddsPreview != live.combatOdds.preview { model.oddsPreview = live.combatOdds.preview }
+        if model.advice != live.combatOdds.advice { model.advice = live.combatOdds.advice }
         let wanted = !isHiddenByUser && hearthstoneOrUsFrontmost
         let located = wanted ? hearthstonePID.flatMap(HearthstoneWindowTracker.locate) : nil
         if !wanted || located == nil {

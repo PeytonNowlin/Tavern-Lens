@@ -187,12 +187,15 @@ public final class OddsPreviewRunner {
 }
 
 extension CombatSimulator {
-    /// Simulates a `BattleInput`, reporting each partial result (see `simulate(input:budget:progress:)`).
+    /// Simulates a `BattleInput`, reporting each partial result (see `simulate(input:budget:seed:progress:)`).
     public func simulate(
-        _ input: BattleInput, budget: SimulationBudget = .standard,
+        _ input: BattleInput, budget: SimulationBudget = .standard, seed: UInt32? = nil,
         progress: @escaping @Sendable (CombatOdds) -> Void = { _ in }
     ) async throws -> CombatOdds {
-        try await simulate(input: JSONEncoder().encode(input), budget: budget, progress: progress)
+        // Sorted keys: the same input is the same text, so a seeded run is reproducible across processes.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        return try await simulate(input: encoder.encode(input), budget: budget, seed: seed, progress: progress)
     }
 }
 

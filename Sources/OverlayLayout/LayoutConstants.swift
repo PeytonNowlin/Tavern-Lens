@@ -130,6 +130,13 @@ public struct LayoutConstants: Hashable, Sendable {
     public var heroPickBanner = HeroPickBannerMetrics()
     /// The shop highlights and the build tips panel (under the tribes panel, the HUD's width).
     public var buildOverlay = BuildOverlayMetrics()
+    /// The advisor's ranked list (bottom of the right margin) and its in-place rank badges.
+    public var advisor = AdvisorMetrics()
+    /// The hand fan, from the trackers (research §2b; not re-measured): centre, card size, pitch, in `h`.
+    public var handCentreKx: CGFloat = -0.035
+    public var handCentreFy: CGFloat = 0.95
+    public var handCardSize = CGSize(width: 0.125, height: 0.189)
+    public var handCardPitch: CGFloat = 0.127
 }
 
 /// The status HUD's type and spacing, in reference points (multiplied by `panelScale`).
