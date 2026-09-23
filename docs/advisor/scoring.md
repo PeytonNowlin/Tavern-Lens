@@ -48,8 +48,8 @@ living opponent's board, if fresher than theirs (a combat-start side before a re
 lower PlayerID), with the next opponent's health and tier. It is usually last turn's opponent, the
 freshest sample of how strong boards are now. The stand-in leaves the lobby term; the next opponent's
 old board joins it. Its advice is capped at medium confidence, the reasons name it ("+8% win vs last
-opponent"), and the note says why ("Next opponent unseen · scored vs last opponent", "Their board is
-from turn 5 · scored vs last opponent"). Only with no opponent seen at all (turn 1) is there no data.
+opponent"), and every note says so, after any status ("Scored vs last opponent (next one unseen)",
+"Options are close · Scored vs last opponent (theirs is from turn 5)"). Only with no opponent seen at all (turn 1) is there no data.
 
 ### Builds
 

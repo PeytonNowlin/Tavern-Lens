@@ -11,7 +11,7 @@
         "won" : 100
       },
       "candidates" : 41,
-      "note" : "Their board is from turn 4 · scored vs turn 7 opponent",
+      "note" : "Scored vs turn 7 opponent (theirs is from turn 4)",
       "scored" : 41,
       "status" : "recommendation",
       "suggestions" : [
@@ -105,7 +105,7 @@
         "won" : 86.33
       },
       "candidates" : 36,
-      "note" : "Options are close",
+      "note" : "Options are close · Scored vs last opponent (theirs is from turn 7)",
       "scored" : 36,
       "status" : "noStrongRecommendation",
       "suggestions" : [
@@ -270,7 +270,7 @@
         "won" : 10.67
       },
       "candidates" : 37,
-      "note" : "Options are close",
+      "note" : "Options are close · Scored vs last opponent (theirs is from turn 6)",
       "sanity" : [
         {
           "candidate" : "roll",
@@ -447,7 +447,7 @@
         "won" : 100
       },
       "candidates" : 41,
-      "note" : "Their board is from turn 1 · scored vs last opponent",
+      "note" : "Scored vs last opponent (theirs is from turn 1)",
       "scored" : 41,
       "status" : "recommendation",
       "suggestions" : [
@@ -541,7 +541,7 @@
         "won" : 100
       },
       "candidates" : 36,
-      "note" : "Their board is from turn 2 · scored vs last opponent",
+      "note" : "Scored vs last opponent (theirs is from turn 2)",
       "scored" : 36,
       "status" : "recommendation",
       "suggestions" : [

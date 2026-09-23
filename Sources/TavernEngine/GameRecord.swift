@@ -124,14 +124,24 @@ public struct GameRecordStore: Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = url(for: record)
         var record = record
-        if let existing = (try? Data(contentsOf: url)).flatMap({ try? Self.decoder.decode(GameRecord.self, from: $0) }) {
+        func keepBookmarks(of file: URL) -> Bool {
+            guard let existing = (try? Data(contentsOf: file)).flatMap({ try? Self.decoder.decode(GameRecord.self, from: $0) })
+            else { return false }
             let known = Set(record.bookmarks.map(\.id))
             let kept = existing.bookmarks.filter { !known.contains($0.id) }
             if !kept.isEmpty {
                 record.bookmarks = (kept + record.bookmarks).sorted { $0.createdAt < $1.createdAt }
             }
+            return true
         }
+        _ = keepBookmarks(of: url)
+        // Saved before its seed was known: the unseeded file's bookmarks move here, and it goes.
+        var unseeded = record
+        unseeded.summary.gameSeed = nil
+        let fallback = self.url(for: unseeded)
+        let migrated = record.gameSeed != nil && fallback != url && keepBookmarks(of: fallback)
         try Self.encoder.encode(record).write(to: url, options: .atomic)
+        if migrated { try? FileManager.default.removeItem(at: fallback) }
     }
 
     /// Adds a bookmark to its game's saved record, or replaces the one with its ID.

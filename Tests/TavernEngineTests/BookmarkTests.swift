@@ -98,6 +98,28 @@ struct BookmarkTests {
 
     // MARK: - Stored in the game's record
 
+    @Test("A record saved before its seed was known moves into the seeded file, bookmarks and all")
+    func unseededMigrates() throws {
+        let directory = Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = GameRecordStore(directory: directory)
+        let (url, session) = try Self.twoGames().write()
+        var live = try LiveRead(url: url, session: session, caughtUpAt: 80)
+        live.follow(through: live.lines.count)
+        let bookmark = try live.bookmark(note: "before the seed")
+        let added = live.engine.addBookmark(bookmark)
+        #expect(added)
+        var seeded = try #require(live.engine.takeUnsavedRecords().first { $0.gameSeed == 42 })
+        var unseeded = seeded
+        unseeded.summary.gameSeed = nil
+        try store.save(unseeded)
+        seeded.bookmarks = []
+        try store.save(seeded)
+        #expect(store.load(seed: 42)?.bookmarks == [bookmark])
+        #expect(!FileManager.default.fileExists(atPath: store.url(for: unseeded).path(percentEncoded: false)))
+        #expect(store.allBookmarks().map(\.bookmark.id) == [bookmark.id], "once, not twice")
+    }
+
     @Test("A bookmark is saved in its game's record and survives the log being read again")
     func storedInRecord() throws {
         let directory = Self.temporaryDirectory()

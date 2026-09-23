@@ -75,8 +75,8 @@ struct AdvisorLayoutTests {
         // The notes fit their lines, at the panel's width less its padding.
         let noteWidth = l.advisorPanel.width - 2 * m.padding.width * s
         for note in [
-            "Their board is from turn 12 · scored vs turn 10 opponent", "Next opponent unseen · scored vs turn 10 opponent",
-            "Nothing clearly improves your odds", "Their board is from turn 12",
+            "Nothing clearly improves your odds · Scored vs turn 10 opponent (theirs is from turn 12)",
+            "Too few simulations yet · Scored vs turn 10 opponent (next one unseen)", "Their board is from turn 12",
         ] {
             let width = HUDFitTests.text(note, m.reasonFontSize * s, .regular)
             #expect(width <= CGFloat(m.noteLines) * noteWidth * 0.9, "\"\(note)\" is \(width) pt; \(m.noteLines) lines of \(noteWidth)")

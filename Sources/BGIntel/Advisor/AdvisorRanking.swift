@@ -576,11 +576,7 @@ extension Advisor {
             status = .noStrongRecommendation
             note = "Options are close"
         } else if let top = suggestions.first, top.confidence != .low {
-            if let seen = request.replacedSeenTurn {
-                note = "Their board is from turn \(seen) · scored vs \(request.opponentLabel)"
-            } else if request.standIn != nil {
-                note = "Next opponent unseen · scored vs \(request.opponentLabel)"
-            } else if capped, let seen = request.preview.opponentSeenTurn {
+            if capped, request.standIn == nil, let seen = request.preview.opponentSeenTurn {
                 note = "Their board is from turn \(seen)"
             }
         } else {
@@ -592,6 +588,12 @@ extension Advisor {
             } else {
                 note = "No option stands out"
             }
+        }
+        // Against a stand-in, every note says so, whatever the status.
+        if request.standIn != nil {
+            let why = request.replacedSeenTurn.map { "theirs is from turn \($0)" } ?? "next one unseen"
+            let caveat = "Scored vs \(request.opponentLabel) (\(why))"
+            note = [note, caveat].compactMap { $0 }.joined(separator: " · ")
         }
         return Advice(
             status: status, note: note, baseline: AdvisorOdds(base), suggestions: suggestions, scored: scoredCount,

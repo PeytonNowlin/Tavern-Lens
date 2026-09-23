@@ -24,12 +24,12 @@ public struct AdvisorMetrics: Hashable, Sendable {
     public var headerHeight: CGFloat = 34
     /// Lines a reason may wrap to before it's cut.
     public var reasonLines = 2
-    /// Lines the note under the list may wrap to.
-    public var noteLines = 2
+    /// Lines the note under the list may wrap to (a status and the stand-in caveat).
+    public var noteLines = 3
     /// The whole panel when expanded, right-aligned with the HUD but wider (it reaches left into
     /// the free space beside the board, clear of the shop and the minions); the header, `rows`
     /// rows and a note line must fit (checked in the layout tests).
-    public var panelSize = CGSize(width: 250, height: 250)
+    public var panelSize = CGSize(width: 250, height: 262)
 
     // In-place highlights, in units of `h` (they sit on Hearthstone's cards, so they scale with the board).
     /// The ring's stroke, drawn inside the target (inset so a build highlight's ring shows around it).

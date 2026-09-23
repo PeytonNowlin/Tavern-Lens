@@ -73,7 +73,7 @@ struct AdvisorBlendTests {
         let top = try #require(advice.suggestions.first)
         #expect(top.reason == "+20% win vs last opponent")
         #expect(top.confidence == .medium, "a stand-in's board is a guess: no more than medium")
-        #expect(advice.note == "Next opponent unseen · scored vs last opponent")
+        #expect(advice.note == "Scored vs last opponent (next one unseen)")
 
         request.standIn?.seenTurn = 8
         #expect(request.opponentLabel == "turn 8 opponent")
@@ -90,7 +90,7 @@ struct AdvisorBlendTests {
         #expect(Advisor.lobbyOpponents(for: request).map(\.playerID) == [7])
 
         let advice = try await Self.run(request, AdvisorSyntheticTests.stub(request))
-        #expect(advice.note == "Their board is from turn 5 · scored vs last opponent")
+        #expect(advice.note == "Scored vs last opponent (theirs is from turn 5)")
         #expect(advice.suggestions.first?.reason == "+20% win vs last opponent")
     }
 
