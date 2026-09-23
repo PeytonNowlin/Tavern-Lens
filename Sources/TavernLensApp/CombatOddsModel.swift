@@ -15,6 +15,18 @@ final class CombatOddsModel {
     private(set) var current: CombatOddsView?
     /// Why the simulator couldn't start, if it couldn't.
     private(set) var unavailableReason: String?
+    /// The recruit-phase preview: the board now against the next opponent's last-seen board.
+    private(set) var preview: OddsPreviewView?
+    /// Runs the preview on the same simulator (debounced, latest board only). The advisor can
+    /// score hypothetical boards with its `score(_:budget:)`.
+    @ObservationIgnored private(set) lazy var previewRunner: OddsPreviewRunner = {
+        let runner = OddsPreviewRunner(simulator: { [weak self] in
+            guard let task = await self?.simulator else { throw CancellationError() }
+            return try await task.value
+        })
+        runner.onChange = { [weak self] view in self?.preview = view }
+        return runner
+    }()
 
     @ObservationIgnored private var simulator: Task<CombatSimulator, any Error>?
     @ObservationIgnored private var running: Task<Void, Never>?
@@ -41,6 +53,8 @@ final class CombatOddsModel {
     func start(_ request: CombatSimulationRequest) {
         guard current?.requestID != request.id else { return }
         warmUp()
+        // The combat's odds come first: the preview shares the simulator's one thread.
+        previewRunner.cancel()
         running?.cancel()
         current = CombatOddsView(request: request)
         let id = request.id
@@ -63,6 +77,12 @@ final class CombatOddsModel {
                 self?.fail(id, error)
             }
         }
+    }
+
+    /// The recruit-phase preview's latest input (nil outside recruit).
+    func preview(_ request: OddsPreviewRequest?) {
+        if request != nil { warmUp() }
+        previewRunner.update(request)
     }
 
     private func update(_ id: String, odds: CombatOdds) {

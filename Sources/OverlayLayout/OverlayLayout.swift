@@ -160,12 +160,20 @@ public struct OverlayLayout: Hashable, Sendable {
         return CGRect(x: centreX - size.width / 2, y: constants.hudInset * s, width: size.width, height: size.height)
     }
 
-    /// The next opponent's compact board preview: under the HUD, in the right margin.
+    /// The next opponent's compact board preview: under the HUD, in the right margin, with the
+    /// live odds section (`nextOpponentOdds`) at its foot.
     public var nextOpponentPreview: CGRect {
         let s = panelScale
         let hud = self.hud
-        return CGRect(x: hud.minX, y: hud.maxY + constants.panelGap * s,
-                      width: hud.width, height: constants.nextOpponentPreviewHeight * s)
+        return CGRect(x: hud.minX, y: hud.maxY + constants.panelGap * s, width: hud.width,
+                      height: (constants.nextOpponentPreviewHeight + constants.oddsPreview.height) * s)
+    }
+
+    /// The live odds section: the bottom of the next opponent preview.
+    public var nextOpponentOdds: CGRect {
+        let preview = nextOpponentPreview
+        let height = constants.oddsPreview.height * panelScale
+        return CGRect(x: preview.minX, y: preview.maxY - height, width: preview.width, height: height)
     }
 
     /// The lobby's tribes: a small panel in the right margin, under the next opponent

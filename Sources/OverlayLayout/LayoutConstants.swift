@@ -116,6 +116,8 @@ public struct LayoutConstants: Hashable, Sendable {
     public var opponentPanelSize: CGSize
     /// The next opponent's board preview, under the HUD (in reference points; its width is the HUD's).
     public var nextOpponentPreviewHeight: CGFloat
+    /// The live odds section under the preview's board list; the preview grows by its height.
+    public var oddsPreview = OddsPreviewMetrics()
     /// The combat odds panel, under the HUD while combat runs (in reference points; its width is the HUD's).
     /// Its content (`combatOddsMetrics`) must fit it (checked in the layout tests).
     public var combatOddsPanelHeight: CGFloat = 104
