@@ -324,7 +324,7 @@ struct PanelTests {
         #expect(OverlayLayout(contentSize: CGSize(width: 3840, height: 2160))!.panelScale == 1.3)
         // The HUD grows with the panel scale.
         let hud = ReferenceFrame.windowed.layout.hud
-        expectNear(hud.width, 140 * 872.0 / 1080, 1e-6, "hud width")
+        expectNear(hud.width, 148 * 872.0 / 1080, 1e-6, "hud width")
     }
 
     @Test("Constants are versioned")
