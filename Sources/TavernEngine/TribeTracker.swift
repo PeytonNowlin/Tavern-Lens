@@ -69,6 +69,12 @@ struct TribeTracker: Sendable {
     mutating func observe(_ event: PowerEvent) {
         guard gameIndex != nil else { return }
         collector.observe(event)
+        // Discover options (Bob's Dark Gift, triple rewards, …) come from the lobby's pool.
+        if case .entityChoices(let choice) = event, choice.choiceType == "GENERAL" {
+            for option in choice.options where pool?.minion(option.cardID) != nil {
+                record(.poolMinion(cardID: option.cardID, seen: .discover))
+            }
+        }
     }
 
     mutating func taskListEnded(_ store: EntityStore, at position: LogPosition) {

@@ -142,6 +142,8 @@ final class OverlayController {
                 if game.phase == .recruit, let next = game.nextOpponent, !next.isLocal { panels.append("nextOpponentPreview") }
                 if model.hoveredOpponent != nil { panels.append("opponentPanel") }
             }
+            if model.heroPick != nil { panels.append("heroPickPlates") }
+            if model.heroPick != nil, model.hoveredHeroPlate != nil { panels.append("heroPickChart") }
         }
         return BookmarkOverlay(
             visible: isShown, hiddenByUser: isHiddenByUser, showsLayoutGuides: showsLayoutGuides,
@@ -226,6 +228,7 @@ final class OverlayController {
         panel.ignoresMouseEvents = true
         isShown = false
         if model.hoveredSlot != nil { model.hoveredSlot = nil }
+        if model.hoveredHeroPlate != nil { model.hoveredHeroPlate = nil }
     }
 
     private func setPolling(_ on: Bool) {
@@ -257,5 +260,7 @@ final class OverlayController {
         }
         let hovered = model.leaderboardSlot(at: point)
         if model.hoveredSlot != hovered { model.hoveredSlot = hovered }
+        let plate = model.heroPickPlate(at: point)
+        if model.hoveredHeroPlate != plate { model.hoveredHeroPlate = plate }
     }
 }

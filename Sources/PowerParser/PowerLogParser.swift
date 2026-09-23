@@ -26,6 +26,9 @@ public struct ParseDiagnostics: Hashable, Sendable, Codable {
 /// Header events are emitted once the header closes, so they carry all their tags.
 public struct PowerLogParser: Sendable {
     public private(set) var diagnostics = ParseDiagnostics()
+    /// The number of the task list that ended last (`EndCurrentTaskList() - m_currentTaskList=N`),
+    /// which a choice's `TaskList=` refers to.
+    public private(set) var lastTaskListEnded: Int?
 
     private enum Header: Sendable {
         case gameEntity(id: Int)
@@ -37,6 +40,14 @@ public struct PowerLogParser: Sendable {
 
     private var header: Header?
     private var headerTags: [TagAssignment] = []
+
+    /// A multi-line choice block being read: its header, then `Source=` and `Entities[n]=` lines.
+    private enum PendingChoice: Sendable {
+        case choices(EntityChoice)
+        case chosen(id: Int, [ChoiceOption])
+    }
+
+    private var pendingChoice: PendingChoice?
 
     public init() {}
 
@@ -52,6 +63,7 @@ public struct PowerLogParser: Sendable {
     }
 
     public mutating func feed(_ line: LogLine, emit: (PowerEvent) -> Void) {
+        if pendingChoice != nil, !continuesChoice(line) { flushChoice(emit: emit) }
         switch line.method {
         case "PowerTaskList.DebugPrintPower":
             feedPower(line.payload, emit: emit)
@@ -59,9 +71,17 @@ public struct PowerLogParser: Sendable {
             if let field = Self.metadata(line.payload) { emit(.gameMetadata(field)) }
         case "PowerProcessor.EndCurrentTaskList":
             flushHeader(emit: emit)
+            if let number = Self.intField(line.payload.trimmingSpaces(), "m_currentTaskList=") { lastTaskListEnded = number }
             emit(.taskListEnd)
         case "GameState.DebugPrintPower":
-            if line.payload.trimmingSpaces() == "CREATE_GAME" { emit(.newGameAnnounced) }
+            if line.payload.trimmingSpaces() == "CREATE_GAME" {
+                lastTaskListEnded = nil
+                emit(.newGameAnnounced)
+            }
+        case Self.choicesMethod:
+            feedChoices(line.payload)
+        case Self.chosenMethod:
+            feedChosen(line.payload)
         default:
             break
         }
@@ -69,7 +89,97 @@ public struct PowerLogParser: Sendable {
 
     /// Call at end of input so a trailing header is not lost.
     public mutating func finish(emit: (PowerEvent) -> Void) {
+        flushChoice(emit: emit)
         flushHeader(emit: emit)
+    }
+
+    // MARK: - Choices
+
+    private static let choicesMethod: Substring = "GameState.DebugPrintEntityChoices"
+    private static let chosenMethod: Substring = "GameState.DebugPrintEntitiesChosen"
+
+    /// A `Source=` or `Entities[n]=` line of the choice block being read.
+    private func continuesChoice(_ line: LogLine) -> Bool {
+        let method: Substring = switch pendingChoice {
+        case .choices?: Self.choicesMethod
+        case .chosen?: Self.chosenMethod
+        case nil: ""
+        }
+        guard line.method == method else { return false }
+        let s = line.payload.trimmingSpaces()
+        return s.hasASCIIPrefix("Source=") || s.hasASCIIPrefix("Entities[")
+    }
+
+    /// `id=1 Player=<name> TaskList=7 ChoiceType=MULLIGAN CountMin=1 CountMax=1`, then its lines.
+    private mutating func feedChoices(_ payload: Substring) {
+        let s = payload.trimmingSpaces()
+        if s.hasASCIIPrefix("Source="), case .choices(var choice)? = pendingChoice {
+            let text = s.dropFirst("Source=".count)
+            choice.source = entityRef(text)
+            choice.sourceCardID = Self.bracketCardID(text.trimmingSpaces())
+            pendingChoice = .choices(choice)
+        } else if s.hasASCIIPrefix("Entities["), case .choices(var choice)? = pendingChoice {
+            if let option = choiceOption(s) { choice.options.append(option) }
+            pendingChoice = .choices(choice)
+        } else if s.hasASCIIPrefix("id="), let id = Self.intField(s, "id="),
+                  let type = Self.field(s, " ChoiceType=") {
+            pendingChoice = .choices(EntityChoice(
+                id: id, choiceType: String(type), taskList: Self.intField(s, " TaskList=")
+            ))
+        } else {
+            malformed()
+        }
+    }
+
+    /// `id=1 Player=<name> EntitiesCount=1`, then its `Entities[n]=` lines.
+    private mutating func feedChosen(_ payload: Substring) {
+        let s = payload.trimmingSpaces()
+        if s.hasASCIIPrefix("Entities["), case .chosen(let id, var options)? = pendingChoice {
+            if let option = choiceOption(s) { options.append(option) }
+            pendingChoice = .chosen(id: id, options)
+        } else if s.hasASCIIPrefix("id="), let id = Self.intField(s, "id=") {
+            pendingChoice = .chosen(id: id, [])
+        } else {
+            malformed()
+        }
+    }
+
+    private mutating func flushChoice(emit: (PowerEvent) -> Void) {
+        guard let pending = pendingChoice else { return }
+        pendingChoice = nil
+        switch pending {
+        case .choices(let choice): emit(.entityChoices(choice))
+        case .chosen(let id, let options): emit(.entitiesChosen(choiceID: id, chosen: options))
+        }
+    }
+
+    /// `Entities[0]=[entityName=… id=105 zone=HAND zonePos=1 cardId=BG35_HERO_001 player=6]`.
+    private mutating func choiceOption(_ s: Substring) -> ChoiceOption? {
+        guard let equals = s.firstRange(of: "]=") else {
+            malformed()
+            return nil
+        }
+        let text = s[equals.upperBound...].trimmingSpaces()
+        guard case .id(let id)? = entityRef(text) else {
+            malformed()
+            return nil
+        }
+        return ChoiceOption(entityID: id, cardID: Self.bracketCardID(text) ?? "")
+    }
+
+    /// The integer after `key` (up to the next space).
+    private static func intField(_ s: Substring, _ key: StaticString) -> Int? {
+        field(s, key).flatMap { Int($0) }
+    }
+
+    /// The value after `key` up to the next space: `key` starts `s` or occurs in it.
+    private static func field(_ s: Substring, _ key: StaticString) -> Substring? {
+        let range: Range<Substring.Index>? = s.hasASCIIPrefix(key)
+            ? s.startIndex..<s.utf8.index(s.startIndex, offsetBy: key.utf8CodeUnitCount)
+            : s.firstRange(of: key)
+        guard let range else { return nil }
+        let value = s[range.upperBound...].prefix { $0 != " " }
+        return value.isEmpty ? nil : value
     }
 
     // MARK: - Power payloads
@@ -204,6 +314,17 @@ public struct PowerLogParser: Sendable {
               let idRange = text[..<zoneRange.lowerBound].lastRange(of: " id=")
         else { return nil }
         return Int(text[idRange.upperBound..<zoneRange.lowerBound])
+    }
+
+    /// Reads `cardId` from a bracketed entity reference, working backwards from the tail;
+    /// nil when it isn't in bracket form or the card is hidden (empty).
+    static func bracketCardID(_ text: Substring) -> String? {
+        guard text.last == "]",
+              let playerRange = text.lastRange(of: " player="),
+              let cardRange = text[..<playerRange.lowerBound].lastRange(of: " cardId=")
+        else { return nil }
+        let card = text[cardRange.upperBound..<playerRange.lowerBound]
+        return card.isEmpty ? nil : String(card)
     }
 
     /// `<T> value=<V>` with anything after the value's first space ignored.

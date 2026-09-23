@@ -62,6 +62,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // The minion pool (card data + HSReplay + overrides) feeds the live tribe inference.
         PoolDataModel.shared.onPoolChanged = { [live] pool in live.pool = pool }
         PoolDataModel.shared.start()
+        // Firestone's hero stats (fetched at launch and every 6 h) feed the hero-pick plates.
+        HeroStatsModel.shared.onChanged = { [live] stats, cards in live.heroStats = (stats, cards) }
+        HeroStatsModel.shared.start()
         live.start()
         overlay.start()
         feedback.start()

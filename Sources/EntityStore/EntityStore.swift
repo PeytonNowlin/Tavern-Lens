@@ -187,7 +187,7 @@ public struct EntityStore: Sendable {
         case .hideEntity:
             // The entity went out of view; a real ZONE change always follows.
             break
-        case .blockStart, .blockEnd, .taskListEnd:
+        case .blockStart, .blockEnd, .taskListEnd, .entityChoices, .entitiesChosen:
             break
         }
     }

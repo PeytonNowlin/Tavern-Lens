@@ -32,6 +32,8 @@ final class OverlayModel {
     /// The leaderboard slot under the cursor, set by `OverlayController` from mouse moves.
     /// Hover never makes the panel take clicks: the opponent panels ignore the mouse.
     var hoveredSlot: Int?
+    /// The hero-pick plate under the cursor (its placement chart shows), set the same way.
+    var hoveredHeroPlate: Int?
 
     /// The game while Hearthstone shows its leaderboard: recruit and combat of a game in progress.
     var leaderboardGame: GameView? {
@@ -99,6 +101,10 @@ struct OverlayRootView: View {
                 }
                 if let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
+                }
+                if let pick = model.heroPick {
+                    HeroPickOverlays(pick: pick, layout: layout, hovered: model.hoveredHeroPlate, cards: CardDataModel.shared.cards)
+                        .allowsHitTesting(false)
                 }
             }
         }
@@ -238,6 +244,10 @@ struct LayoutGuides: View {
             stroke(layout.opponentPanel, .white, dash: true)
             stroke(layout.tribesPanel, .white, dash: true)
             stroke(layout.heroPickCapture, .purple)
+            for i in 0..<4 {
+                stroke(layout.heroPickPortrait(i, of: 4), .purple, dash: true)
+                stroke(layout.heroPickPlate(i, of: 4), .purple)
+            }
         }
         .allowsHitTesting(false)
     }
