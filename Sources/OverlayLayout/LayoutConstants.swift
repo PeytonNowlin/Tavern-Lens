@@ -126,6 +126,8 @@ public struct LayoutConstants: Hashable, Sendable {
     public var tribesPanel = TribesPanelMetrics()
     /// The hero-pick banner the screen reader captures and checks alignment against.
     public var heroPickBanner = HeroPickBannerMetrics()
+    /// The shop highlights and the build tips panel (under the tribes panel, the HUD's width).
+    public var buildOverlay = BuildOverlayMetrics()
 }
 
 /// The status HUD's type and spacing, in reference points (multiplied by `panelScale`).

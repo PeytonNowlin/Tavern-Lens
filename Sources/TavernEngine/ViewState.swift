@@ -54,6 +54,8 @@ public struct GameView: Codable, Hashable, Sendable {
     public var tribes: TribesView?
     /// The offered heroes with their stats, during the hero pick; nil without hero stats.
     public var heroPick: HeroPickView?
+    /// The builds the player is leaning into and the shop cards that fit them; nil without build data.
+    public var builds: BuildsView?
 
     public init(
         gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int,
@@ -130,6 +132,8 @@ public struct LastSeenBoardView: Codable, Hashable, Sendable {
     public var cards: [CardView]
     /// Their hero powers, trinkets, Deity and counters at that combat.
     public var mechanics: MechanicsView?
+    /// The build the board most looks like; nil without build data or when none fits.
+    public var likelyBuild: LikelyBuildView?
 
     public init(bgTurn: Int, heroCardID: String?, cards: [CardView], mechanics: MechanicsView? = nil) {
         self.bgTurn = bgTurn

@@ -40,6 +40,11 @@ final class LiveTrackingModel {
         didSet { pipeline?.useHeroStats(heroStats.stats, cards: heroStats.cards) }
     }
 
+    /// The build catalog the live pipeline detects builds with.
+    @ObservationIgnored var builds: BuildCatalog? {
+        didSet { pipeline?.useBuilds(builds) }
+    }
+
     /// Called on the main actor when a game ends (log housekeeping runs then).
     @ObservationIgnored var onGameEnded: (@MainActor () -> Void)?
 
@@ -156,6 +161,7 @@ final class LiveTrackingModel {
         self.pipeline = pipeline
         pipeline.usePool(pool)
         pipeline.useHeroStats(heroStats.stats, cards: heroStats.cards)
+        pipeline.useBuilds(builds)
         pipeline.start(logsDirectory: Self.locations(for: client).logsDirectory, launchDate: client.launchDate)
     }
 

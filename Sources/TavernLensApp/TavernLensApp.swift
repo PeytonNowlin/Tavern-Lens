@@ -69,6 +69,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Firestone's hero stats (fetched at launch and every 6 h) feed the hero-pick plates.
         HeroStatsModel.shared.onChanged = { [live] stats, cards in live.heroStats = (stats, cards) }
         HeroStatsModel.shared.start()
+        // Build data (Firestone comps + our override file, filtered by the pool) feeds build detection.
+        BuildDataModel.shared.onCatalogChanged = { [live] catalog in live.builds = catalog }
+        BuildDataModel.shared.start()
         live.start()
         overlay.start()
         feedback.start()

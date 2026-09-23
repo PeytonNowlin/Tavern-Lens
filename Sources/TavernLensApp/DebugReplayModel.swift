@@ -27,13 +27,17 @@ final class DebugReplayModel {
         savedReplays = ReplayStore.standard.all().reversed()
     }
 
-    func replay(_ url: URL, cards: CardDB? = nil, pool: MinionPool? = PoolDataModel.shared.pool) {
+    func replay(
+        _ url: URL, cards: CardDB? = nil, pool: MinionPool? = PoolDataModel.shared.pool,
+        builds: BuildCatalog? = BuildDataModel.shared.catalog
+    ) {
         if let saved = ReplayFile(url: url) {
             run(url) { try TavernEngine.replay(saved, cards: cards, pool: pool) }
         } else {
             run(url) {
                 try TavernEngine.replay(
-                    fileAt: url, cards: cards, pool: pool, session: LogSession(directory: url.deletingLastPathComponent())
+                    fileAt: url, cards: cards, pool: pool, builds: builds,
+                    session: LogSession(directory: url.deletingLastPathComponent())
                 )
             }
         }

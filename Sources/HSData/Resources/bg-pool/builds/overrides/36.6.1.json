@@ -1,0 +1,54 @@
+{
+  "patch": "36.6.1",
+  "valid_from": "2026-09-22T17:18:14Z",
+  "notes": [
+    "Builds for tribes Firestone has no archetype for yet. Each is used only while no Firestone build is for its first tribe ('use': 'when_sources_lack_tribe'), so these retire by themselves once Firestone publishes aberration_* archetypes.",
+    "Seeded from docs/research/aberrations-2026-09.md section 8 (36.6.1, day 1). These are hypotheses from card text, 69 Firestone final boards and community posts, not performance-backed comps.",
+    "Card IDs are HearthstoneJSON build 251952 base IDs. Cards the live pool no longer has are taken out when the catalog is composed; a build whose core card is gone is left out.",
+    "'disabled' lists Firestone archetype IDs to leave out regardless of the pool."
+  ],
+  "builds": [
+    {
+      "id": "aberration_tea_set_deity",
+      "name": "Aberration Tea Set",
+      "tribes": ["ABERRATION"],
+      "evidence": ["data-sample", "community"],
+      "core": ["BG36_640", "BG35_883", "BG36_104", "BG36_300"],
+      "addons": ["BG_LOE_077", "BG32_821", "BG36_102", "BG36_109", "BG36_111", "BG36_113", "BG26_ICC_901"],
+      "when_to_commit": "Gatekeeper Amalgam + Balinda Stonehearth, plus 2 or more cheap Aberrations to reach 3 deaths for the Deity.",
+      "tip": "Neutral Tea Set with Aberration spell buffs: cast tavern spells on the Amalgam with Balinda, buff spells with Dark Puppeteer or N'raqi Frostcaller. The Amalgam counts as an Aberration for Deity progress; with Y'Shaarj it comes back at full stats if it dies first."
+    },
+    {
+      "id": "aberration_discard_deity",
+      "name": "Aberration Discard",
+      "tribes": ["ABERRATION"],
+      "evidence": ["card-text", "video", "community"],
+      "core": ["BG36_099", "BG36_106", "BG36_097", "BGFYM_005"],
+      "addons": ["BG36_311", "BG36_312", "BG36_112", "BG36_115", "BG36_103", "BG36_114", "BG36_320", "BG36_301t", "BG36_371", "BG36_303", "BG36_MagicItem_430", "BG36_MagicItem_406", "BG36_MagicItem_418", "BG36_MagicItem_403"],
+      "when_to_commit": "A discard activator (Brain Rotter, Abyssal Envoy, Mindbending Recruiter) and a discard payoff (Cutthroat K'Thir, Ghur'sha, Aph'lass).",
+      "tip": "Discard Sludge Corrosion, Energizing Chamber or Corrupted Coin rather than casting them: discarded, they cast twice. Joyous, Zoatroid and Underrot Spawn carry the early turns and Deity progress; K'Thir, Ghur'sha and Aph'lass scale late."
+    },
+    {
+      "id": "aberration_spell_deity",
+      "name": "Aberration Tavern Spells",
+      "tribes": ["ABERRATION"],
+      "evidence": ["card-text", "community"],
+      "core": ["BG36_108", "BG36_318", "BG36_111", "BG36_109"],
+      "addons": ["BG36_101", "BG36_100", "BG36_104", "BG36_300", "BG25_354", "BG36_MagicItem_404", "BG36_MagicItem_852", "BG36_MagicItem_402", "BG36_MagicItem_600"],
+      "when_to_commit": "Vicious Mindslasher or Faceless Converter with a steady source of tavern spells.",
+      "tip": "Every spell you cast feeds Mindslasher, Sha of Fear and the Deity; Faceless Converter grows with every spell cast this game. Titus Rivendare doubles Converter's Deathrattle."
+    },
+    {
+      "id": "aberration_cthun_poet",
+      "name": "C'Thun Poet Amalgam",
+      "tribes": ["ABERRATION", "DRAGON"],
+      "evidence": ["community"],
+      "requires_deity": "BGFYM_000",
+      "core": ["BG29_813", "BG36_640", "BG35_883", "BG36_MagicItem_417"],
+      "addons": ["BG36_300", "BG36_104", "BG21_015"],
+      "when_to_commit": "C'Thun lobby, a golden Persistent Poet next to Gatekeeper Amalgam, and 3 Aberrations besides the Amalgam.",
+      "tip": "When the 3 Aberrations die C'Thun awakens and splits its stats into the Amalgam, and Poet keeps them. Balinda triple-casts spells on the Amalgam; Makeshift Master helps. Single community report: treat as experimental."
+    }
+  ],
+  "disabled": []
+}

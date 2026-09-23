@@ -315,6 +315,32 @@ struct PanelTests {
         #expect(hud.maxY < l.rect(.timerPlate).minY)
     }
 
+    @Test("Our right-margin panels and the hover panel never cover each other", arguments: ReferenceFrame.all)
+    func panelsDontOverlap(frame: ReferenceFrame) {
+        let l = frame.layout
+        let bounds = CGRect(origin: .zero, size: l.size)
+        let panels: [(String, CGRect)] = [
+            ("hud", l.hud), ("next opponent preview", l.nextOpponentPreview), ("combat odds", l.combatOddsPanel),
+            ("tribes", l.tribesPanel), ("misaligned notice", l.alignmentWarning), ("build tips", l.buildTipsPanel),
+            ("opponent hover panel", l.opponentPanel),
+        ]
+        // The combat odds take the preview's place: the preview shows in recruit only, the odds in combat only.
+        let exclusive: Set<[String]> = [["next opponent preview", "combat odds"]]
+        for (name, rect) in panels {
+            #expect(bounds.contains(rect), "\(name) \(rect) outside \(bounds)")
+        }
+        for i in panels.indices {
+            for j in panels.indices where j > i {
+                let (a, ra) = panels[i], (b, rb) = panels[j]
+                if exclusive.contains([a, b]) { continue }
+                #expect(!ra.intersects(rb), "\(a) \(ra) overlaps \(b) \(rb)")
+            }
+        }
+        // Top to bottom in the right margin, in this order.
+        #expect(l.combatOddsPanel.maxY < l.tribesPanel.minY)
+        #expect(l.tribesPanel.maxY < l.alignmentWarning.minY && l.alignmentWarning.maxY < l.buildTipsPanel.minY)
+    }
+
     @Test("Panel scale follows height, clamped to 0.8…1.3")
     func panelScale() {
         #expect(ReferenceFrame.fullHD.layout.panelScale == 1)

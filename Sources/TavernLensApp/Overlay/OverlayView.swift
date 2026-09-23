@@ -113,6 +113,11 @@ struct OverlayRootView: View {
                         .offset(x: layout.combatOddsPanel.minX, y: layout.combatOddsPanel.minY)
                         .allowsHitTesting(false)
                 }
+                if let game = model.game, model.view.status == .inGame, game.phase == .recruit, let builds = game.builds {
+                    BuildOverlays(
+                        builds: builds, shopCount: game.shop.cards.count, layout: layout, cards: CardDataModel.shared.cards
+                    )
+                }
                 if let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
                 }
@@ -263,6 +268,7 @@ struct LayoutGuides: View {
                 stroke(layout.heroPickPortrait(i, of: 4), .purple, dash: true)
                 stroke(layout.heroPickPlate(i, of: 4), .purple)
             }
+            stroke(layout.buildTipsPanel, .white, dash: true)
         }
         .allowsHitTesting(false)
     }

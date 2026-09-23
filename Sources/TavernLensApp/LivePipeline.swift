@@ -40,6 +40,8 @@ final class LivePipeline: @unchecked Sendable {
     private var pool: MinionPool?
     /// Firestone's hero stats and the card data for the hero pick; each new engine starts with them.
     private var heroStats: (stats: HeroStatsSet?, cards: CardDB?) = (nil, nil)
+    /// The build catalog; each new session's engine starts with it.
+    private var builds: BuildCatalog?
     private var lastPublished: LiveUpdate?
     private var lastPublishTime: ContinuousClock.Instant?
     private var pendingFlush = false
@@ -91,7 +93,7 @@ final class LivePipeline: @unchecked Sendable {
             // A game the previous session left unfinished may be resumed in this one.
             let carried = engine.inProgressRecord ?? records?.latestInProgress()
             session = newSession
-            engine = TavernEngine(pool: pool, session: newSession)
+            engine = TavernEngine(pool: pool, builds: builds, session: newSession)
             engine.useHeroStats(heroStats.stats, cards: heroStats.cards)
             combatRequestsSeen = 0
             if let carried { engine.resume(carried) }
@@ -138,6 +140,15 @@ final class LivePipeline: @unchecked Sendable {
         defer { lock.unlock() }
         heroStats = (stats, cards)
         engine.useHeroStats(stats, cards: cards)
+        publishIfDue()
+    }
+
+    /// Uses a new build catalog from now on, including for the game in progress.
+    func useBuilds(_ catalog: BuildCatalog?) {
+        lock.lock()
+        defer { lock.unlock() }
+        builds = catalog
+        engine.useBuilds(catalog)
         publishIfDue()
     }
 

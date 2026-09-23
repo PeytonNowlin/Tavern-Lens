@@ -93,6 +93,11 @@ struct OpponentPanel: View {
                             .font(.system(size: 11 * scale))
                             .foregroundStyle(.tertiary)
                     }
+                    if let likely = board.likelyBuild {
+                        Text("Likely build: \(likely.name)")
+                            .font(.system(size: 11 * scale, weight: .semibold))
+                            .foregroundStyle(Palette.build)
+                    }
                 }
                 if board.cards.isEmpty {
                     Placeholder(text: "Empty board", scale: scale)
@@ -189,6 +194,11 @@ struct NextOpponentPreview: View {
                 Text(OpponentText.seen(board, currentTurn: currentTurn))
                     .font(.system(size: 9.5 * scale))
                     .foregroundStyle(.secondary)
+                if let likely = board.likelyBuild {
+                    Text(likely.name)
+                        .font(.system(size: 9.5 * scale, weight: .semibold))
+                        .foregroundStyle(Palette.build)
+                }
                 if board.cards.isEmpty {
                     Text("Empty board").font(.system(size: 10.5 * scale)).foregroundStyle(.secondary)
                 }
@@ -227,6 +237,7 @@ private enum Palette {
     static let golden = Color(red: 1.0, green: 0.8, blue: 0.3)
     static let attack = Color(red: 1.0, green: 0.85, blue: 0.45)
     static let health = Color(red: 1.0, green: 0.45, blue: 0.42)
+    static let build = Color(red: 0.35, green: 0.85, blue: 0.85)
 }
 
 private struct StatLabel: View {

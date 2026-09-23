@@ -94,6 +94,8 @@ public struct TavernEngine: Sendable {
     /// The local player's hero-pick offer, and the stats it's joined with (none without stats).
     private var heroPick = BGHeroPickTracker()
     private var heroPickData: HeroPickData?
+    /// Build detection, shop highlights and opponents' likely builds (nothing without a catalog).
+    private var builds: BuildTracker
 
     private struct RecordInfo: Sendable {
         var sessions: [String] = []
@@ -107,17 +109,19 @@ public struct TavernEngine: Sendable {
     /// - Parameters:
     ///   - cards: card data for resolving card IDs to names; nil leaves names out.
     ///   - pool: the live minion pool, for inferring the lobby's tribes; nil leaves tribes out.
+    ///   - builds: the build catalog, for detecting builds and highlighting the shop; nil leaves builds out.
     ///   - session: the session folder the Power.log is from. It dates the game records
     ///     (the logs only carry times of day); nil leaves records undated.
     ///   - simulatorTribes: the lobby's tribes for the combat simulator. nil uses the tribe
     ///     inference's answer when there's a pool, else the tribes of the single-tribe pool
     ///     minions seen so far (`SeenPoolMinionTribes`, which needs `cards`).
     public init(
-        cards: CardDB? = nil, pool: MinionPool? = nil, session: LogSession? = nil, timeZone: TimeZone = .current,
-        simulatorTribes: (any LobbyTribesProvider)? = nil
+        cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil, session: LogSession? = nil,
+        timeZone: TimeZone = .current, simulatorTribes: (any LobbyTribesProvider)? = nil
     ) {
         self.cards = cards
         tribes = TribeTracker(pool: pool)
+        self.builds = BuildTracker(catalog: builds)
         self.simulatorTribes = simulatorTribes
         seenPoolTribes = SeenPoolMinionTribes(cards: cards)
         sessionName = session?.name
@@ -164,6 +168,13 @@ public struct TavernEngine: Sendable {
     /// engine has no card data of its own.
     public mutating func useHeroStats(_ stats: HeroStatsSet?, cards: CardDB? = nil) {
         heroPickData = stats.map { HeroPickData(stats: $0, cards: cards) }
+        if !isCatchingUp, timeline.last != nil { publish() }
+    }
+
+    /// Sets (or replaces) the build catalog, such as when the build data finishes loading.
+    /// Detection starts over with it.
+    public mutating func useBuilds(_ catalog: BuildCatalog?) {
+        builds.use(catalog)
         if !isCatchingUp, timeline.last != nil { publish() }
     }
 
@@ -391,6 +402,10 @@ public struct TavernEngine: Sendable {
                 now: clock?.currentDate
             )
         }
+        if var game = next.game {
+            builds.apply(to: &game, gameIndex: history.currentIndex)
+            next.game = game
+        }
         guard next != state else { return }
         state = next
         timeline.append(TimelineEntry(position: LogPosition(line: linesRead, time: String(lastTimestamp)), state: next))
@@ -408,8 +423,10 @@ public struct TavernEngine: Sendable {
 
 extension TavernEngine {
     /// Replays lines from memory.
-    public static func replay(lines: some Sequence<String>, cards: CardDB? = nil, pool: MinionPool? = nil) -> ReplayResult {
-        var engine = TavernEngine(cards: cards, pool: pool)
+    public static func replay(
+        lines: some Sequence<String>, cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil
+    ) -> ReplayResult {
+        var engine = TavernEngine(cards: cards, pool: pool, builds: builds)
         for line in lines { engine.ingest(line) }
         engine.finish()
         return engine.replayResult
@@ -417,10 +434,10 @@ extension TavernEngine {
 
     /// Replays a recorded Power.log from disk. With `session`, the records are dated.
     public static func replay(
-        fileAt url: URL, cards: CardDB? = nil, pool: MinionPool? = nil, session: LogSession? = nil,
-        timeZone: TimeZone = .current
+        fileAt url: URL, cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil,
+        session: LogSession? = nil, timeZone: TimeZone = .current
     ) throws -> ReplayResult {
-        var engine = TavernEngine(cards: cards, pool: pool, session: session, timeZone: timeZone)
+        var engine = TavernEngine(cards: cards, pool: pool, builds: builds, session: session, timeZone: timeZone)
         try LogFileReader.forEachLine(in: url) { engine.ingest($0) }
         engine.finish()
         return engine.replayResult
