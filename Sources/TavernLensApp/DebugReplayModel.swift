@@ -3,7 +3,8 @@ import HSLog
 import Observation
 import TavernEngine
 
-/// Replays a chosen Power.log off the main thread and holds the result for the debug window.
+/// Replays a chosen Power.log, or a saved replay (`*.power.log.gz`), off the main
+/// thread and holds the result for the debug window.
 @MainActor
 @Observable
 final class DebugReplayModel {
@@ -19,7 +20,24 @@ final class DebugReplayModel {
         return "Debug replay: \(result.games.count) Battlegrounds game(s)"
     }
 
+    /// Saved replays, newest first, for the debug window's menu.
+    private(set) var savedReplays: [ReplayFile] = []
+
+    func refreshSavedReplays() {
+        savedReplays = ReplayStore.standard.all().reversed()
+    }
+
     func replay(_ url: URL, cards: CardDB? = nil) {
+        if let saved = ReplayFile(url: url) {
+            run(url) { try TavernEngine.replay(saved, cards: cards) }
+        } else {
+            run(url) {
+                try TavernEngine.replay(fileAt: url, cards: cards, session: LogSession(directory: url.deletingLastPathComponent()))
+            }
+        }
+    }
+
+    private func run(_ url: URL, _ work: @escaping @Sendable () throws -> ReplayResult) {
         fileURL = url
         result = nil
         errorMessage = nil
@@ -29,9 +47,7 @@ final class DebugReplayModel {
             let clock = ContinuousClock()
             let start = clock.now
             do {
-                let replayed = try await Task.detached(priority: .userInitiated) {
-                    try TavernEngine.replay(fileAt: url, cards: cards, session: LogSession(directory: url.deletingLastPathComponent()))
-                }.value
+                let replayed = try await Task.detached(priority: .userInitiated, operation: work).value
                 result = replayed
             } catch {
                 errorMessage = error.localizedDescription

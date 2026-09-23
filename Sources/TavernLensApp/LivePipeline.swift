@@ -22,12 +22,14 @@ struct LiveUpdate: Sendable {
 /// published once. A game still in progress carries over into the next session's
 /// engine (the client restarted mid-game), or comes from the saved records when the
 /// app itself restarted, so a reconnect keeps its history. Game records are saved as
-/// they reach checkpoints.
+/// they reach checkpoints, and `onGameEnded` is told once per game that ends (log
+/// housekeeping runs then).
 final class LivePipeline: @unchecked Sendable {
     static let minimumPublishInterval: Duration = .milliseconds(100)
 
     private let publish: @Sendable (LiveUpdate) -> Void
     private let records: GameRecordStore?
+    private let onGameEnded: @Sendable (GameRecord) -> Void
     private var follower: LogSessionFollower?
 
     // Guarded by `lock`: written on the follower's queue, and read by deferred flushes.
@@ -36,13 +38,20 @@ final class LivePipeline: @unchecked Sendable {
     private var lastPublished: LiveUpdate?
     private var lastPublishTime: ContinuousClock.Instant?
     private var pendingFlush = false
+    /// Seeds of games already reported to `onGameEnded`.
+    private var endedGames: Set<Int> = []
     private let clock = ContinuousClock()
     private let flushQueue = DispatchQueue(label: "TavernLens.LivePipeline.flush")
     private let lock = NSLock()
 
     /// - Parameter records: where game records are saved and resumed from; nil keeps them in memory.
-    init(records: GameRecordStore?, publish: @escaping @Sendable (LiveUpdate) -> Void) {
+    init(
+        records: GameRecordStore?,
+        onGameEnded: @escaping @Sendable (GameRecord) -> Void = { _ in },
+        publish: @escaping @Sendable (LiveUpdate) -> Void
+    ) {
         self.records = records
+        self.onGameEnded = onGameEnded
         self.publish = publish
     }
 
@@ -98,6 +107,9 @@ final class LivePipeline: @unchecked Sendable {
     private func saveRecords() {
         for record in engine.takeUnsavedRecords() {
             try? records?.save(record)
+            if record.outcome != .inProgress, let seed = record.gameSeed, endedGames.insert(seed).inserted {
+                onGameEnded(record)
+            }
         }
     }
 

@@ -35,15 +35,34 @@ struct DebugWindow: View {
                 Button("Open Log…", systemImage: "doc.badge.plus") { isImporting = true }
                     .disabled(model.isReplaying || cardData.isLoading)
             }
+            ToolbarItem {
+                Menu("Replays", systemImage: "clock.arrow.circlepath") {
+                    if model.savedReplays.isEmpty {
+                        Text("No saved replays")
+                    }
+                    ForEach(model.savedReplays, id: \.url) { replay in
+                        Button(Self.describe(replay)) {
+                            selection = nil
+                            model.replay(replay.url, cards: cardData.cards)
+                        }
+                    }
+                    Divider()
+                    Button("Refresh List") { model.refreshSavedReplays() }
+                }
+                .disabled(model.isReplaying || cardData.isLoading)
+            }
         }
-        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.log, .plainText, .data]) { outcome in
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.log, .plainText, .gzip, .data]) { outcome in
             guard case .success(let url) = outcome else { return }
             selection = nil
             let scoped = url.startAccessingSecurityScopedResource()
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             model.replay(url, cards: cardData.cards)
         }
-        .task { cardData.loadIfNeeded() }
+        .task {
+            cardData.loadIfNeeded()
+            model.refreshSavedReplays()
+        }
     }
 
     // MARK: - Header
@@ -89,6 +108,11 @@ struct DebugWindow: View {
                     .font(.callout.monospaced())
             }
         }
+    }
+
+    static func describe(_ replay: ReplayFile) -> String {
+        let started = replay.session()?.started.formatted(date: .abbreviated, time: .shortened) ?? replay.sessionName
+        return "\(started) · line \(replay.line)" + (replay.gameSeed.map { " · seed \($0)" } ?? "")
     }
 
     static func describe(_ game: BGGameRecord, number: Int, cards: CardDB?) -> String {

@@ -1,4 +1,5 @@
 import AppKit
+import HSLog
 import SwiftUI
 import TavernEngine
 
@@ -9,7 +10,10 @@ struct TavernLensApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarContent(live: appDelegate.live, overlay: appDelegate.overlay, debugReplay: debugReplay)
+            MenuBarContent(
+                live: appDelegate.live, overlay: appDelegate.overlay, debugReplay: debugReplay,
+                retention: appDelegate.retention
+            )
         } label: {
             MenuBarLabel(live: appDelegate.live)
         }
@@ -19,21 +23,31 @@ struct TavernLensApp: App {
         }
         .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: 980, height: 640)
+
+        Window("Tavern Lens Settings", id: WindowID.settings) {
+            SettingsWindow(model: appDelegate.retention, housekeeping: appDelegate.housekeeping)
+        }
+        .defaultLaunchBehavior(.suppressed)
+        .windowResizability(.contentSize)
     }
 }
 
 enum WindowID {
     static let debug = "debug"
+    static let settings = "settings"
 }
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let live: LiveTrackingModel
     let overlay: OverlayController
+    let retention = RetentionSettingsModel()
+    let housekeeping: HousekeepingModel
 
     override init() {
         live = LiveTrackingModel()
         overlay = OverlayController(live: live)
+        housekeeping = HousekeepingModel(settings: retention, live: live)
         super.init()
     }
 
@@ -43,6 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         live.start()
         overlay.start()
+        // Log retention: a pass now, and one after every game.
+        live.onGameEnded = { [housekeeping] in housekeeping.run() }
+        housekeeping.run()
     }
 }
 
@@ -67,6 +84,7 @@ struct MenuBarContent: View {
     let live: LiveTrackingModel
     let overlay: OverlayController
     let debugReplay: DebugReplayModel
+    let retention: RetentionSettingsModel
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -83,6 +101,10 @@ struct MenuBarContent: View {
         if let session = live.update.session {
             Text("Session \(session.name)")
         }
+        if let bytes = live.powerLogBytes,
+           let hint = PowerLogSizeHint.message(bytes: bytes, threshold: retention.settings.powerLogHintBytes) {
+            Text("⚠︎ \(hint)")
+        }
         Divider()
         OverlayMenuSection(overlay: overlay)
         Divider()
@@ -94,6 +116,11 @@ struct MenuBarContent: View {
             NSApp.activate()
         }
         .keyboardShortcut("d")
+        Button("Settings…") {
+            openWindow(id: WindowID.settings)
+            NSApp.activate()
+        }
+        .keyboardShortcut(",")
         Divider()
         Button("Quit Tavern Lens") {
             NSApp.terminate(nil)

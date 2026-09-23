@@ -61,7 +61,7 @@ public struct PowerLogEntryPoint: Hashable, Sendable {
         }
     }
 
-    private static func occurrences(of needle: [UInt8], in base: UnsafeRawPointer, count: Int) -> [Int] {
+    static func occurrences(of needle: [UInt8], in base: UnsafeRawPointer, count: Int) -> [Int] {
         var result: [Int] = []
         var offset = 0
         needle.withUnsafeBytes { pattern in
@@ -75,7 +75,7 @@ public struct PowerLogEntryPoint: Hashable, Sendable {
         return result
     }
 
-    private static func seed(in base: UnsafeRawPointer, from start: Int, to end: Int) -> Int? {
+    static func seed(in base: UnsafeRawPointer, from start: Int, to end: Int) -> Int? {
         guard end > start else { return nil }
         let hit = seedTag.withUnsafeBytes { pattern in
             memmem(base + start, end - start, pattern.baseAddress, pattern.count)
@@ -93,14 +93,14 @@ public struct PowerLogEntryPoint: Hashable, Sendable {
         return digits > 0 ? value : nil
     }
 
-    private static func startOfLine(containing offset: Int, in base: UnsafeRawPointer) -> Int {
+    static func startOfLine(containing offset: Int, in base: UnsafeRawPointer) -> Int {
         let bytes = base.assumingMemoryBound(to: UInt8.self)
         var index = offset
         while index > 0, bytes[index - 1] != UInt8(ascii: "\n") { index -= 1 }
         return index
     }
 
-    private static func newlines(in base: UnsafeRawPointer, count: Int) -> Int {
+    static func newlines(in base: UnsafeRawPointer, count: Int) -> Int {
         var lines = 0
         var offset = 0
         while offset < count, let hit = memchr(base + offset, Int32(UInt8(ascii: "\n")), count - offset) {

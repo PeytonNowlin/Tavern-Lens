@@ -22,12 +22,24 @@ final class LiveTrackingModel {
     private(set) var hstrackerRunning = false
     private(set) var restartRequired = false
     private(set) var configFailures: [String] = []
-    private(set) var update = LiveUpdate(session: nil, state: .noGame, scene: nil)
+    private(set) var update = LiveUpdate(session: nil, state: .noGame, scene: nil) {
+        didSet { if oldValue.session != update.session { refreshPowerLogSize() } }
+    }
+    /// The size of the followed session's Power.log, checked every few seconds.
+    private(set) var powerLogBytes: Int64?
+
+    /// Called on the main actor when a game ends (log housekeeping runs then).
+    @ObservationIgnored var onGameEnded: (@MainActor () -> Void)?
 
     @ObservationIgnored private var setup = LogSetup(locations: .standard)
     @ObservationIgnored private var pipeline: LivePipeline?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var sizeTimer: Timer?
+    static let powerLogSizeInterval: TimeInterval = 15
+
+    /// The logs folder of the running client, or of the standard install.
+    var logsDirectory: URL { Self.locations(for: hearthstone).logsDirectory }
 
     var status: LiveStatus {
         LiveStatus(
@@ -52,6 +64,14 @@ final class LiveTrackingModel {
             checkConfig(hearthstoneRunning: false, locations: .standard)
         }
         refreshProcesses()
+        sizeTimer = Timer.scheduledTimer(withTimeInterval: Self.powerLogSizeInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshPowerLogSize() }
+        }
+    }
+
+    private func refreshPowerLogSize() {
+        let size = update.session.flatMap { PowerLogSizeHint.size(of: $0.powerLog) }
+        if size != powerLogBytes { powerLogBytes = size }
     }
 
     private func refreshProcesses() {
@@ -104,7 +124,12 @@ final class LiveTrackingModel {
     private func startFollowing(_ client: RunningClient) {
         generation += 1
         let token = generation
-        let pipeline = LivePipeline(records: .standard) { [weak self] update in
+        let pipeline = LivePipeline(records: .standard, onGameEnded: { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.generation == token else { return }
+                self.onGameEnded?()
+            }
+        }) { [weak self] update in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
                 self.update = update

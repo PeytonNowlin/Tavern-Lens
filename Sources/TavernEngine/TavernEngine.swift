@@ -257,14 +257,16 @@ extension TavernEngine {
     }
 
     /// Replays a recorded Power.log from disk. With `session`, the records are dated.
-    public static func replay(fileAt url: URL, cards: CardDB? = nil, session: LogSession? = nil) throws -> ReplayResult {
-        var engine = TavernEngine(cards: cards, session: session)
+    public static func replay(
+        fileAt url: URL, cards: CardDB? = nil, session: LogSession? = nil, timeZone: TimeZone = .current
+    ) throws -> ReplayResult {
+        var engine = TavernEngine(cards: cards, session: session, timeZone: timeZone)
         try LogFileReader.forEachLine(in: url) { engine.ingest($0) }
         engine.finish()
         return engine.replayResult
     }
 
-    private var replayResult: ReplayResult {
+    var replayResult: ReplayResult {
         var result = result
         result.entities = entityRows
         return result
