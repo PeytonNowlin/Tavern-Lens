@@ -6,7 +6,7 @@ import TavernEngine
 /// checkpoints of the emitted timeline, plus the game records, to expected JSON in
 /// `Tests/TavernEngineTests/Golden/<name>.json`.
 ///
-/// Record or refresh a golden with `TAVERN_RECORD_GOLDENS=1 swift test`, then review
+/// Record or refresh a golden with `TAVERN_RECORD_GOLDENS=1 scripts/test.sh`, then review
 /// the diff. Goldens are committed, so the harness refuses to write or accept JSON
 /// that looks like it contains a BattleTag.
 enum GoldenHarness {
@@ -70,9 +70,22 @@ enum GoldenHarness {
     static func golden(from result: ReplayResult, checkpoints: [Checkpoint]) -> Golden {
         var selected: [String: TimelineEntry?] = [:]
         for checkpoint in checkpoints {
-            selected[checkpoint.description] = .some(checkpoint.select(from: result.timeline))
+            selected[checkpoint.description] = .some(checkpoint.select(from: result.timeline).map(redacted))
         }
         return Golden(games: result.games, checkpoints: selected)
+    }
+
+    /// Opponents' display names are real account names: goldens keep only that one is
+    /// known, as `Opp-P<PlayerID>`.
+    static func redacted(_ entry: TimelineEntry) -> TimelineEntry {
+        var entry = entry
+        if var game = entry.state.game {
+            for index in game.lobby.indices where game.lobby[index].displayName != nil {
+                game.lobby[index].displayName = "Opp-P\(game.lobby[index].playerID)"
+            }
+            entry.state.game = game
+        }
+        return entry
     }
 
     static func encode(_ golden: Golden) throws -> Data {

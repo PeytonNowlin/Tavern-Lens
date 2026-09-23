@@ -16,6 +16,7 @@ struct DebugWindow: View {
 
     enum Detail: String, CaseIterable, Identifiable {
         case player = "Player & shop"
+        case lobby = "Lobby"
         case viewState = "View state"
         case entities = "Entities at end"
         var id: Self { self }
@@ -96,6 +97,7 @@ struct DebugWindow: View {
         return "Game \(number): \(game.gameType), hero \(hero), "
             + "player \(game.localPlayerID.map(String.init) ?? "–"), BG turn \(game.bgTurn), "
             + "started line \(game.start.line) at \(game.start.time), \(end)"
+            + (game.placement.map { ", placed \($0)" + (game.placementSource == .concedeEstimate ? " (estimated)" : "") } ?? "")
     }
 
     // MARK: - Timeline
@@ -146,6 +148,14 @@ struct DebugWindow: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(8)
                     }
+                case .lobby:
+                    ScrollView {
+                        Text(selectedLobbyText)
+                            .font(.body.monospaced())
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                    }
                 case .viewState:
                     ScrollView {
                         Text(selectedJSON)
@@ -175,6 +185,14 @@ struct DebugWindow: View {
         }
         guard let game = row.entry.state.game else { return "No Battlegrounds game." }
         return Self.describe(game)
+    }
+
+    private var selectedLobbyText: String {
+        guard let selection, let row = rows.first(where: { $0.id == selection }) else {
+            return "Select a timeline entry to see the lobby."
+        }
+        guard let game = row.entry.state.game else { return "No Battlegrounds game." }
+        return DebugLobbyPane.describe(game)
     }
 
     /// The selected state as the player would read it off the screen.

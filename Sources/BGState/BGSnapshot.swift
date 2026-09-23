@@ -40,6 +40,12 @@ public struct BGSnapshot: Hashable, Sendable {
     public var local: BGLocalPlayer?
     /// Bob's shop; empty outside the recruit phase.
     public var shop: BGShop
+    /// Every lobby hero, one per PlayerID, ordered by leaderboard place.
+    public var lobby: [BGLobbyEntry] = []
+    /// The PlayerID the local player fights next (`NEXT_OPPONENT_PLAYER_ID`).
+    public var nextOpponentPlayerID: Int?
+    /// The PlayerID being fought right now; nil outside combat.
+    public var combatOpponentPlayerID: Int?
 
     /// Nil until a hero is picked (the placeholder hero doesn't count).
     public var localHero: BGHeroState? { local?.hero }
@@ -57,6 +63,7 @@ public struct BGSnapshot: Hashable, Sendable {
         let game = store.gameEntity
         let turn = game?.int(.turn) ?? 0
         let phase = BGPhase(turn: turn)
+        let local = localPlayer(store)
         return BGSnapshot(
             gameType: gameType,
             gameSeed: game?.int(.gameSeed),
@@ -65,10 +72,13 @@ public struct BGSnapshot: Hashable, Sendable {
             bgTurn: (turn + 1) / 2,
             phase: phase,
             isComplete: game?.name(.state) == "COMPLETE",
-            local: localPlayer(store),
+            local: local,
             // `TURN` turns even a few task lists before the client clears the shop;
             // from then on the old shop is no longer for sale.
-            shop: phase == .recruit ? shop(store) : .empty
+            shop: phase == .recruit ? shop(store) : .empty,
+            lobby: lobby(store, local: local),
+            nextOpponentPlayerID: nextOpponent(store),
+            combatOpponentPlayerID: combatOpponent(store)
         )
     }
 
