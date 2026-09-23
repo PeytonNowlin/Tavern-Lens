@@ -35,7 +35,7 @@ struct AdvisorFixtureTests {
     @Test("The start of each late recruit phase of the full game scores to its golden advice",
           .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present"))
     func goldenAdvice() async throws {
-        let replay = try AdvisorFixture.replay(Fixtures.fullGame)
+        let replay = try AdvisorFixture.replay(Fixtures.fullGame, builds: BuildFixture.catalog)
         let simulate = try AdvisorFixture.simulate()
         var advice: [String: AdviceView] = [:]
         for turn in 8...12 {
@@ -46,6 +46,12 @@ struct AdvisorFixtureTests {
             for suggestion in done.advice.suggestions {
                 #expect(!suggestion.reason.isEmpty && !suggestion.targets.isEmpty, "turn \(turn): \(suggestion.action)")
             }
+            #expect(AdvisorSanity.violations(done.advice, request: request).isEmpty, "turn \(turn)")
+            // The lobby term: every living opponent seen but the next one, as they are now.
+            let lobby = try #require(request.lobby, "turn \(turn)")
+            #expect(!lobby.isEmpty && !lobby.contains { $0.playerID == request.preview.opponentPlayerID })
+            #expect(lobby.allSatisfy { $0.seenTurn < turn && $0.side.player.hpLeft > 0 })
+            #expect(request.builds?.isEmpty == false, "turn \(turn): a build detected (Aberration Discard from turn 7)")
             advice["turn-\(turn)"] = AdviceView(
                 request: request, plan: AdvisorFixture.plan, advice: done.advice, evaluations: done.evaluations,
                 isComplete: true
@@ -87,6 +93,7 @@ struct AdvisorFixtureTests {
         var bookmark = try #require(engine.bookmark(note: "advisor at turn 11"))
         bookmark.cut = bookmark.cut.locating(in: url)
         bookmark.advice = shown
+        bookmark.adviceRequest = request
         let added = engine.addBookmark(bookmark)
         #expect(added)
 
@@ -98,6 +105,8 @@ struct AdvisorFixtureTests {
         try store.save(record)
         let saved = store.allBookmarks().first { $0.bookmark.id == bookmark.id }?.bookmark
         #expect(saved?.advice == shown)
+        #expect(saved?.adviceRequest == request, "kept for re-scoring without the log")
+        #expect(saved.flatMap { AdvisorCase(bookmark: $0) }?.recorded == shown)
 
         let replayed = try await TavernEngine.replayAdvice(
             shown, cut: bookmark.cut, powerLog: url, simulate: try AdvisorFixture.simulate()
@@ -114,7 +123,8 @@ struct AdvisorFixtureTests {
         // As a golden case: the bookmarked state and its advice.
         let goldenCase = BookmarkGoldenCase(
             name: Self.committedCase, note: "Fixture: turn 11 recruit as the shop opened, with the advisor partway",
-            log: Fixtures.fullGame, cut: bookmark.cut, expected: bookmark.shown, expectedAdvice: shown
+            log: Fixtures.fullGame, cut: bookmark.cut, expected: bookmark.shown, expectedAdvice: shown,
+            adviceRequest: request
         )
         #expect(try goldenCase.replay(powerLog: url) == goldenCase.expected)
         let file = BookmarkGoldenTests.directory.appending(path: "\(Self.committedCase).json")

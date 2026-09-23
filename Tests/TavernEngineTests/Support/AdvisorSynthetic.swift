@@ -29,22 +29,38 @@ enum AdvisorSynthetic {
     static func request(
         boardCount: Int = 7, shop: [AdvisorCard] = [], hand: [AdvisorCard] = [], gold: Int = 10, tier: Int = 5,
         levelCost: Int? = 7, rollCost: Int? = 1, canFreeze: Bool = true, seenTurn: Int? = 10,
-        source: OddsPreviewRequest.OpponentSource = .combatStart, hasData: Bool = true
+        source: OddsPreviewRequest.OpponentSource = .combatStart, hasData: Bool = true, bgTurn: Int = 11,
+        income: Int? = 10, lobby: [AdvisorLobbyOpponent]? = nil, builds: [AdvisorBuild]? = nil,
+        board: [AdvisorCard]? = nil
     ) throws -> AdvisorRequest {
         var input = try CombatGoldens.input(CombatGoldens.fullGameTurn11)
-        input.playerBoard.board = Array(input.playerBoard.board.prefix(boardCount))
+        input.playerBoard.board = board?.map(\.entity) ?? Array(input.playerBoard.board.prefix(boardCount))
         input.playerBoard.player.hand = hand.map(\.entity)
         let preview = OddsPreviewRequest(
-            gameSeed: 1, bgTurn: 11, opponentPlayerID: 7, opponentSeenTurn: hasData ? seenTurn : nil,
+            gameSeed: 1, bgTurn: bgTurn, opponentPlayerID: 7, opponentSeenTurn: hasData ? seenTurn : nil,
             opponentSource: hasData ? source : nil, input: hasData ? input : nil
         )
-        let board = input.playerBoard.board.map {
+        let cards = board ?? input.playerBoard.board.map {
             AdvisorCard(cardID: $0.cardId, kind: .minion, cost: nil, tier: 3, entity: $0)
         }
         return AdvisorRequest(
-            preview: preview, gold: gold, tier: tier, board: board, hand: hand, shop: shop, levelCost: levelCost,
-            rollCost: rollCost, canFreeze: canFreeze, shopFrozen: false
+            preview: preview, gold: gold, tier: tier, board: cards, hand: hand, shop: shop, levelCost: levelCost,
+            rollCost: rollCost, canFreeze: canFreeze, shopFrozen: false, income: income, goldCap: 10, lobby: lobby,
+            builds: builds
         )
+    }
+
+    /// Another opponent of the lobby: the turn-11 opponent's side under another PlayerID.
+    static func lobbyOpponent(_ playerID: Int, seenTurn: Int, hp: Int = 20) throws -> AdvisorLobbyOpponent {
+        var side = try CombatGoldens.input(CombatGoldens.fullGameTurn11).opponentBoard
+        side.player.entityId = 1000 + playerID
+        side.player.hpLeft = hp
+        return AdvisorLobbyOpponent(playerID: playerID, seenTurn: seenTurn, source: .combatStart, side: side)
+    }
+
+    /// A board minion card.
+    static func boardMinion(_ id: Int, _ cardID: String, attack: Int, health: Int, golden: Bool = false) -> AdvisorCard {
+        AdvisorCard(cardID: cardID, kind: .minion, golden: golden, tier: 3, entity: minion(id, cardID, attack: attack, health: health))
     }
 
     /// Odds from the local board's total stats: `base` equity at `baseline` total stats, one
@@ -58,6 +74,14 @@ enum AdvisorSynthetic {
         var lethal = 0.0
         var lethalAbove: Int? = nil
         var delay: Duration? = nil
+        /// Win-percentage points added against the lobby opponent with this hero entity ID, per
+        /// minion of the local board with the given entity ID (so a board change can matter
+        /// against one opponent and not another).
+        var versus: [Int: (minion: Int, points: Double)] = [:]
+        /// Win-percentage points added while a minion with this entity ID is on the local board.
+        var minionPoints: [Int: Double] = [:]
+        /// Lethal risk while a minion with this entity ID is on the local board.
+        var minionLethal: [Int: Double] = [:]
 
         func strength(_ input: BattleInput) -> Double {
             input.playerBoard.board.enumerated().reduce(0.0) { total, pair in
@@ -67,8 +91,13 @@ enum AdvisorSynthetic {
         }
 
         func odds(_ input: BattleInput, simulations: Int) -> CombatOdds {
-            let won = min(100, max(0, base + (strength(input) - Double(baseline)) / perPoint))
-            let lethalRisk = lethalAbove.map { strength(input) < Double($0) ? lethal : 0 } ?? 0
+            let ids = Set(input.playerBoard.board.map(\.entityId))
+            var points = (strength(input) - Double(baseline)) / perPoint
+            if let special = versus[input.opponentBoard.player.entityId], ids.contains(special.minion) { points += special.points }
+            for (id, extra) in minionPoints where ids.contains(id) { points += extra }
+            let won = min(100, max(0, base + points))
+            var lethalRisk = lethalAbove.map { strength(input) < Double($0) ? lethal : 0 } ?? 0
+            for (id, risk) in minionLethal where ids.contains(id) { lethalRisk = max(lethalRisk, risk) }
             return CombatOdds(
                 won: won, tied: 0, lost: 100 - won, lostLethal: min(lethalRisk, 100 - won), averageDamageWon: 6,
                 averageDamageLost: 8, simulations: simulations, isFinal: true

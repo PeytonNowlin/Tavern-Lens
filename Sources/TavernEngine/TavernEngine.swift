@@ -375,29 +375,75 @@ public struct TavernEngine: Sendable {
         guard let snapshot = BGSnapshot.project(store), snapshot.phase == .recruit,
               let next = snapshot.nextOpponentPlayerID
         else { return nil }
-        var opponent: (side: BattleBoard, seenTurn: Int, source: OddsPreviewRequest.OpponentSource)?
-        if let seen = history.lobby.lastSeenBoards[next] {
-            if let captured = lastSeenSides[next], captured.seed == snapshot.gameSeed, captured.bgTurn == seen.bgTurn {
-                opponent = (captured.side, seen.bgTurn, .combatStart)
-            } else if let hero = snapshot.lobby.first(where: { $0.playerID == next })?.hero,
-                      let side = BattleInputBuilder.side(
-                          seen: seen, heroCardID: hero.cardID, heroEntityID: hero.entityID, hpLeft: hero.hp, tier: hero.tier ?? 1
-                      ) {
-                opponent = (side, seen.bgTurn, .lastSeenBoard)
-            }
-        }
         return BattleInputBuilder.preview(
-            store: store, snapshot: snapshot, opponent: opponent, validTribes: simulatorLobbyTribes(snapshot)
+            store: store, snapshot: snapshot, opponent: lastSeenSide(of: next, snapshot: snapshot),
+            validTribes: simulatorLobbyTribes(snapshot)
         )
+    }
+
+    /// An opponent's last-seen side: their side of the combat-start input when they were last
+    /// fought, else (a game carried in from an earlier log) rebuilt from the history's board.
+    /// Health and tier are as they were then. Nil when they haven't been seen.
+    private func lastSeenSide(
+        of playerID: Int, snapshot: BGSnapshot
+    ) -> (side: BattleBoard, seenTurn: Int, source: OddsPreviewRequest.OpponentSource)? {
+        guard let seen = history.lobby.lastSeenBoards[playerID] else { return nil }
+        if let captured = lastSeenSides[playerID], captured.seed == snapshot.gameSeed, captured.bgTurn == seen.bgTurn {
+            return (captured.side, seen.bgTurn, .combatStart)
+        }
+        if let hero = snapshot.lobby.first(where: { $0.playerID == playerID })?.hero,
+           let side = BattleInputBuilder.side(
+               seen: seen, heroCardID: hero.cardID, heroEntityID: hero.entityID, hpLeft: hero.hp, tier: hero.tier ?? 1
+           ) {
+            return (side, seen.bgTurn, .lastSeenBoard)
+        }
+        return nil
     }
 
     /// The advisor's view of the recruit phase now: the odds preview's combat plus the gold, board,
     /// hand, shop and tavern buttons the candidate actions are built from. Nil outside the recruit
     /// phase or without a next opponent; without data (and so without candidates) when that
     /// opponent hasn't been seen. Built on demand from the store, like `oddsPreview`.
+    ///
+    /// It also carries what the blended score needs besides the next combat: every other living
+    /// opponent's last-seen side (health and tier as they are now), the detected builds (from
+    /// the last published view, with the catalog's core and add-on cards) and golden cards' base cards.
     public var advisorRequest: AdvisorRequest? {
-        guard let preview = oddsPreview, let snapshot = BGSnapshot.project(store) else { return nil }
-        return BattleInputBuilder.advisorRequest(store: store, snapshot: snapshot, preview: preview)
+        guard let preview = oddsPreview, let snapshot = BGSnapshot.project(store),
+              var request = BattleInputBuilder.advisorRequest(store: store, snapshot: snapshot, preview: preview)
+        else { return nil }
+        guard request.hasData else { return request }
+        var lobby: [AdvisorLobbyOpponent] = []
+        for entry in snapshot.lobby where !entry.isLocal && !entry.isDead && entry.playerID != preview.opponentPlayerID {
+            guard var seen = lastSeenSide(of: entry.playerID, snapshot: snapshot) else { continue }
+            seen.side.player.hpLeft = entry.hero.hp
+            if let tier = entry.hero.tier, tier > 0 { seen.side.player.tavernTier = tier }
+            lobby.append(AdvisorLobbyOpponent(playerID: entry.playerID, seenTurn: seen.seenTurn, source: seen.source, side: seen.side))
+        }
+        request.lobby = lobby.sorted { $0.playerID < $1.playerID }
+        if let catalog = builds.catalog, let detected = state.game?.builds?.detected, !detected.isEmpty {
+            let pool = tribes.basePool
+            request.builds = detected.enumerated().compactMap { index, view in
+                guard let build = catalog.build(view.id) else { return nil }
+                var tiers: [String: Int] = [:]
+                for card in build.core {
+                    if let tier = pool?.minion(card)?.tier ?? cards?[card]?.techLevel, tier > 0 { tiers[card] = tier }
+                }
+                return AdvisorBuild(
+                    id: build.id, name: build.name, share: index == 0 ? 1 : BuildDetector.secondShare, core: build.core,
+                    addons: build.addons, coreTiers: tiers
+                )
+            }
+            var bases: [String: String] = [:]
+            for card in request.board + request.hand + request.shop {
+                let base = catalog.baseCardID(card.cardID)
+                if base != card.cardID, !(card.cardID.hasSuffix("_G") && base == String(card.cardID.dropLast(2))) {
+                    bases[card.cardID] = base
+                }
+            }
+            if !bases.isEmpty { request.baseCardIDs = bases }
+        }
+        return request
     }
 
     /// The lobby's tribes for the simulator: the injected source's, else the tribe inference's

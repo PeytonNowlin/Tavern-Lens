@@ -29,6 +29,20 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     public var canFreeze: Bool
     /// Every shop card is frozen already.
     public var shopFrozen: Bool
+    /// This turn's gold income (`RESOURCES`), for the economy term's look ahead; nil while unknown
+    /// (then the usual curve, turn + 2 up to 10, is assumed).
+    public var income: Int?
+    /// The most gold a turn can give (10 unless something raised it); nil while unknown.
+    public var goldCap: Int?
+    /// The other opponents with a last-seen board, for the lobby term (the next opponent is the
+    /// preview's); nil when not gathered (a request from before the lobby term existed).
+    public var lobby: [AdvisorLobbyOpponent]?
+    /// The builds the player is leaning into (0-2, the strongest first), for the build term; nil
+    /// without build data.
+    public var builds: [AdvisorBuild]?
+    /// The base card of every golden card in the request (`…_G` or `TB_BaconUps_*` → the normal
+    /// card), when it isn't simply the ID without `_G`; for matching build cards and pairs.
+    public var baseCardIDs: [String: String]?
 
     public static let boardLimit = 7
     public static let handLimit = 10
@@ -40,7 +54,8 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     public init(
         preview: OddsPreviewRequest, gold: Int, tier: Int, board: [AdvisorCard], hand: [AdvisorCard],
         shop: [AdvisorCard], levelCost: Int? = nil, rollCost: Int? = nil, canFreeze: Bool = false,
-        shopFrozen: Bool = false
+        shopFrozen: Bool = false, income: Int? = nil, goldCap: Int? = nil, lobby: [AdvisorLobbyOpponent]? = nil,
+        builds: [AdvisorBuild]? = nil, baseCardIDs: [String: String]? = nil
     ) {
         self.preview = preview
         self.gold = gold
@@ -52,11 +67,73 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
         self.rollCost = rollCost
         self.canFreeze = canFreeze
         self.shopFrozen = shopFrozen
+        self.income = income
+        self.goldCap = goldCap
+        self.lobby = lobby
+        self.builds = builds
+        self.baseCardIDs = baseCardIDs
     }
 
     /// One per game, BG turn and next opponent (the preview's); the state within it changes.
     public var id: String { preview.id }
     public var hasData: Bool { preview.hasData }
+
+    /// A card's base card (a golden's normal card), for build cards and pairs.
+    public func baseCardID(_ cardID: String) -> String {
+        if let base = baseCardIDs?[cardID] { return base }
+        if cardID.hasSuffix("_G") { return String(cardID.dropLast(2)) }
+        return cardID
+    }
+
+    /// The local hero's health now; nil without data.
+    public var health: Int? { preview.input?.playerBoard.player.hpLeft }
+
+    /// The combat against one of the lobby's other opponents, with the local side of `input` (a
+    /// candidate's board) and everything else of the next combat's.
+    public func input(_ input: BattleInput, against opponent: AdvisorLobbyOpponent) -> BattleInput {
+        var result = input
+        result.opponentBoard = opponent.side
+        return result
+    }
+}
+
+/// One of the lobby's other opponents as the lobby term fights them: their last-seen side, with
+/// health and tier as they are now.
+public struct AdvisorLobbyOpponent: Codable, Hashable, Sendable {
+    public var playerID: Int
+    /// The BG turn their board was last seen (the last combat against them).
+    public var seenTurn: Int
+    public var source: OddsPreviewRequest.OpponentSource
+    public var side: BattleBoard
+
+    public init(playerID: Int, seenTurn: Int, source: OddsPreviewRequest.OpponentSource, side: BattleBoard) {
+        self.playerID = playerID
+        self.seenTurn = seenTurn
+        self.source = source
+        self.side = side
+    }
+}
+
+/// A build the player is leaning into, as the build term counts progress toward it.
+public struct AdvisorBuild: Codable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    /// How much it counts: 1 for the first detected build, less for the second.
+    public var share: Double
+    /// Base card IDs.
+    public var core: [String]
+    public var addons: [String]
+    /// The tavern tier of each core card, where known (levelling toward a missing one is progress).
+    public var coreTiers: [String: Int]
+
+    public init(id: String, name: String, share: Double, core: [String], addons: [String], coreTiers: [String: Int] = [:]) {
+        self.id = id
+        self.name = name
+        self.share = share
+        self.core = core
+        self.addons = addons
+        self.coreTiers = coreTiers
+    }
 }
 
 /// A card the advisor can act on: in play, in hand or in the shop.
@@ -120,7 +197,9 @@ extension BattleInputBuilder {
             levelCost: level.flatMap { $0 },
             rollCost: roll.flatMap { $0 },
             canFreeze: freeze != nil,
-            shopFrozen: snapshot.shop.isFrozen
+            shopFrozen: snapshot.shop.isFrozen,
+            income: local.gold.resources,
+            goldCap: local.gold.cap
         )
     }
 }

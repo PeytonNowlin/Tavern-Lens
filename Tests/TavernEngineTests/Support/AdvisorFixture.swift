@@ -7,7 +7,10 @@ import TavernEngine
 /// does, and a small deterministic plan for scoring them in tests.
 enum AdvisorFixture {
     /// Few simulations (JavaScriptCore interprets under `swift test`), but the full order of passes.
-    static let plan = AdvisorPlan(seed: 0x19AD_7150, simulations: 100, refineSimulations: 200, refinedGroups: 2)
+    static let plan = AdvisorPlan(
+        seed: 0x19AD_7150, simulations: 100, refineSimulations: 200, refinedGroups: 2, lobbySimulations: 50,
+        lobbyGroups: 2
+    )
 
     struct Replay {
         /// The request at each recruit phase's last publish, by BG turn.
@@ -26,8 +29,9 @@ enum AdvisorFixture {
         var mismatches: [String] = []
     }
 
-    static func replay(_ path: String) throws -> Replay {
-        var engine = TavernEngine()
+    /// - Parameter builds: with the build catalog, so requests carry the detected builds.
+    static func replay(_ path: String, builds: BuildCatalog? = nil) throws -> Replay {
+        var engine = TavernEngine(builds: builds)
         var published = 0
         var replay = Replay()
         try LogFileReader.forEachLine(in: #require(Fixtures.url(path))) { line in

@@ -62,6 +62,11 @@ struct AdvisorLayoutTests {
             "+100% win vs next opponent", "Takes 12 less damage vs next opponent",
             "No buy beats your board (100% win)", "Keeps your board as it is (100% win)", "Saves a +15% win buy for next turn",
             "Cuts lethal risk 100% → 50%", "Deals 12 more damage to next opponent",
+            // The blended score's reasons, with the longest build name there is.
+            "Core card for Aberration Tavern Spells", "Add-on for Aberration Tavern Spells",
+            "Opens tier 6 for a core card you need", "Keeps a build card for next turn", "Stronger vs the rest of the lobby",
+            "Behind the levelling curve (tier 4)", "Good tempo to level (costs 10)", "Frees the gold to level now",
+            "No shop card helps (100% win)",
         ] {
             let width = HUDFitTests.text(reason, m.reasonFontSize * s, .regular)
             #expect(width <= CGFloat(m.reasonLines) * column * 0.9, "\"\(reason)\" is \(width) pt; \(m.reasonLines) lines of \(column)")

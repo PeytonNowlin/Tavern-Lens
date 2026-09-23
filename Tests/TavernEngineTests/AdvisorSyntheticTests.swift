@@ -83,7 +83,8 @@ struct AdvisorSyntheticTests {
         #expect(top.reason == "+20% win vs next opponent")
         #expect(top.confidence == .high)
         #expect(top.targets == [AdvisorTarget(.shop, 1)])
-        #expect(top.terms.combat == top.gain && top.terms.lobby == nil, "#19 scores the combat term only")
+        #expect(top.terms.combat == top.gain && top.terms.lobby == nil && top.terms.build == nil,
+                "no lobby or builds in the request: the combat term only (the level is out of reach, so no tempo cost)")
         // Each suggestion has a reason and a confidence, and none makes the combat clearly worse.
         for suggestion in advice.suggestions {
             #expect(!suggestion.reason.isEmpty)
@@ -115,19 +116,27 @@ struct AdvisorSyntheticTests {
         #expect(advice.suggestions.count >= 2, "the close options are still listed")
     }
 
-    @Test("When nothing on the board helps: level first when ahead, refresh first when behind")
+    @Test("When nothing on the board helps: level when it's due, refresh when behind, neither when ahead of the curve")
     func nothingHelps() async throws {
         let shop = [S.shopMinion(901, attack: 0, health: 1)]
-        let request = try S.request(boardCount: 7, shop: shop, gold: 8, tier: 4, levelCost: 7)
-        let ahead = try await Self.run(request, Self.stub(request, base: 70)).advice
-        #expect(ahead.suggestions.map(\.action) == [.level(cost: 7, toTier: 5), .roll(cost: 1)])
-        #expect(ahead.suggestions.first?.reason == "No buy beats your board (70% win)")
-        #expect(ahead.suggestions.first?.confidence == .medium, "a rule of thumb, once everything is scored")
-        #expect(ahead.suggestions.first?.targets == [AdvisorTarget(.levelButton)])
+        // Tier 4 on turn 11: two tiers behind the levelling curve.
+        let behindCurve = try S.request(boardCount: 7, shop: shop, gold: 8, tier: 4, levelCost: 7)
+        let winning = try await Self.run(behindCurve, Self.stub(behindCurve, base: 70)).advice
+        #expect(winning.suggestions.map(\.action) == [.level(cost: 7, toTier: 5)], "a refresh isn't worth its gold at 70%")
+        #expect(winning.suggestions.first?.reason == "Behind the levelling curve (tier 4)")
+        #expect(winning.suggestions.first?.confidence == .medium, "a rule of thumb, once everything is scored")
+        #expect(winning.suggestions.first?.targets == [AdvisorTarget(.levelButton)])
+        #expect(winning.suggestions.first?.terms.economy == 6.5, "levelling now 15.5 vs next turn 9")
 
-        let behind = try await Self.run(request, Self.stub(request, base: 20)).advice
-        #expect(behind.suggestions.map(\.action) == [.roll(cost: 1), .level(cost: 7, toTier: 5)])
-        #expect(behind.suggestions.first?.reason == "No shop card improves your odds (20% win)")
+        let losing = try await Self.run(behindCurve, Self.stub(behindCurve, base: 20)).advice
+        #expect(losing.suggestions.map(\.action) == [.level(cost: 7, toTier: 5), .roll(cost: 1)])
+        #expect(losing.suggestions[1].reason == "No shop card helps (20% win)")
+        #expect(losing.suggestions[1].terms.economy == 3.8, "a fresh shop 6 × 80% less its gold")
+
+        // Tier 5 on turn 7 is ahead of the curve: levelling at 9 now isn't worth it, refreshing is.
+        let aheadOfCurve = try S.request(boardCount: 7, shop: shop, gold: 10, tier: 5, levelCost: 9, bgTurn: 7, income: 9)
+        let behindOnBoard = try await Self.run(aheadOfCurve, Self.stub(aheadOfCurve, base: 10)).advice
+        #expect(behindOnBoard.suggestions.map(\.action) == [.roll(cost: 1)])
     }
 
     @Test("Freeze is suggested when a shop card worth buying is too dear for now")

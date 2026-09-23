@@ -23,7 +23,7 @@
             }
           },
           "confidence" : "medium",
-          "gain" : 0,
+          "gain" : 4,
           "odds" : {
             "averageDamageDealt" : 15,
             "averageDamageTaken" : 0,
@@ -34,69 +34,61 @@
             "won" : 100
           },
           "rank" : 1,
-          "reason" : "No buy beats your board (100% win)",
+          "reason" : "Good tempo to level (costs 9)",
           "targets" : [
             {
               "kind" : "levelButton"
             }
           ],
           "terms" : {
-            "combat" : 0
-          }
-        },
-        {
-          "action" : {
-            "roll" : {
-              "cost" : 1
-            }
-          },
-          "confidence" : "low",
-          "gain" : 0,
-          "odds" : {
-            "averageDamageDealt" : 15,
-            "averageDamageTaken" : 0,
-            "lethalRisk" : 0,
-            "lost" : 0,
-            "simulations" : 300,
-            "tied" : 0,
-            "won" : 100
-          },
-          "rank" : 2,
-          "reason" : "No shop card improves your odds (100% win)",
-          "targets" : [
-            {
-              "kind" : "rollButton"
-            }
-          ],
-          "terms" : {
-            "combat" : 0
+            "build" : 0,
+            "combat" : 0,
+            "economy" : 4
           }
         }
       ]
     },
     "bgTurn" : 10,
-    "evaluations" : 48,
-    "fingerprint" : "544a03e2aae46245",
+    "evaluations" : 60,
+    "fingerprint" : "6c6cc45f01f95a6c",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 8,
     "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
       "simulations" : 100,
       "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
         "combat" : 1,
         "damageDealtPerHealth" : 0.5,
         "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
         "highZ" : 3,
         "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
         "mediumZ" : 1.5,
         "minimumGain" : 1,
         "minimumSimulations" : 150,
         "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
         "staleAfterTurns" : 3,
-        "suggestions" : 3
+        "suggestions" : 3,
+        "tierTurnValue" : 5
       }
     },
     "requestID" : "1172082863/10/P8"
@@ -112,64 +104,55 @@
         "tied" : 0,
         "won" : 100
       },
-      "candidates" : 48,
-      "note" : "Their board is from turn 7",
-      "scored" : 48,
-      "status" : "recommendation",
+      "candidates" : 36,
+      "note" : "Nothing clearly improves your odds",
+      "scored" : 36,
+      "status" : "noStrongRecommendation",
       "suggestions" : [
-        {
-          "action" : {
-            "roll" : {
-              "cost" : 1
-            }
-          },
-          "confidence" : "medium",
-          "gain" : 0,
-          "odds" : {
-            "averageDamageDealt" : 14.99,
-            "averageDamageTaken" : 0,
-            "lethalRisk" : 0,
-            "lost" : 0,
-            "simulations" : 300,
-            "tied" : 0,
-            "won" : 100
-          },
-          "rank" : 1,
-          "reason" : "No shop card improves your odds (100% win)",
-          "targets" : [
-            {
-              "kind" : "rollButton"
-            }
-          ],
-          "terms" : {
-            "combat" : 0
-          }
-        }
+
       ]
     },
     "bgTurn" : 11,
     "evaluations" : 49,
-    "fingerprint" : "6b96f95b974e3d9b",
+    "fingerprint" : "d097f4772db142c8",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 7,
     "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
       "simulations" : 100,
       "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
         "combat" : 1,
         "damageDealtPerHealth" : 0.5,
         "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
         "highZ" : 3,
         "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
         "mediumZ" : 1.5,
         "minimumGain" : 1,
         "minimumSimulations" : 150,
         "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
         "staleAfterTurns" : 3,
-        "suggestions" : 3
+        "suggestions" : 3,
+        "tierTurnValue" : 5
       }
     },
     "requestID" : "1172082863/11/P7"
@@ -186,18 +169,18 @@
         "won" : 100
       },
       "candidates" : 31,
-      "note" : "Their board is from turn 6",
+      "note" : "No option stands out",
       "scored" : 31,
-      "status" : "recommendation",
+      "status" : "noStrongRecommendation",
       "suggestions" : [
         {
           "action" : {
-            "roll" : {
-              "cost" : 1
+            "freeze" : {
+
             }
           },
-          "confidence" : "medium",
-          "gain" : 0,
+          "confidence" : "low",
+          "gain" : 1,
           "odds" : {
             "averageDamageDealt" : 29.89,
             "averageDamageTaken" : 0,
@@ -208,41 +191,60 @@
             "won" : 100
           },
           "rank" : 1,
-          "reason" : "No shop card improves your odds (100% win)",
+          "reason" : "Keeps a build card for next turn",
           "targets" : [
             {
-              "kind" : "rollButton"
+              "kind" : "freezeButton"
             }
           ],
           "terms" : {
-            "combat" : 0
+            "combat" : 0,
+            "economy" : 1
           }
         }
       ]
     },
     "bgTurn" : 12,
-    "evaluations" : 32,
-    "fingerprint" : "a453b571ebe55ff0",
+    "evaluations" : 38,
+    "fingerprint" : "97cd815d74457f71",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 3,
     "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
       "simulations" : 100,
       "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
         "combat" : 1,
         "damageDealtPerHealth" : 0.5,
         "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
         "highZ" : 3,
         "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
         "mediumZ" : 1.5,
         "minimumGain" : 1,
         "minimumSimulations" : 150,
         "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
         "staleAfterTurns" : 3,
-        "suggestions" : 3
+        "suggestions" : 3,
+        "tierTurnValue" : 5
       }
     },
     "requestID" : "1172082863/12/P3"
@@ -271,7 +273,7 @@
             }
           },
           "confidence" : "medium",
-          "gain" : 0,
+          "gain" : 4,
           "odds" : {
             "averageDamageDealt" : 15,
             "averageDamageTaken" : 0,
@@ -282,69 +284,61 @@
             "won" : 100
           },
           "rank" : 1,
-          "reason" : "No buy beats your board (100% win)",
+          "reason" : "Good tempo to level (costs 8)",
           "targets" : [
             {
               "kind" : "levelButton"
             }
           ],
           "terms" : {
-            "combat" : 0
-          }
-        },
-        {
-          "action" : {
-            "roll" : {
-              "cost" : 1
-            }
-          },
-          "confidence" : "low",
-          "gain" : 0,
-          "odds" : {
-            "averageDamageDealt" : 15,
-            "averageDamageTaken" : 0,
-            "lethalRisk" : 0,
-            "lost" : 0,
-            "simulations" : 300,
-            "tied" : 0,
-            "won" : 100
-          },
-          "rank" : 2,
-          "reason" : "No shop card improves your odds (100% win)",
-          "targets" : [
-            {
-              "kind" : "rollButton"
-            }
-          ],
-          "terms" : {
-            "combat" : 0
+            "build" : 0,
+            "combat" : 0,
+            "economy" : 4
           }
         }
       ]
     },
     "bgTurn" : 8,
-    "evaluations" : 47,
-    "fingerprint" : "51149f78af777dc5",
+    "evaluations" : 65,
+    "fingerprint" : "9fc4b16010218e4b",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 5,
     "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
       "simulations" : 100,
       "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
         "combat" : 1,
         "damageDealtPerHealth" : 0.5,
         "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
         "highZ" : 3,
         "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
         "mediumZ" : 1.5,
         "minimumGain" : 1,
         "minimumSimulations" : 150,
         "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
         "staleAfterTurns" : 3,
-        "suggestions" : 3
+        "suggestions" : 3,
+        "tierTurnValue" : 5
       }
     },
     "requestID" : "1172082863/8/P5"
@@ -360,9 +354,9 @@
         "tied" : 0,
         "won" : 100
       },
-      "candidates" : 48,
+      "candidates" : 42,
       "note" : "Their board is from turn 2",
-      "scored" : 48,
+      "scored" : 42,
       "status" : "recommendation",
       "suggestions" : [
         {
@@ -373,7 +367,7 @@
             }
           },
           "confidence" : "medium",
-          "gain" : 0,
+          "gain" : 4,
           "odds" : {
             "averageDamageDealt" : 15,
             "averageDamageTaken" : 0,
@@ -384,69 +378,61 @@
             "won" : 100
           },
           "rank" : 1,
-          "reason" : "No buy beats your board (100% win)",
+          "reason" : "Good tempo to level (costs 10)",
           "targets" : [
             {
               "kind" : "levelButton"
             }
           ],
           "terms" : {
-            "combat" : 0
-          }
-        },
-        {
-          "action" : {
-            "roll" : {
-              "cost" : 1
-            }
-          },
-          "confidence" : "low",
-          "gain" : 0,
-          "odds" : {
-            "averageDamageDealt" : 15,
-            "averageDamageTaken" : 0,
-            "lethalRisk" : 0,
-            "lost" : 0,
-            "simulations" : 300,
-            "tied" : 0,
-            "won" : 100
-          },
-          "rank" : 2,
-          "reason" : "No shop card improves your odds (100% win)",
-          "targets" : [
-            {
-              "kind" : "rollButton"
-            }
-          ],
-          "terms" : {
-            "combat" : 0
+            "build" : 0,
+            "combat" : 0,
+            "economy" : 4
           }
         }
       ]
     },
     "bgTurn" : 9,
-    "evaluations" : 48,
-    "fingerprint" : "e5b30f11e0cc5a54",
+    "evaluations" : 60,
+    "fingerprint" : "790b08169a1b64d2",
     "isComplete" : true,
     "isUpdating" : false,
     "opponentPlayerID" : 2,
     "plan" : {
+      "lobbyGroups" : 2,
+      "lobbySimulations" : 50,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
       "simulations" : 100,
       "weights" : {
+        "build" : 1,
+        "buildAddonCard" : 2,
+        "buildCopy" : 1.5,
+        "buildCoreCard" : 6,
+        "buildUnlock" : 3,
         "combat" : 1,
         "damageDealtPerHealth" : 0.5,
         "damageTakenPerHealth" : 1,
+        "economy" : 1,
+        "freezeShare" : 0.5,
+        "freshShopValue" : 6,
+        "goldValue" : 1,
         "highZ" : 3,
         "lethalRisk" : 1,
+        "lobby" : 0.5,
+        "lobbyRecentFactor" : 0.5,
+        "lobbyStaleHalfLife" : 3,
         "mediumZ" : 1.5,
         "minimumGain" : 1,
         "minimumSimulations" : 150,
         "minimumZ" : 1,
+        "sanityLethalIncrease" : 5,
+        "sanityOverrideGain" : 15,
+        "sanitySurvivalLethal" : 20,
         "staleAfterTurns" : 3,
-        "suggestions" : 3
+        "suggestions" : 3,
+        "tierTurnValue" : 5
       }
     },
     "requestID" : "1172082863/9/P2"

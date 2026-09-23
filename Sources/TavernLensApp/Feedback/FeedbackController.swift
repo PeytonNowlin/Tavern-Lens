@@ -49,6 +49,11 @@ final class FeedbackController {
         }
         bookmark.overlay = overlay.bookmarkContext(shown: bookmark.shown.state)
         bookmark.advice = overlay.bookmarkAdvice(shown: bookmark.shown.state)
+        // The state the advice is for, so the case can be re-scored under other weights.
+        if let advice = bookmark.advice, let request = live.combatOdds.advisorRunner.currentRequest,
+           AdviceView.fingerprint(of: request) == advice.fingerprint {
+            bookmark.adviceRequest = request
+        }
         let captured = bookmark
         let box = NoteBoxPanel(bookmark: captured) { [weak self] outcome in
             self?.finish(captured, outcome)
