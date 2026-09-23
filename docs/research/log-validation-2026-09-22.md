@@ -9,7 +9,7 @@ This note checks the claims in [battlegrounds-macos-feasibility.md](battleground
 
 ## Scripts
 
-All scripts are in `/private/tmp/claude-501/-Volumes-Crucial-X9-GitHub-HS-Battlegrounds-Companion/c7b517d4-0301-459b-9c27-936ce0e65e97/scratchpad/validate/`:
+All scripts are in [`validation-scripts/`](validation-scripts/):
 
 - `powerlog.py`: the line tokenizer and entity/tag store. It handles `CREATE_GAME`, `GameEntity`/`Player`, `FULL_ENTITY` (both Creating and Updating), `SHOW_ENTITY`, `CHANGE_ENTITY`, `HIDE_ENTITY`, `TAG_CHANGE`, `DebugPrintGame` and choices. Tags are canonicalised to ints through `enums.json`, and numeric tags are accepted. `python3 powerlog.py <Power.log>` prints stats for both streams.
 - `timeline.py`: derives Battlegrounds state for each turn. It snapshots at end of recruit (the moment `TURN` becomes even) and at combat (tag 2022 1→0), and records the lobby after combat, deaths and game end. `--json out.json` writes the result.

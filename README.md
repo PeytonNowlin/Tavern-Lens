@@ -183,4 +183,8 @@ The repository includes the research and validation behind the implementation:
 
 Tavern Lens builds on [HearthstoneJSON](https://hearthstonejson.com/) for card data and enums, [Firestone](https://github.com/Zero-to-Heroes/firestone) for combat simulation and hero/build data, and [HSReplay](https://hsreplay.net/) for minion-pool metadata. The combat engine is the upstream [`@firestone-hs/simulate-bgs-battle`](https://www.npmjs.com/package/@firestone-hs/simulate-bgs-battle) package; this project's work includes its native embedding, input mapping, scheduling, and regression coverage.
 
-Hearthstone and its game assets belong to Blizzard Entertainment. Tavern Lens is an independent personal project.
+Hearthstone and its game assets belong to Blizzard Entertainment. Tavern Lens is an independent project, not affiliated with or endorsed by Blizzard Entertainment.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Bundled third-party software and data are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
