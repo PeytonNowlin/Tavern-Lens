@@ -199,7 +199,7 @@ final class LivePipeline: @unchecked Sendable {
     private func saveRecords() {
         for record in engine.takeUnsavedRecords() {
             try? records?.save(record)
-            if record.outcome != .inProgress, let seed = record.gameSeed, endedGames.insert(seed).inserted {
+            if record.outcome.isFinal, let seed = record.gameSeed, endedGames.insert(seed).inserted {
                 onGameEnded(record)
             }
         }

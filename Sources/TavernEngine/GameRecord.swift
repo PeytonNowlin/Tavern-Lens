@@ -146,9 +146,10 @@ public struct GameRecordStore: Sendable {
             .sorted { ($0.startedAt ?? .distantPast, $0.gameSeed ?? 0) < ($1.startedAt ?? .distantPast, $1.gameSeed ?? 0) }
     }
 
-    /// The most recently updated game still in progress: the one a client restart may resume.
+    /// The most recently updated game still in progress (or left with the concede-or-disconnect
+    /// tag): the one a client restart may resume.
     public func latestInProgress() -> GameRecord? {
-        all().filter { $0.outcome == .inProgress }
+        all().filter { $0.outcome.isResumable }
             .max { ($0.updatedAt ?? .distantPast) < ($1.updatedAt ?? .distantPast) }
     }
 

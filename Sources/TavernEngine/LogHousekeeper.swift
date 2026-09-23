@@ -134,7 +134,7 @@ public struct LogHousekeeper: Sendable {
         var engine = TavernEngine(session: session, timeZone: timeZone)
         // A game this launch resumed from an earlier one (the client restarted mid-game).
         if let seed = slices.first?.gameSeed, let stored = records.load(seed: seed),
-           stored.outcome == .inProgress, !stored.sessions.contains(session.name) {
+           stored.outcome.isResumable, !stored.sessions.contains(session.name) {
             engine.resume(stored)
         }
         do {
@@ -175,7 +175,7 @@ public struct LogHousekeeper: Sendable {
         var saved: [ReplayFile] = []
         for slice in PowerLogGames.slices(in: data) {
             guard let seed = slice.gameSeed, let record = records.load(seed: seed),
-                  !finishedOnly || record.outcome != .inProgress,
+                  !finishedOnly || record.outcome.isFinal,
                   !replays.contains(sessionName: session.name, line: slice.line, gameSeed: seed)
             else { continue }
             do {

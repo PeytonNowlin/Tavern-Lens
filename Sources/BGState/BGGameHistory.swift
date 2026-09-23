@@ -107,7 +107,7 @@ public struct BGGameHistory: Sendable {
     /// with its seed resumes it (keeping its boards seen and names) rather than starting
     /// a new game. Ignored unless it's in progress, has a seed and isn't known already.
     public mutating func resume(_ record: BGGameRecord, journal: BGGameJournal) {
-        guard record.outcome == .inProgress, let seed = record.gameSeed,
+        guard record.outcome.isResumable, let seed = record.gameSeed,
               !games.contains(where: { $0.gameSeed == seed })
         else { return }
         games.append(record)
@@ -123,7 +123,11 @@ public struct BGGameHistory: Sendable {
             identifyGame(store)
         case .tagChanged(let entityID, .state, _, .name("COMPLETE")) where entityID == store.gameEntityID:
             refresh(from: store)
-            if let index = currentIndex, games[index].end == nil {
+            if let index = currentIndex, games[index].outcome == .disconnectedOrConceded {
+                // The game completed for this client after the concede-or-disconnect tag: a concede.
+                games[index].outcome = .conceded
+                changedGames.insert(index)
+            } else if let index = currentIndex, games[index].end == nil {
                 games[index].end = position
                 games[index].outcome = .complete
                 if games[index].placement == nil {
@@ -142,10 +146,13 @@ public struct BGGameHistory: Sendable {
         case .tagChanged(let entityID, .bgBattleStarting, .int(1), .int(0)) where entityID == store.gameEntityID:
             captureOpponentBoard(store, at: position)
         case .tagChanged(let entityID, .playerConcededOrDisconnected, _, .int(1)),
-             .tagChanged(let entityID, .playerConcededOrDisconnectedByName, _, .int(1)),
-             .tagChanged(let entityID, .playState, _, .name("CONCEDED")):
+             .tagChanged(let entityID, .playerConcededOrDisconnectedByName, _, .int(1)):
             if entityID == store.localPlayer?.entityID {
-                localConceded(store, at: position)
+                localLeft(store, at: position, conceded: false)
+            }
+        case .tagChanged(let entityID, .playState, _, .name("CONCEDED")):
+            if entityID == store.localPlayer?.entityID {
+                localLeft(store, at: position, conceded: true)
             }
         default:
             break
@@ -164,8 +171,12 @@ public struct BGGameHistory: Sendable {
             abandonGames(except: nil)
             return
         }
-        if let seed, let index = games.lastIndex(where: { $0.gameSeed == seed && $0.outcome == .inProgress }) {
+        if let seed, let index = games.lastIndex(where: { $0.gameSeed == seed && $0.outcome.isResumable }) {
             let acrossSessions = index != pending.previousIndex
+            if games[index].outcome == .disconnectedOrConceded {
+                // It was a disconnect after all: the game goes on.
+                resumeAfterDisconnect(index)
+            }
             if acrossSessions {
                 // Carried in from an earlier log: its lobby memory comes from the journal.
                 resetGameState()
@@ -215,12 +226,24 @@ public struct BGGameHistory: Sendable {
         concede = nil
     }
 
-    /// Every game still in progress, other than `kept`, never ended: a different game started.
+    /// A different game started: every game still in progress, other than `kept`, never ended,
+    /// and one left with the concede-or-disconnect tag wasn't resumed, so the player left it.
     private mutating func abandonGames(except kept: Int?) {
-        for index in games.indices where index != kept && games[index].outcome == .inProgress {
-            games[index].outcome = .abandoned
+        for index in games.indices where index != kept && games[index].outcome.isResumable {
+            games[index].outcome = games[index].outcome == .inProgress ? .abandoned : .conceded
             changedGames.insert(index)
         }
+    }
+
+    /// A game left with the concede-or-disconnect tag came back with its seed: undoes the end.
+    private mutating func resumeAfterDisconnect(_ index: Int) {
+        games[index].outcome = .inProgress
+        games[index].end = nil
+        games[index].placement = nil
+        games[index].placementSource = nil
+        journals[index].finalLobby = nil
+        concede = nil
+        changedGames.insert(index)
     }
 
     /// The end of a recruit phase: `TURN` just turned even, and the board, gold and
@@ -302,13 +325,22 @@ public struct BGGameHistory: Sendable {
     }
 
     /// A concede ends the game for the local player; the client may never log
-    /// `STATE=COMPLETE` for it. The placement is marked as estimated.
-    private mutating func localConceded(_ store: EntityStore, at position: LogPosition) {
-        guard let index = currentIndex, concede == nil, games[index].placementSource != .final else { return }
+    /// `STATE=COMPLETE` for it. The placement is marked as estimated. The concede-or-disconnect
+    /// tag alone (`conceded: false`) may be a disconnect: the game stays resumable.
+    private mutating func localLeft(_ store: EntityStore, at position: LogPosition, conceded: Bool) {
+        guard let index = currentIndex, games[index].placementSource != .final else { return }
+        if concede != nil {
+            // Already left: `PLAYSTATE=CONCEDED` after the tag settles it as a concede.
+            if conceded, games[index].outcome == .disconnectedOrConceded {
+                games[index].outcome = .conceded
+                changedGames.insert(index)
+            }
+            return
+        }
         concede = Concede(placeAtConcede: Self.localPlace(store))
         refresh(from: store)
         if games[index].end == nil { games[index].end = position }
-        games[index].outcome = .conceded
+        games[index].outcome = conceded ? .conceded : .disconnectedOrConceded
         games[index].placementSource = .concedeEstimate
         games[index].placement = Self.concedePlace(store, placeAtConcede: concede?.placeAtConcede)
         journals[index].finalLobby = BGSnapshot.project(store)?.lobby

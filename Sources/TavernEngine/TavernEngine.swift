@@ -184,9 +184,10 @@ public struct TavernEngine: Sendable {
     /// Every game's full record.
     public var records: [GameRecord] { history.games.indices.map(record(at:)) }
 
-    /// The game still in progress, if any: what a client restart may resume.
+    /// The game still in progress (or left with the concede-or-disconnect tag), if any: what a
+    /// client restart may resume.
     public var inProgressRecord: GameRecord? {
-        history.games.indices.last { history.games[$0].outcome == .inProgress }.map(record(at:))
+        history.games.indices.last { history.games[$0].outcome.isResumable }.map(record(at:))
     }
 
     /// The records that reached a checkpoint since the last call, for saving.

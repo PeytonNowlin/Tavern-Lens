@@ -89,15 +89,75 @@ struct GameRecordTests {
         #expect(engine.records[0].journal.boardsSeen.count == 1)
     }
 
-    @Test("Outcomes: complete at STATE=COMPLETE, conceded on the local concede")
+    @Test("Outcomes: complete at STATE=COMPLETE, conceded on PLAYSTATE=CONCEDED")
     func outcomes() {
         #expect(TavernEngine.replay(lines: SyntheticLog.soloGame().lines).games.map(\.outcome) == [.complete])
         var conceded = LobbySyntheticTests.lobbyGame()
         conceded.localTag("3479", "1")
+        conceded.localTag("PLAYSTATE", "CONCEDED")
         conceded.endTaskList()
         let result = TavernEngine.replay(lines: conceded.lines)
         #expect(result.games.map(\.outcome) == [.conceded])
         #expect(result.records.first?.journal.finalLobby?.count == 8)
+    }
+
+    @Test("The concede-or-disconnect tag alone leaves the game resumable: the same seed comes back as a reconnect")
+    func disconnectThenReconnect() throws {
+        var log = LobbySyntheticTests.lobbyGame()
+        log.localTag("3479", "1")
+        log.endTaskList()
+        let left = TavernEngine.replay(lines: log.lines)
+        let game = try #require(left.games.only)
+        #expect(game.outcome == .disconnectedOrConceded)
+        #expect(game.end != nil && game.placementSource == .concedeEstimate, "over as far as the log says, placement estimated")
+        #expect(left.timeline.last?.state.status == .gameOver)
+
+        // The client reconnects to the same game.
+        log.reconnect(turn: 3)
+        log.turn(3)
+        log.endTaskList()
+        let resumed = TavernEngine.replay(lines: log.lines)
+        let back = try #require(resumed.games.only, "stitched into the same game, not a second one")
+        #expect(back.outcome == .inProgress)
+        #expect(back.end == nil && back.placement == nil && back.placementSource == nil)
+        #expect(back.reconnects.count == 1)
+        #expect(resumed.records.only?.journal.finalLobby == nil)
+        #expect(resumed.timeline.last?.state.status == .inGame)
+
+        // It then plays out to the end.
+        log.completeGame()
+        let finished = try #require(TavernEngine.replay(lines: log.lines).games.only)
+        #expect(finished.outcome == .complete && finished.placementSource == .final)
+    }
+
+    @Test("The concede-or-disconnect tag becomes a concede once PLAYSTATE says so, the game completes, or another game starts")
+    func disconnectSettles() throws {
+        var tagged = LobbySyntheticTests.lobbyGame()
+        tagged.localTag("3479", "1")
+        tagged.endTaskList()
+
+        var thenConceded = tagged
+        thenConceded.localTag("PLAYSTATE", "CONCEDED")
+        thenConceded.endTaskList()
+        #expect(TavernEngine.replay(lines: thenConceded.lines).games.map(\.outcome) == [.conceded])
+
+        var thenCompleted = tagged
+        thenCompleted.gameTag("STATE", "COMPLETE")
+        thenCompleted.endTaskList()
+        let completed = try #require(TavernEngine.replay(lines: thenCompleted.lines).games.only)
+        #expect(completed.outcome == .conceded && completed.placementSource == .concedeEstimate)
+
+        var thenNewGame = tagged
+        thenNewGame.newGame(seed: 42)
+        let next = TavernEngine.replay(lines: thenNewGame.lines)
+        #expect(next.games.map(\.outcome) == [.conceded, .inProgress])
+
+        // A real concede isn't undone by the same seed coming back.
+        var concededThenResent = thenConceded
+        concededThenResent.reconnect(turn: 3)
+        let resent = TavernEngine.replay(lines: concededThenResent.lines)
+        #expect(resent.games.first?.outcome == .conceded)
+        #expect(resent.games.first?.reconnects.isEmpty == true)
     }
 
     // MARK: - Across sessions (the client restarted)

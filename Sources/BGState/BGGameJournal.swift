@@ -7,11 +7,23 @@ public enum BGGameOutcome: String, Codable, Hashable, Sendable {
     case inProgress
     /// `GameEntity STATE=COMPLETE`: the placement is final.
     case complete
-    /// The local player conceded or left; the placement may be estimated.
+    /// The local player conceded (`PLAYSTATE=CONCEDED`, or `STATE=COMPLETE` after the
+    /// concede-or-disconnect tag), or left and played a different game next; the placement
+    /// may be estimated.
     case conceded
+    /// The concede-or-disconnect tag (3479) alone: the local player conceded, or the client lost
+    /// its connection. Until something tells them apart the game counts as over (with an
+    /// estimated placement), but a `CREATE_GAME` with its seed still resumes it as a reconnect.
+    case disconnectedOrConceded
     /// The game never ended in the log: a later game with a different seed started
     /// instead. No placement.
     case abandoned
+
+    /// A `CREATE_GAME` with the game's seed resumes it (a reconnect or a client restart).
+    public var isResumable: Bool { self == .inProgress || self == .disconnectedOrConceded }
+
+    /// Nothing can change the game any more (a record the housekeeping may treat as done).
+    public var isFinal: Bool { !isResumable }
 }
 
 /// A reconnect: the game was resent under a new `CREATE_GAME` with the same `GAME_SEED`.
