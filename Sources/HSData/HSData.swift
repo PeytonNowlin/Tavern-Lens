@@ -1,10 +1,11 @@
 // HSData: shared Hearthstone data.
 //
-// Planned contents (see docs/spec/tavern-lens-v1.md):
-// - GameTag and related enums generated from HearthstoneJSON enums.json, with an unknown
-//   fallback (the parser's built-in tag table in PowerParser/GameTag.swift is replaced then)
-// - the card DB pinned to the running build, and the art cache
-// - the minion pool with its overrides
-// - Firestone hero and build stats
+// - HSEnumeration.swift: `HS.<Group>` enums generated at build time from HearthstoneJSON
+//   enums.json (Tools/HSEnumsGenerator via Plugins/HSEnumsPlugin); PowerParser's GameTag
+//   name tables come from the same generator
+// - CardDB.swift: cards.json for one build
+// - HearthstoneBuild.swift: the installed client's build number
+// - CardDataStore.swift: card data pinned to the running build, downloaded once and cached
 //
-// Empty in the walking skeleton.
+// Planned (see docs/spec/tavern-lens-v1.md): the art cache, the minion pool with its
+// overrides, Firestone hero and build stats.

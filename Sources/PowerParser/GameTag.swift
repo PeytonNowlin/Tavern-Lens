@@ -1,10 +1,10 @@
 /// A Hearthstone game tag, kept numeric.
 ///
 /// The client prints a tag's name when it has one (`tag=ZONE`) and its number
-/// otherwise (`tag=2022`). Names are resolved to numbers through `GameTag.names`.
-/// A name the table doesn't know is kept as `.unresolved(name)` so that parsing
-/// never fails on a new tag; the full generated table (from HearthstoneJSON
-/// `enums.json`) replaces the built-in subset below with the card-data ticket.
+/// otherwise (`tag=2022`). Names are resolved to numbers through `GameTag.names`,
+/// generated at build time from HearthstoneJSON `enums.json` (see Tools/HSEnumsGenerator).
+/// A name the table doesn't know is kept as `.unresolved(name)` and an unknown number
+/// stays `.id(number)`, so a new tag never makes parsing fail.
 public enum GameTag: Hashable, Sendable {
     case id(Int)
     case unresolved(String)
@@ -35,7 +35,8 @@ extension GameTag: CustomStringConvertible {
     }
 }
 
-// Tags the engine reads, with numbers from HearthstoneJSON enums.json (build 251952).
+// Tags the engine reads, with numbers from HearthstoneJSON enums.json.
+// Tests check each against the generated table.
 public extension GameTag {
     static let premium = GameTag.id(12)
     static let playState = GameTag.id(17)
@@ -70,24 +71,6 @@ public extension GameTag {
     static let gameSeed = GameTag.id(2042)
     static let baconCurrentCombatPlayerID = GameTag.id(2989)
     static let baconDuoTeamID = GameTag.id(3095)
-}
-
-extension GameTag {
-    /// Built-in name table: the tags above. Replaced by the generated table later.
-    static let names: [String: Int] = [
-        "PREMIUM": 12, "PLAYSTATE": 17, "STEP": 19, "TURN": 20, "CURRENT_PLAYER": 23,
-        "RESOURCES_USED": 25, "RESOURCES": 26, "HERO_ENTITY": 27, "PLAYER_ID": 30,
-        "DAMAGE": 44, "HEALTH": 45, "ATK": 47, "ZONE": 49, "CONTROLLER": 50, "ENTITY_ID": 53,
-        "MAXRESOURCES": 176, "CARDTYPE": 202, "STATE": 204, "FROZEN": 260, "ZONE_POSITION": 263,
-        "ARMOR": 292, "TEMP_RESOURCES": 295, "BOARD_VISUAL_STATE": 1347, "BACON_DUMMY_PLAYER": 1349,
-        "NEXT_OPPONENT_PLAYER_ID": 1360, "PLAYER_LEADERBOARD_PLACE": 1373, "PLAYER_TECH_LEVEL": 1377,
-        "TECH_LEVEL": 1440, "PLAYER_TRIPLES": 1447, "COPIED_FROM_ENTITY_ID": 1565, "GAME_SEED": 2042,
-        "BACON_CURRENT_COMBAT_PLAYER_ID": 2989, "BACON_DUO_TEAM_ID": 3095,
-    ]
-
-    static let nameByNumber: [Int: String] = Dictionary(
-        names.map { ($0.value, $0.key) }, uniquingKeysWith: { first, _ in first }
-    )
 }
 
 /// A tag value: a number, or an enum name such as `PLAY`, `MINION` or `COMPLETE`.

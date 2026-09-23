@@ -18,7 +18,7 @@ final class DebugReplayModel {
         return "Replayed \(result.games.count) Battlegrounds game(s)"
     }
 
-    func replay(_ url: URL) {
+    func replay(_ url: URL, cards: CardDB? = nil) {
         fileURL = url
         result = nil
         errorMessage = nil
@@ -29,7 +29,7 @@ final class DebugReplayModel {
             let start = clock.now
             do {
                 let replayed = try await Task.detached(priority: .userInitiated) {
-                    try TavernEngine.replay(fileAt: url)
+                    try TavernEngine.replay(fileAt: url, cards: cards)
                 }.value
                 result = replayed
             } catch {
