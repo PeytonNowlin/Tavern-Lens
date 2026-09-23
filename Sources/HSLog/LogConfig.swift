@@ -30,8 +30,8 @@ public struct LogConfigReport: Hashable, Sendable {
 /// Keeps Hearthstone's two log config files correct.
 ///
 /// - `log.config` enables only `[Power]` (verbose) and `[LoadingScreen]`. Anything
-///   else, such as `[Zone]` (which only costs disk I/O), makes it wrong. The first
-///   time it's rewritten, the old file is kept as `log.config.bak`.
+///   else, such as `[Zone]` (which only costs disk I/O), makes it wrong, and it's rewritten
+///   in place. Nothing else is written to Hearthstone's preferences folder (no backup).
 /// - `client.config` must have `[Log] FileSizeLimit.Int=-1`; without it the client
 ///   silently stops logging at 10 MB per file. Its other settings are preserved.
 ///
@@ -79,12 +79,6 @@ public enum LogConfig {
         if let existing, isCorrectLogConfig(existing) { return .correct }
         do {
             try fileManager.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if existing != nil {
-                let backup = file.deletingLastPathComponent().appending(path: file.lastPathComponent + ".bak")
-                if !fileManager.fileExists(atPath: backup.path(percentEncoded: false)) {
-                    try fileManager.copyItem(at: file, to: backup)
-                }
-            }
             try Data(logConfigContents.utf8).write(to: file, options: .atomic)
         } catch {
             return .failed("Can't write \(path): \(error.localizedDescription)")

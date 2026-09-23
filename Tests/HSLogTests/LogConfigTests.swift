@@ -83,7 +83,7 @@ struct LogConfigTests {
         #expect(!setup.restartRequired)
     }
 
-    @Test("Extra sections such as Zone are removed, and the original is backed up once")
+    @Test("Extra sections such as Zone are removed in place, with no extra file in Hearthstone's folder")
     func extraSectionsRepaired() throws {
         let install = try TemporaryInstall()
         try install.write(Self.researchLogConfig, to: install.locations.logConfigFile)
@@ -92,13 +92,15 @@ struct LogConfigTests {
 
         let repaired = try #require(install.read(install.locations.logConfigFile))
         #expect(!repaired.contains("[Zone]"))
-        let backup = install.locations.logConfigFile.deletingLastPathComponent().appending(path: "log.config.bak")
-        #expect(install.read(backup) == Self.researchLogConfig)
+        let folder = install.locations.logConfigFile.deletingLastPathComponent()
+        let files = try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false))
+        #expect(files.filter { !$0.hasPrefix(".") } == [install.locations.logConfigFile.lastPathComponent], "\(files)")
 
-        // A later repair keeps the first backup (the player's original).
+        // A later repair rewrites it again, still alone.
         try install.write("[Power]\nVerbose=false\n", to: install.locations.logConfigFile)
         #expect(setup.check(hearthstoneRunning: false).logConfig == .repaired)
-        #expect(install.read(backup) == Self.researchLogConfig)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path(percentEncoded: false)).filter { !$0.hasPrefix(".") }
+            == [install.locations.logConfigFile.lastPathComponent])
     }
 
     @Test(

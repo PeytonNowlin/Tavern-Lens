@@ -1,4 +1,5 @@
 import Foundation
+import GzipSupport
 import HSLog
 import Testing
 

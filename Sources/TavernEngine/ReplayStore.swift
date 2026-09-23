@@ -1,4 +1,5 @@
 import Foundation
+import GzipSupport
 import HSLog
 
 /// A saved replay: one game's own slice of a Power.log, gzip-compressed.

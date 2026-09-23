@@ -14,6 +14,8 @@ let package = Package(
         .library(name: "TavernEngine", targets: ["TavernEngine"]),
     ],
     targets: [
+        // gzip with the system zlib: saved log slices and the simulator's bundled card data.
+        .target(name: "GzipSupport"),
         // Log files on disk: discovery, config, tailing, retention. No Battlegrounds knowledge.
         .target(name: "HSLog"),
         // Log lines -> typed power events.
@@ -32,11 +34,13 @@ let package = Package(
         .target(name: "BGIntel", dependencies: ["BGState", "HSData", "EntityStore", "PowerParser"]),
         // Firestone's combat simulator (pinned npm package bundled by scripts/update-simulator.sh)
         // in a JavaScriptCore context, with its pinned card data.
-        .target(name: "SimulatorRuntime", dependencies: ["HSLog"], resources: [.copy("Resources")]),
+        .target(name: "SimulatorRuntime", dependencies: ["GzipSupport"], resources: [.copy("Resources")]),
         // Headless composition root: log lines in, timeline of view states and game records out.
         .target(
             name: "TavernEngine",
-            dependencies: ["HSLog", "PowerParser", "EntityStore", "BGState", "HSData", "BGIntel", "SimulatorRuntime"]
+            dependencies: [
+                "HSLog", "GzipSupport", "PowerParser", "EntityStore", "BGState", "HSData", "BGIntel", "SimulatorRuntime",
+            ]
         ),
         // Pure overlay geometry: Hearthstone's content frame -> element rects (seam 2).
         .target(name: "OverlayLayout"),
@@ -79,7 +83,7 @@ let package = Package(
         // Seam 3: log housekeeping against a temporary directory tree.
         .testTarget(
             name: "HSLogTests",
-            dependencies: ["HSLog"],
+            dependencies: ["HSLog", "GzipSupport"],
             swiftSettings: commandLineToolsTesting.swift,
             linkerSettings: commandLineToolsTesting.linker
         ),

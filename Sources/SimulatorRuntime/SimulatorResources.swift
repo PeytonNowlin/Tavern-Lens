@@ -1,5 +1,5 @@
 import Foundation
-import HSLog
+import GzipSupport
 
 /// The bundled simulator and its pinned card data (Sources/SimulatorRuntime/Resources).
 ///
