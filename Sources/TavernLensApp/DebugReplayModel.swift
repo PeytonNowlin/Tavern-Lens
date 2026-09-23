@@ -14,8 +14,8 @@ final class DebugReplayModel {
 
     var menuStatus: String {
         if isReplaying { return "Replaying log…" }
-        guard let result else { return "Not tracking (live tracking arrives later)" }
-        return "Replayed \(result.games.count) Battlegrounds game(s)"
+        guard let result else { return "No log replayed" }
+        return "Debug replay: \(result.games.count) Battlegrounds game(s)"
     }
 
     func replay(_ url: URL) {

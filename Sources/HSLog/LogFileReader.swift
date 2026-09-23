@@ -2,8 +2,7 @@ import Foundation
 
 /// Reads a whole log file from disk as lines, in chunks, for replay.
 ///
-/// Live tailing (byte offsets, DispatchSource plus a backup poll) builds on the
-/// same `LogLineSplitter` and is added with the live log pipeline.
+/// Live tailing (`LogSessionFollower`) builds on the same `LogLineSplitter`.
 public enum LogFileReader {
     public static let defaultChunkSize = 1 << 20
 
