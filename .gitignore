@@ -4,3 +4,4 @@ fixtures/private-logs/
 .build/
 .swiftpm/
 build/
+.claude/worktrees/
