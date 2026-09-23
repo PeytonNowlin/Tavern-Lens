@@ -7,18 +7,19 @@ import Testing
 /// suggestions point at.
 @Suite("Advisor overlays")
 struct AdvisorLayoutTests {
-    @Test("The list sits at the bottom of the right margin, aligned with the HUD, clear of the board and HS UI",
+    @Test("The list sits at the bottom of the right margin, right-aligned with the HUD, clear of the board and HS UI",
           arguments: ReferenceFrame.all)
     func panelPlacement(frame: ReferenceFrame) {
         let l = frame.layout
         let panel = l.advisorPanel
         #expect(CGRect(origin: .zero, size: l.size).contains(panel))
-        expectNear(panel.minX, l.hud.minX, 1e-9, "aligned with the HUD")
-        expectNear(panel.width, l.hud.width, 1e-9, "the HUD's width")
+        expectNear(panel.maxX, l.hud.maxX, 1e-9, "right-aligned with the HUD")
+        #expect(panel.width > l.hud.width, "wider than the HUD, for legible text")
         #expect(panel.maxY < l.rect(.journalButton).minY && panel.maxY < l.rect(.settingsButton).minY)
         #expect(panel.minY > l.buildTipsPanel.maxY, "under the build tips")
-        // Near the gold bar: its bottom is level with the gold pill's row, to its right.
-        #expect(panel.maxY > l.rect(.goldPill).minY && panel.minX > l.rect(.goldPill).maxX)
+        // Near the gold bar: just above the gold coins' row, to the right of the gold pill.
+        #expect(panel.maxY < l.goldCoin(0).minY && panel.maxY > l.goldCoin(0).minY - 3 * l.constants.panelGap * l.panelScale)
+        #expect(panel.minX > l.rect(.goldPill).maxX)
         for element in HSElement.allCases { #expect(!panel.intersects(l.rect(element)), "list overlaps \(element)") }
         for k in 0..<7 {
             #expect(!panel.intersects(l.boardSlot(.top, index: k, of: 7)))

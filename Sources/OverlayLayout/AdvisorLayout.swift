@@ -5,28 +5,29 @@ public struct AdvisorMetrics: Hashable, Sendable {
     // The panel, in reference points (multiplied by `panelScale`): a header strip at the bottom
     // (the top suggestion, or the status, and the collapse toggle) with up to `rows` suggestions
     // listed above it when expanded. Each row: a rank badge, a title line and a reason line.
-    public var headerFontSize: CGFloat = 10
-    public var titleFontSize: CGFloat = 10
-    public var reasonFontSize: CGFloat = 9
-    public var rankFontSize: CGFloat = 9
+    public var headerFontSize: CGFloat = 14
+    public var titleFontSize: CGFloat = 14
+    public var reasonFontSize: CGFloat = 12.5
+    public var rankFontSize: CGFloat = 12
     /// The rank badge in the list.
-    public var rankDiameter: CGFloat = 15
+    public var rankDiameter: CGFloat = 20
     public var rows = 3
     /// Between a title and its reason.
     public var lineSpacing: CGFloat = 1
     /// Between rows, and between the list and the header.
-    public var rowSpacing: CGFloat = 5
+    public var rowSpacing: CGFloat = 6
     /// Between the rank badge and the text.
-    public var badgeSpacing: CGFloat = 5
-    public var padding = CGSize(width: 9, height: 7)
+    public var badgeSpacing: CGFloat = 7
+    public var padding = CGSize(width: 11, height: 8)
     public var cornerRadius: CGFloat = 10
     /// The header strip's height.
-    public var headerHeight: CGFloat = 28
+    public var headerHeight: CGFloat = 34
     /// Lines a reason may wrap to before it's cut.
     public var reasonLines = 2
-    /// The whole panel when expanded (its width is the HUD's); the header, `rows` rows and a note
-    /// line must fit (checked in the layout tests).
-    public var panelHeight: CGFloat = 186
+    /// The whole panel when expanded, right-aligned with the HUD but wider (it reaches left into
+    /// the free space beside the board, clear of the shop and the minions); the header, `rows`
+    /// rows and a note line must fit (checked in the layout tests).
+    public var panelSize = CGSize(width: 250, height: 250)
 
     // In-place highlights, in units of `h` (they sit on Hearthstone's cards, so they scale with the board).
     /// The ring's stroke, drawn inside the target (inset so a build highlight's ring shows around it).
@@ -53,14 +54,15 @@ extension OverlayLayout {
     }
 
     /// The advisor's ranked list: at the bottom of the right margin, near the gold bar, above
-    /// Hearthstone's journal and settings buttons, aligned with the HUD. It's the whole expanded
-    /// panel; collapsed, only `advisorHeader` (its bottom strip) shows.
+    /// Hearthstone's journal and settings buttons and the gold coins' row (it reaches over the
+    /// last coins), right-aligned with the HUD. It's the whole expanded panel; collapsed, only
+    /// `advisorHeader` (its bottom strip) shows.
     public var advisorPanel: CGRect {
         let s = panelScale
         let hud = self.hud
-        let height = constants.advisor.panelHeight * s
-        let chrome = min(rect(.journalButton).minY, rect(.settingsButton).minY)
-        return CGRect(x: hud.minX, y: chrome - constants.panelGap * s - height, width: hud.width, height: height)
+        let width = constants.advisor.panelSize.width * s, height = constants.advisor.panelSize.height * s
+        let bottom = min(rect(.journalButton).minY, rect(.settingsButton).minY, goldCoin(0).minY)
+        return CGRect(x: hud.maxX - width, y: bottom - constants.panelGap * s - height, width: width, height: height)
     }
 
     /// The panel's header strip: always shown while there's advice, and the one part of the panel
