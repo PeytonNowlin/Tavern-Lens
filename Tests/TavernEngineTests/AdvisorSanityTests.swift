@@ -5,10 +5,88 @@ import TavernEngine
 /// The sanity layer, one rule at a time, on synthetic states the blended score alone would get
 /// wrong: each state's clearly bad suggestion is an improvement by the score, and the rule takes
 /// it out (or moves it down) and says so in `Advice.sanity`. The bookmarked cases are checked
-/// against the rules in `AdvisorTuningTests` and `AdvisorFixtureTests`.
+/// against the rules in `AdvisorTuningTests` and `AdvisorFixtureTests`, and every rule is also
+/// applied to a bookmarked state (`bookmarkedCases`).
 @Suite("Advisor sanity layer")
 struct AdvisorSanityTests {
     typealias S = AdvisorSynthetic
+
+    /// The committed bookmark case's state (turn 11 of the full game as the shop opened), and the
+    /// advisor's golden state for the same moment, which also carries the detected builds.
+    static func bookmarkedStates() throws -> (bookmark: AdvisorRequest, withBuilds: AdvisorRequest) {
+        let cases = AdvisorCase.goldenCases(in: BookmarkGoldenTests.directory)
+        let bookmark = try #require(cases.first { $0.name == AdvisorFixtureTests.committedCase }?.request)
+        let withBuilds = try AdvisorFixture.load(AdvisorRequest.self, golden: "\(AdvisorSimulatorTests.turn11).request")
+        return (bookmark, withBuilds)
+    }
+
+    static func context(
+        _ request: AdvisorRequest, baseLethalRisk: Double = 0, shopHasImprovement: Bool = false, freezeKeeps: Double = 1
+    ) -> AdvisorSanity.Context {
+        AdvisorSanity.Context(
+            request: request, weights: .standard, baseLethalRisk: baseLethalRisk, baseSimulations: 1000,
+            shopHasImprovement: shopHasImprovement, freezeKeeps: freezeKeeps
+        )
+    }
+
+    static func option(_ action: AdvisorAction, gain: Double = 5, lethalRisk: Double = 0) -> AdvisorSanity.Option {
+        AdvisorSanity.Option(action: action, combatGain: gain, lethalRisk: lethalRisk, simulations: 1000)
+    }
+
+    @Test("Each rule applied to the bookmarked turn-11 state: it fires where the rule says, and not otherwise")
+    func bookmarkedCases() throws {
+        let (state, withBuilds) = try Self.bookmarkedStates()
+        #expect(state.board.count == 7 && state.gold == 10 && state.shop.count == 7)
+        let sell0 = AdvisorAction.sell(board: 0, cardID: state.board[0].cardID)
+        let buy0 = AdvisorAction.buy(shop: 0, cardID: state.shop[0].cardID, place: 0)
+
+        // unaffordable: the same shop with no gold left.
+        var broke = state
+        broke.gold = 0
+        #expect(AdvisorSanity.veto(Self.option(buy0), in: Self.context(broke)) == .unaffordable)
+        #expect(AdvisorSanity.veto(Self.option(buy0), in: Self.context(state)) == nil)
+
+        // lastMinion: down to one minion.
+        var alone = state
+        alone.board = [state.board[0]]
+        #expect(AdvisorSanity.veto(Self.option(sell0), in: Self.context(alone)) == .lastMinion)
+
+        // newLethalRisk: a board change that makes dying next combat 30 points likelier.
+        #expect(AdvisorSanity.veto(Self.option(buy0, lethalRisk: 30), in: Self.context(state)) == .newLethalRisk)
+        #expect(AdvisorSanity.veto(Self.option(buy0, lethalRisk: 1), in: Self.context(state)) == nil)
+
+        // survivalFirst: at 30% risk of dying, a freeze goes below a buy that cuts it to 5%.
+        let options = [Self.option(.freeze), Self.option(buy0, lethalRisk: 5)]
+        let danger = Self.context(state, baseLethalRisk: 30)
+        #expect(AdvisorSanity.downrank(options[0], among: options, in: danger) == .survivalFirst)
+        #expect(AdvisorSanity.review(options, in: danger).order == [1, 0])
+        #expect(AdvisorSanity.downrank(options[0], among: options, in: Self.context(state)) == nil)
+
+        // keepPairs: the shop's second copy of a board minion bought into hand, then one sold.
+        let pairCard = try #require(state.shop.first { card in state.board.contains { $0.cardID == card.cardID && !$0.golden } })
+        let pairIndex = try #require(state.board.firstIndex { $0.cardID == pairCard.cardID })
+        var paired = state
+        paired.hand.append(pairCard)
+        let sellPair = AdvisorAction.sell(board: pairIndex, cardID: pairCard.cardID)
+        #expect(AdvisorSanity.veto(Self.option(sellPair), in: Self.context(paired)) == .keepPairs)
+        #expect(AdvisorSanity.veto(Self.option(sellPair, gain: 30), in: Self.context(paired)) == nil, "a big enough gain overrides it")
+
+        // keepBuildCore: selling a core card of the detected Aberration Discard build.
+        let builds = try #require(withBuilds.builds)
+        let coreIndex = try #require(withBuilds.board.indices.first { index in
+            builds.contains { $0.core.contains(withBuilds.board[index].cardID) }
+                && !withBuilds.board.enumerated().contains { $0.offset != index && $0.element.cardID == withBuilds.board[index].cardID }
+        })
+        let sellCore = AdvisorAction.sell(board: coreIndex, cardID: withBuilds.board[coreIndex].cardID)
+        #expect(AdvisorSanity.veto(Self.option(sellCore), in: Self.context(withBuilds)) == .keepBuildCore)
+        #expect(AdvisorSanity.veto(Self.option(sellCore), in: Self.context(state)) == nil, "no build detected: no core")
+
+        // rollPastImprovement and freezeForNothing: the shop's contents as the score saw them.
+        #expect(AdvisorSanity.veto(Self.option(.roll(cost: 1)), in: Self.context(state, shopHasImprovement: true)) == .rollPastImprovement)
+        #expect(AdvisorSanity.veto(Self.option(.roll(cost: 1)), in: Self.context(state)) == nil)
+        #expect(AdvisorSanity.veto(Self.option(.freeze), in: Self.context(state, freezeKeeps: 0)) == .freezeForNothing)
+        #expect(AdvisorSanity.veto(Self.option(.freeze), in: Self.context(state)) == nil)
+    }
 
     static func run(_ request: AdvisorRequest, _ stub: S.Stub, weights: AdvisorWeights = .standard) async throws -> Advice {
         try await AdvisorEvaluation.run(request, plan: S.plan.with(weights: weights), simulate: S.simulate(stub)).advice
