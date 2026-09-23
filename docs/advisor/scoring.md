@@ -29,7 +29,11 @@ Each other opponent counts by `likelihood × freshness`: the one fought last tur
 `lobbyRecentFactor` (0.5), since they're less likely to come up again at once; a board counts half
 as much every `lobbyStaleHalfLife` (3) turns after the first. The lobby gain is the weighted mean,
 over the opponents both were scored against, of the candidate's combat value minus the baseline's.
-A suggestion outside the best few has no lobby term (nil), which counts as 0.
+A suggestion outside the best few has no lobby term (nil), which counts as 0. Only the baseline and
+the best `lobbyGroups` board changes are scored against the lobby because each costs one evaluation
+per opponent: every candidate would be about 180 evaluations late in a game, far past the time
+budget, and the other terms have already ranked the rest too low for the lobby to change the top
+(`docs/deviations.md`).
 
 ### Builds
 
