@@ -13,6 +13,8 @@ struct DebugWindow: View {
     @State private var selection: TimelineRow.ID?
     @State private var detail = Detail.player
     @State private var entityFilter = ""
+    @State private var showsBookmarks = false
+    @State private var bookmarks = DebugBookmarksModel()
 
     enum Detail: String, CaseIterable, Identifiable {
         case player = "Player & shop"
@@ -51,7 +53,12 @@ struct DebugWindow: View {
                 }
                 .disabled(model.isReplaying || cardData.isLoading)
             }
+            ToolbarItem {
+                Button("Bookmarks", systemImage: "bookmark") { showsBookmarks = true }
+                    .help("Feedback bookmarks: replay them or export them as golden cases")
+            }
         }
+        .sheet(isPresented: $showsBookmarks) { DebugBookmarksView(model: bookmarks) }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.log, .plainText, .gzip, .data]) { outcome in
             guard case .success(let url) = outcome else { return }
             selection = nil

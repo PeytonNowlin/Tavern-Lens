@@ -139,6 +139,18 @@ final class LiveTrackingModel {
         pipeline.start(logsDirectory: Self.locations(for: client).logsDirectory, launchDate: client.launchDate)
     }
 
+    /// The moment on screen as a bookmark with no note yet; nil with no game shown.
+    func captureBookmark() -> FeedbackBookmark? {
+        pipeline?.captureBookmark()
+    }
+
+    /// Stores a bookmark in its game's record. False when its game is unknown.
+    @discardableResult
+    func save(_ bookmark: FeedbackBookmark) -> Bool {
+        if let pipeline { return pipeline.save(bookmark) }
+        return (try? GameRecordStore.standard.add(bookmark)) == true
+    }
+
     private func stopFollowing() {
         generation += 1
         pipeline?.stop()

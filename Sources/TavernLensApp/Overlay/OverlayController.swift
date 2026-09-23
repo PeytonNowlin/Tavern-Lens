@@ -126,6 +126,32 @@ final class OverlayController {
         accessibilityTrusted = AXIsProcessTrustedWithOptions(options)
     }
 
+    /// What the overlay is showing, for a feedback bookmark of `shown`.
+    func bookmarkContext(shown: ViewState) -> BookmarkOverlay {
+        var panels: [String] = []
+        if isShown, let game = model.game {
+            panels.append("hud")
+            if model.leaderboardGame != nil {
+                if model.nextOpponentSlot != nil { panels.append("nextOpponentRing") }
+                if game.phase == .recruit, let next = game.nextOpponent, !next.isLocal { panels.append("nextOpponentPreview") }
+                if model.hoveredOpponent != nil { panels.append("opponentPanel") }
+            }
+        }
+        return BookmarkOverlay(
+            visible: isShown, hiddenByUser: isHiddenByUser, showsLayoutGuides: showsLayoutGuides,
+            contentWidth: window.map { Double($0.contentFrame.width) },
+            contentHeight: window.map { Double($0.contentFrame.height) },
+            fullscreen: window?.isFullscreen, layoutVersion: model.layout?.constants.version, panels: panels,
+            hoveredPlayerID: isShown ? model.hoveredOpponent?.playerID : nil, drewShownState: model.view == shown
+        )
+    }
+
+    /// Hearthstone's client area in AppKit screen coordinates, while the overlay is on it.
+    var contentScreenFrame: CGRect? {
+        guard isShown, let panel else { return nil }
+        return panel.frame
+    }
+
     // MARK: - State
 
     private func observeLive() {

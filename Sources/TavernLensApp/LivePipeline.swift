@@ -86,7 +86,7 @@ final class LivePipeline: @unchecked Sendable {
             if let carried { engine.resume(carried) }
             engine.beginCatchUp()
         case .powerLogEntry(let entry):
-            engine.skipLines(entry.line - 1)
+            engine.start(at: entry)
         case .caughtUp(let file):
             if file == LogFileName.power { engine.endCatchUp() }
         case .lines(let file, let lines):
@@ -101,6 +101,39 @@ final class LivePipeline: @unchecked Sendable {
         }
         if !engine.isCatchingUp { saveRecords() }
         publishIfDue()
+    }
+
+    // MARK: - Bookmarks
+
+    /// The moment the engine last published, as a bookmark with no note yet: its state,
+    /// the game's seed, and the Power.log stretch (entry point to the published line, with
+    /// byte offsets) that replays to it. Nil while catching up or with no game shown.
+    func captureBookmark(createdAt: Date = Date()) -> FeedbackBookmark? {
+        lock.lock()
+        let captured = engine.bookmark(createdAt: createdAt)
+        let powerLog = session?.powerLog
+        lock.unlock()
+        guard var bookmark = captured else { return nil }
+        if let powerLog {
+            bookmark.powerLog = powerLog.path(percentEncoded: false)
+            // Lines already read never move (the log only grows), so this can run outside the lock.
+            bookmark.cut = bookmark.cut.locating(in: powerLog)
+        }
+        return bookmark
+    }
+
+    /// Stores a bookmark in its game's record and saves it. False when neither the engine
+    /// nor the record store knows its game.
+    @discardableResult
+    func save(_ bookmark: FeedbackBookmark) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if engine.addBookmark(bookmark) {
+            saveRecords()
+            return true
+        }
+        // The session changed while the note was typed: the game is on disk, if anywhere.
+        return (try? records?.add(bookmark)) == true
     }
 
     /// Call with `lock` held.

@@ -82,7 +82,7 @@ struct OverlayRootView: View {
                 }
                 if let game = model.game {
                     StatusHUD(game: game, isOver: model.view.status == .gameOver, scale: layout.panelScale,
-                              hide: model.hide)
+                              metrics: layout.constants.hudMetrics, hide: model.hide)
                         .frame(width: layout.hud.width, height: layout.hud.height)
                         .offset(x: layout.hud.minX, y: layout.hud.minY)
                 }
@@ -96,29 +96,32 @@ struct OverlayRootView: View {
     }
 }
 
-/// Turn, phase, tavern tier and gold, in a small dark translucent panel.
+/// Turn, phase, tavern tier and gold, in a small dark translucent panel. Its type and
+/// spacing come from `HUDMetrics`, which the layout tests check against the HUD's size.
 struct StatusHUD: View {
     let game: GameView
     let isOver: Bool
     let scale: CGFloat
+    var metrics = HUDMetrics()
     let hide: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5 * scale) {
-            HStack(spacing: 6 * scale) {
+        let m = metrics
+        VStack(alignment: .leading, spacing: m.rowSpacing * scale) {
+            HStack(spacing: m.titleSpacing * scale) {
                 Text(turnText)
-                    .font(.system(size: 13 * scale, weight: .semibold))
+                    .font(.system(size: m.turnFontSize * scale, weight: .semibold))
                 if let phaseText {
                     Text(phaseText)
-                        .font(.system(size: 9.5 * scale, weight: .semibold))
+                        .font(.system(size: m.phaseFontSize * scale, weight: .semibold))
                         .foregroundStyle(phaseColor)
-                        .padding(.horizontal, 5 * scale)
-                        .padding(.vertical, 1.5 * scale)
+                        .padding(.horizontal, m.phasePadding.width * scale)
+                        .padding(.vertical, m.phasePadding.height * scale)
                         .background(phaseColor.opacity(0.18), in: Capsule())
                 }
             }
             .lineLimit(1)
-            HStack(spacing: 12 * scale) {
+            HStack(spacing: m.itemSpacing * scale) {
                 Label {
                     Text(tierText)
                 } icon: {
@@ -134,24 +137,25 @@ struct StatusHUD: View {
                 Spacer(minLength: 0)
                 Button(action: hide) {
                     Image(systemName: "eye.slash")
-                        .font(.system(size: 10 * scale, weight: .medium))
+                        .font(.system(size: m.iconSize * scale, weight: .medium))
                         .foregroundStyle(.secondary)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Hide the overlay (⌃⌥H)")
             }
-            .labelStyle(CompactLabelStyle(spacing: 4 * scale, iconSize: 10 * scale))
-            .font(.system(size: 12.5 * scale, weight: .medium))
+            .lineLimit(1)
+            .labelStyle(CompactLabelStyle(spacing: m.iconSpacing * scale, iconSize: m.iconSize * scale))
+            .font(.system(size: m.valueFontSize * scale, weight: .medium))
         }
         .monospacedDigit()
         .foregroundStyle(.primary)
-        .padding(.horizontal, 10 * scale)
-        .padding(.vertical, 7 * scale)
+        .padding(.horizontal, m.padding.width * scale)
+        .padding(.vertical, m.padding.height * scale)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(HUDMaterial(cornerRadius: 10 * scale))
+        .background(HUDMaterial(cornerRadius: m.cornerRadius * scale))
         .overlay(
-            RoundedRectangle(cornerRadius: 10 * scale, style: .continuous)
+            RoundedRectangle(cornerRadius: m.cornerRadius * scale, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
         )
     }

@@ -106,8 +106,11 @@ public struct LayoutConstants: Hashable, Sendable {
     // Our own panels, authored on a 1080-high reference canvas.
     public var panelScaleRange: ClosedRange<CGFloat>
     /// The status HUD, anchored to the window's top-right corner (in reference points).
+    /// `hudSize.width` must fit `hudMetrics`' widest content (checked in the layout tests).
     public var hudSize: CGSize
     public var hudInset: CGFloat
+    /// The HUD's type sizes and spacing, which the HUD view draws with.
+    public var hudMetrics: HUDMetrics
     /// The opponent panel shown while a leaderboard portrait is hovered: pinned to the top
     /// edge and centred, like the trackers' (in reference points).
     public var opponentPanelSize: CGSize
@@ -115,6 +118,32 @@ public struct LayoutConstants: Hashable, Sendable {
     public var nextOpponentPreviewHeight: CGFloat
     /// Space between stacked panels (in reference points).
     public var panelGap: CGFloat
+}
+
+/// The status HUD's type and spacing, in reference points (multiplied by `panelScale`).
+///
+/// Two rows: the turn and a phase capsule, then the tier, the gold and a hide button.
+/// Kept with the layout so the HUD's size can be checked against the widest content it
+/// shows without drawing it.
+public struct HUDMetrics: Hashable, Sendable {
+    public var turnFontSize: CGFloat = 13
+    public var phaseFontSize: CGFloat = 9.5
+    /// The phase capsule's horizontal and vertical padding.
+    public var phasePadding: CGSize = CGSize(width: 5, height: 1.5)
+    /// Between the turn and the phase capsule.
+    public var titleSpacing: CGFloat = 6
+    public var valueFontSize: CGFloat = 12.5
+    public var iconSize: CGFloat = 10
+    /// Between an icon and its value.
+    public var iconSpacing: CGFloat = 4
+    /// Between the tier, the gold, the flexible space and the hide button.
+    public var itemSpacing: CGFloat = 9
+    public var rowSpacing: CGFloat = 5
+    /// Inside the HUD's edges.
+    public var padding: CGSize = CGSize(width: 9, height: 7)
+    public var cornerRadius: CGFloat = 10
+
+    public init() {}
 }
 
 extension LayoutConstants {
@@ -184,8 +213,11 @@ extension LayoutConstants {
             .settingsButton: .init(kx: 0.040, fy: 0.976, w: 0.045, h: 0.045, anchor: .rightEdge),
         ],
         panelScaleRange: 0.8...1.3,
-        hudSize: CGSize(width: 140, height: 60),
+        // 148 fits "Turn 30 · Game over" and "★ 6  ◎ 40/40  👁" at every panel scale; 140 cut
+        // two-digit gold ("10/…") at 1710×1073.
+        hudSize: CGSize(width: 148, height: 60),
         hudInset: 8,
+        hudMetrics: HUDMetrics(),
         opponentPanelSize: CGSize(width: 760, height: 160),
         nextOpponentPreviewHeight: 184,
         panelGap: 6
