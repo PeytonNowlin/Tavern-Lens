@@ -38,10 +38,20 @@ public struct GameView: Codable, Hashable, Sendable {
     public var player: PlayerView?
     /// Bob's shop; empty during combat.
     public var shop: ShopView
+    /// Every lobby hero, one per player, ordered by leaderboard place.
+    public var lobby: [LobbyEntryView]
+    /// The PlayerID the local player fights next.
+    public var nextOpponentPlayerID: Int?
+    /// The PlayerID being fought right now; nil outside combat.
+    public var combatOpponentPlayerID: Int?
+    /// The local player's final place; nil until the game ends.
+    public var placement: PlacementView?
 
     public init(
         gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int,
-        phase: BGPhase = .heroPick, player: PlayerView? = nil, shop: ShopView = ShopView()
+        phase: BGPhase = .heroPick, player: PlayerView? = nil, shop: ShopView = ShopView(),
+        lobby: [LobbyEntryView] = [], nextOpponentPlayerID: Int? = nil, combatOpponentPlayerID: Int? = nil,
+        placement: PlacementView? = nil
     ) {
         self.gameType = gameType
         self.localPlayerID = localPlayerID
@@ -51,6 +61,78 @@ public struct GameView: Codable, Hashable, Sendable {
         self.phase = phase
         self.player = player
         self.shop = shop
+        self.lobby = lobby
+        self.nextOpponentPlayerID = nextOpponentPlayerID
+        self.combatOpponentPlayerID = combatOpponentPlayerID
+        self.placement = placement
+    }
+
+    /// The next opponent's lobby entry.
+    public var nextOpponent: LobbyEntryView? {
+        nextOpponentPlayerID.flatMap { id in lobby.first { $0.playerID == id } }
+    }
+}
+
+/// One hero on the leaderboard.
+public struct LobbyEntryView: Codable, Hashable, Sendable {
+    public var playerID: Int
+    public var heroCardID: String
+    /// From the card data; nil without it.
+    public var heroName: String?
+    public var hero: HeroStatsView
+    public var tier: Int?
+    /// Leaderboard place; final once the hero is dead.
+    public var place: Int?
+    public var isLocal: Bool
+    /// HP at 0 or below.
+    public var isDead: Bool
+    /// The opponent's display name, known once they've been fought; never set for the local player.
+    public var displayName: String?
+    /// Their board at the start of the latest combat against them; nil means "not seen".
+    public var lastSeenBoard: LastSeenBoardView?
+
+    public init(
+        playerID: Int, heroCardID: String, heroName: String? = nil, hero: HeroStatsView, tier: Int?, place: Int?,
+        isLocal: Bool, isDead: Bool, displayName: String? = nil, lastSeenBoard: LastSeenBoardView? = nil
+    ) {
+        self.playerID = playerID
+        self.heroCardID = heroCardID
+        self.heroName = heroName
+        self.hero = hero
+        self.tier = tier
+        self.place = place
+        self.isLocal = isLocal
+        self.isDead = isDead
+        self.displayName = displayName
+        self.lastSeenBoard = lastSeenBoard
+    }
+}
+
+/// An opponent's board as captured at the start of a combat against them.
+public struct LastSeenBoardView: Codable, Hashable, Sendable {
+    /// The BG turn it was seen.
+    public var bgTurn: Int
+    /// The hero they fought with.
+    public var heroCardID: String?
+    /// Minions left to right.
+    public var cards: [CardView]
+
+    public init(bgTurn: Int, heroCardID: String?, cards: [CardView]) {
+        self.bgTurn = bgTurn
+        self.heroCardID = heroCardID
+        self.cards = cards
+    }
+}
+
+/// Where the local player finished.
+public struct PlacementView: Codable, Hashable, Sendable {
+    public var place: Int
+    /// The player conceded or left, so the place may be an estimate.
+    public var isEstimated: Bool
+
+    public init(place: Int, isEstimated: Bool) {
+        self.place = place
+        self.isEstimated = isEstimated
     }
 }
 
@@ -201,7 +283,7 @@ public struct TimelineEntry: Codable, Hashable, Sendable {
 // MARK: - From the snapshot
 
 extension GameView {
-    init(_ snapshot: BGSnapshot, cards: CardDB?) {
+    init(_ snapshot: BGSnapshot, record: BGGameRecord, lobby memory: BGLobbyMemory, cards: CardDB?) {
         self.init(
             gameType: snapshot.gameType,
             localPlayerID: snapshot.localPlayerID,
@@ -213,7 +295,35 @@ extension GameView {
             shop: ShopView(
                 cards: snapshot.shop.cards.map { CardView($0, cards: cards) },
                 isFrozen: snapshot.shop.isFrozen
-            )
+            ),
+            lobby: snapshot.lobby.map { LobbyEntryView($0, memory: memory, cards: cards) },
+            nextOpponentPlayerID: snapshot.nextOpponentPlayerID,
+            combatOpponentPlayerID: snapshot.combatOpponentPlayerID,
+            placement: record.placement.map {
+                PlacementView(place: $0, isEstimated: record.placementSource == .concedeEstimate)
+            }
+        )
+    }
+}
+
+extension LobbyEntryView {
+    init(_ entry: BGLobbyEntry, memory: BGLobbyMemory, cards: CardDB?) {
+        self.init(
+            playerID: entry.playerID,
+            heroCardID: entry.hero.cardID,
+            heroName: cards?.name(of: entry.hero.cardID),
+            hero: HeroStatsView(entry.hero),
+            tier: entry.hero.tier,
+            place: entry.place,
+            isLocal: entry.isLocal,
+            isDead: entry.isDead,
+            displayName: entry.isLocal ? nil : memory.displayNames[entry.playerID],
+            lastSeenBoard: entry.isLocal ? nil : memory.lastSeenBoards[entry.playerID].map { board in
+                LastSeenBoardView(
+                    bgTurn: board.bgTurn, heroCardID: board.heroCardID,
+                    cards: board.cards.map { CardView($0, cards: cards) }
+                )
+            }
         )
     }
 }

@@ -8,6 +8,7 @@ import PowerParser
 @_exported import enum BGState.BGPhase
 @_exported import enum BGState.BGCardKind
 @_exported import enum BGState.BGKeyword
+@_exported import enum BGState.BGPlacementSource
 @_exported import struct PowerParser.LogPosition
 // Card data is an engine input (`TavernEngine(cards:)`), and the app loads it.
 @_exported import HSData
@@ -106,6 +107,7 @@ public struct TavernEngine: Sendable {
             for change in changes {
                 history.observe(change, in: store, at: position)
             }
+            history.observe(event, in: store)
             if event == .taskListEnd {
                 publish()
             }
@@ -114,15 +116,20 @@ public struct TavernEngine: Sendable {
 
     private mutating func publish() {
         history.refresh(from: store)
-        let next = Self.viewState(snapshot: BGSnapshot.project(store), record: history.current, cards: cards)
+        let next = Self.viewState(
+            snapshot: BGSnapshot.project(store), record: history.current, lobby: history.lobby, cards: cards
+        )
         guard next != state else { return }
         state = next
         timeline.append(TimelineEntry(position: LogPosition(line: linesRead, time: String(lastTimestamp)), state: next))
     }
 
-    static func viewState(snapshot: BGSnapshot?, record: BGGameRecord?, cards: CardDB?) -> ViewState {
+    static func viewState(snapshot: BGSnapshot?, record: BGGameRecord?, lobby: BGLobbyMemory, cards: CardDB?) -> ViewState {
         guard let snapshot, let record else { return .noGame }
-        return ViewState(status: record.end == nil ? .inGame : .gameOver, game: GameView(snapshot, cards: cards))
+        return ViewState(
+            status: record.end == nil ? .inGame : .gameOver,
+            game: GameView(snapshot, record: record, lobby: lobby, cards: cards)
+        )
     }
 }
 
