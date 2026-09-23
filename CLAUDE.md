@@ -1,4 +1,4 @@
-# Hearthstone BG Companion
+# Tavern Lens
 
 ## Agent skills
 
