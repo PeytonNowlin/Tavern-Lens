@@ -34,6 +34,8 @@ public struct TavernEngine: Sendable {
     public private(set) var timeline: [TimelineEntry] = []
     public private(set) var state: ViewState = .noGame
     public private(set) var linesRead = 0
+    /// The client's current scene from LoadingScreen.log (e.g. `BACON`, `GAMEPLAY`), if seen.
+    public private(set) var scene: String?
 
     private var parser = PowerLogParser()
     private var store = EntityStore()
@@ -60,6 +62,15 @@ public struct TavernEngine: Sendable {
             lastTimestamp = line.timestamp
         }
         process(events)
+    }
+
+    /// Ingests one LoadingScreen.log line (without its newline).
+    ///
+    /// Scene changes don't affect the view state; they're kept for status display.
+    public mutating func ingestLoadingScreen(_ rawLine: String) {
+        if case .sceneLoaded(_, let current) = LoadingScreenEvent(line: rawLine) {
+            scene = current
+        }
     }
 
     /// Ends the input: flushes a trailing header and publishes the final state.

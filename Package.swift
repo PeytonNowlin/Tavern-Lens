@@ -35,9 +35,16 @@ let package = Package(
         .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog"]),
         .testTarget(
             name: "TavernEngineTests",
-            dependencies: ["TavernEngine"],
+            dependencies: ["TavernEngine", "HSLog"],
             // Golden JSON is read from (and recorded into) the source tree via #filePath.
             exclude: ["Golden"],
+            swiftSettings: commandLineToolsTesting.swift,
+            linkerSettings: commandLineToolsTesting.linker
+        ),
+        // Seam 3: log housekeeping against a temporary directory tree.
+        .testTarget(
+            name: "HSLogTests",
+            dependencies: ["HSLog"],
             swiftSettings: commandLineToolsTesting.swift,
             linkerSettings: commandLineToolsTesting.linker
         ),
