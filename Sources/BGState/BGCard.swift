@@ -72,7 +72,7 @@ public enum BGCardKind: String, Codable, Hashable, Sendable {
 /// Entity IDs change every turn (the client re-creates your board at each combat),
 /// so identity across snapshots is the card ID and position, never `entityID`.
 /// The same type describes opponent boards.
-public struct BGCard: Hashable, Sendable {
+public struct BGCard: Codable, Hashable, Sendable {
     public var cardID: String
     /// Current entity; only valid within this snapshot.
     public var entityID: Int
@@ -127,7 +127,7 @@ public struct BGCard: Hashable, Sendable {
 }
 
 /// A hero's health and progress. The same shape serves every lobby hero.
-public struct BGHeroState: Hashable, Sendable {
+public struct BGHeroState: Codable, Hashable, Sendable {
     public var entityID: Int
     public var cardID: String
     /// `HEALTH`.

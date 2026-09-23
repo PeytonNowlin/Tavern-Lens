@@ -76,6 +76,16 @@ final class EventRecorder: @unchecked Sendable {
         }
     }
 
+    /// Power.log entry points, in order.
+    var entries: [PowerLogEntryPoint] {
+        lock.withLock { events.compactMap { if case .powerLogEntry(let entry) = $0 { entry } else { nil } } }
+    }
+
+    /// Files that reported being caught up, in order.
+    var caughtUp: [String] {
+        lock.withLock { events.compactMap { if case .caughtUp(let file) = $0 { file } else { nil } } }
+    }
+
     /// Lines of one file, in order, from the most recent session only.
     func lines(of file: String) -> [String] {
         lock.withLock {
@@ -84,7 +94,7 @@ final class EventRecorder: @unchecked Sendable {
                 switch event {
                 case .sessionStarted: result = []
                 case .lines(let name, let lines) where name == file: result += lines
-                case .lines: break
+                case .lines, .powerLogEntry, .caughtUp: break
                 }
             }
             return result

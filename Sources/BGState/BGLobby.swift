@@ -14,7 +14,7 @@ extension GameTag {
 }
 
 /// One lobby hero on the leaderboard.
-public struct BGLobbyEntry: Hashable, Sendable {
+public struct BGLobbyEntry: Codable, Hashable, Sendable {
     /// The player's lobby PlayerID (1–8), the hero's `PLAYER_ID`: the join key for
     /// next opponent, combat opponent, last-seen boards and names.
     public var playerID: Int
@@ -28,7 +28,7 @@ public struct BGLobbyEntry: Hashable, Sendable {
 }
 
 /// An opponent's board as it was at the start of a combat against them.
-public struct BGOpponentBoard: Hashable, Sendable {
+public struct BGOpponentBoard: Codable, Hashable, Sendable {
     public var playerID: Int
     /// The BG turn of the combat.
     public var bgTurn: Int

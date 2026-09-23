@@ -6,7 +6,9 @@ import Foundation
 /// restarted).
 ///
 /// Each file is read from its start, so a session joined late is caught up in
-/// order; lines are delivered in batches of up to about a megabyte. A vnode source
+/// order; lines are delivered in batches of up to about a megabyte. Power.log is an
+/// exception when `startsAtLatestGame` is on: it's read from the latest game's
+/// `CREATE_GAME` (`PowerLogEntryPoint`), because only that game can be in progress. A vnode source
 /// on the `Logs` directory and one per file give low latency; a backup poll
 /// (default 250 ms) covers missed events and folders that don't exist yet.
 ///
@@ -16,13 +18,20 @@ public final class LogSessionFollower: @unchecked Sendable {
     public enum Event: Sendable {
         /// Now following this session. Lines that follow belong to it.
         case sessionStarted(LogSession)
+        /// Power.log is read from this entry point instead of its start; comes right after
+        /// `sessionStarted`, before any of its lines.
+        case powerLogEntry(PowerLogEntryPoint)
         /// Complete lines from one file (`LogFileName`), in file order.
         case lines(file: String, [String])
+        /// Everything the file held when the session was joined has been delivered; lines
+        /// after this are live.
+        case caughtUp(file: String)
     }
 
     public let logsDirectory: URL
     public let fileNames: [String]
     public let launchDate: Date?
+    public let startsAtLatestGame: Bool
 
     private let pollInterval: DispatchTimeInterval
     private let timeZone: TimeZone
@@ -39,10 +48,12 @@ public final class LogSessionFollower: @unchecked Sendable {
     /// - Parameters:
     ///   - launchDate: When the client launched, if known. A newest folder older than
     ///     this is a previous launch's, so it's ignored until the new one appears.
+    ///   - startsAtLatestGame: Read Power.log from its latest game instead of its start.
     public init(
         logsDirectory: URL,
         fileNames: [String] = [LogFileName.power, LogFileName.loadingScreen],
         launchDate: Date? = nil,
+        startsAtLatestGame: Bool = false,
         pollInterval: DispatchTimeInterval = .milliseconds(250),
         timeZone: TimeZone = .current,
         handler: @escaping @Sendable (Event) -> Void
@@ -50,6 +61,7 @@ public final class LogSessionFollower: @unchecked Sendable {
         self.logsDirectory = logsDirectory
         self.fileNames = fileNames
         self.launchDate = launchDate
+        self.startsAtLatestGame = startsAtLatestGame
         self.pollInterval = pollInterval
         self.timeZone = timeZone
         self.handler = handler
@@ -98,10 +110,23 @@ public final class LogSessionFollower: @unchecked Sendable {
         session = newSession
         handler(.sessionStarted(newSession))
         tailers = fileNames.map { name in
-            LogFileTailer(url: newSession.file(named: name), queue: queue) { [weak self] lines in
-                guard let self, self.running else { return }
-                self.handler(.lines(file: name, lines))
+            let url = newSession.file(named: name)
+            var startOffset: UInt64 = 0
+            if startsAtLatestGame, name == LogFileName.power, let entry = PowerLogEntryPoint.find(in: url) {
+                startOffset = entry.byteOffset
+                handler(.powerLogEntry(entry))
             }
+            return LogFileTailer(
+                url: url, queue: queue, startOffset: startOffset,
+                onLines: { [weak self] lines in
+                    guard let self, self.running else { return }
+                    self.handler(.lines(file: name, lines))
+                },
+                onCaughtUp: { [weak self] in
+                    guard let self, self.running else { return }
+                    self.handler(.caughtUp(file: name))
+                }
+            )
         }
     }
 

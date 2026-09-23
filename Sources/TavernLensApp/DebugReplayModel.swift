@@ -1,4 +1,5 @@
 import Foundation
+import HSLog
 import Observation
 import TavernEngine
 
@@ -29,7 +30,7 @@ final class DebugReplayModel {
             let start = clock.now
             do {
                 let replayed = try await Task.detached(priority: .userInitiated) {
-                    try TavernEngine.replay(fileAt: url, cards: cards)
+                    try TavernEngine.replay(fileAt: url, cards: cards, session: LogSession(directory: url.deletingLastPathComponent()))
                 }.value
                 result = replayed
             } catch {

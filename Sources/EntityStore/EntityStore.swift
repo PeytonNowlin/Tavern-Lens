@@ -71,6 +71,10 @@ public struct StoreDiagnostics: Hashable, Sendable, Codable {
 ///
 /// `CREATE_GAME` resets it. Metadata printed by `GameState` just before that is kept.
 /// It knows nothing about Battlegrounds beyond the two Player entities.
+///
+/// A game is identified by the game entity's `GAME_SEED`. A reconnect resends the whole
+/// game under a new `CREATE_GAME` with the same seed, and may leave out the
+/// `DebugPrintGame` metadata; the store then keeps that game's earlier metadata.
 public struct EntityStore: Sendable {
     public private(set) var entities: [Int: Entity] = [:]
     public private(set) var gameEntityID: Int?
@@ -82,6 +86,8 @@ public struct EntityStore: Sendable {
     public private(set) var gamesCreated = 0
 
     private var announcedMetadata = GameMetadata()
+    /// Metadata of the games seen (or remembered), by `GAME_SEED`, for reconnects.
+    private var metadataBySeed: [Int: GameMetadata] = [:]
     private var announcedGameStarted = false
     /// Entity IDs by `(CONTROLLER, ZONE)`, kept in step with the tags so zone queries don't scan every entity.
     private var zoneIndex: [ZoneKey: Set<Int>] = [:]
@@ -118,6 +124,13 @@ public struct EntityStore: Sendable {
 
     public subscript(id: Int) -> Entity? { entities[id] }
 
+    /// Remembers a game that may be resumed in this log, such as one from the previous
+    /// session's log when the client restarted mid-game: should its `CREATE_GAME` come
+    /// without metadata, this metadata is used.
+    public mutating func rememberGame(seed: Int, metadata: GameMetadata) {
+        metadataBySeed[seed] = metadata
+    }
+
     /// The entities with this `CONTROLLER` (a PlayerID) in this `ZONE` (`PLAY`, `HAND`, …), in no particular order.
     public func entities(controller: Int, zone: String) -> [Entity] {
         guard let ids = zoneIndex[ZoneKey(controller: controller, zone: zone)] else { return [] }
@@ -146,6 +159,13 @@ public struct EntityStore: Sendable {
         case .gameEntity(let id, let tags):
             guard started() else { return }
             gameEntityID = id
+            if let seed = tags.last(where: { $0.tag == .gameSeed })?.value.intValue {
+                if metadata.gameType == nil, let known = metadataBySeed[seed] {
+                    metadata = known
+                } else if metadata.gameType != nil {
+                    metadataBySeed[seed] = metadata
+                }
+            }
             create(id: id, cardID: "", tags: tags, changes: changes)
         case .player(let eid, let pid, let hi, let lo, let tags):
             guard started() else { return }

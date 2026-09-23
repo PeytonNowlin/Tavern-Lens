@@ -9,6 +9,8 @@ import Foundation
 enum Fixtures {
     static let fullGame = "Hearthstone_2026_09_22_21_08_40/Power.log"
     static let truncatedGame = "Hearthstone_2026_09_22_20_33_28/Power.log"
+    /// Hearthstone was closed mid-game at BG turn 3; no later session resumes it.
+    static let abandonedGame = "Hearthstone_2026_09_22_21_59_59/Power.log"
 
     static let directory: URL? = {
         if let override = ProcessInfo.processInfo.environment["TAVERN_FIXTURES_DIR"], !override.isEmpty {
