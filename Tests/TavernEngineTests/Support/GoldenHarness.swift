@@ -89,11 +89,49 @@ enum GoldenHarness {
     }
 
     static func encode(_ golden: Golden) throws -> Data {
+        try encode(value: golden)
+    }
+
+    /// Pretty-printed with sorted keys and a final newline: the committed goldens' format.
+    static func encode<T: Encodable>(value: T) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        var data = try encoder.encode(golden)
+        var data = try encoder.encode(value)
         data.append(0x0A)
         return data
+    }
+
+    /// The one record-or-compare step every golden goes through: refuses JSON that looks like it
+    /// holds a BattleTag; with `TAVERN_RECORD_GOLDENS=1` writes `value` to `url` and returns nil;
+    /// otherwise returns the committed golden (failing when it's missing), and `value`'s JSON for
+    /// the caller's failure messages.
+    static func recordOrLoad<T: Codable>(
+        _ value: T, at url: URL, sourceLocation: SourceLocation = #_sourceLocation
+    ) throws -> (expected: T, actualText: String)? {
+        let data = try encode(value: value)
+        let text = String(decoding: data, as: UTF8.self)
+        let name = url.lastPathComponent
+        try #require(!containsBattleTag(text), "golden '\(name)' would contain a BattleTag", sourceLocation: sourceLocation)
+        if isRecording {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: url)
+            return nil
+        }
+        let expectedData = try #require(
+            try? Data(contentsOf: url), "missing golden \(name); run with TAVERN_RECORD_GOLDENS=1 to create it",
+            sourceLocation: sourceLocation
+        )
+        #expect(!containsBattleTag(String(decoding: expectedData, as: UTF8.self)), "golden '\(name)' contains a BattleTag",
+                sourceLocation: sourceLocation)
+        return (try JSONDecoder().decode(T.self, from: expectedData), text)
+    }
+
+    /// Compares `value` to the golden at `url` as a whole, or records it.
+    static func verify<T: Codable & Equatable>(
+        _ value: T, at url: URL, sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+        guard let (expected, text) = try recordOrLoad(value, at: url, sourceLocation: sourceLocation) else { return }
+        #expect(expected == value, "differs from golden \(url.lastPathComponent):\n\(text)", sourceLocation: sourceLocation)
     }
 
     /// Compares `result` to the named golden, or records it when recording is on.
@@ -104,25 +142,8 @@ enum GoldenHarness {
         sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
         let actual = golden(from: result, checkpoints: checkpoints)
-        let actualData = try encode(actual)
-        let actualText = String(decoding: actualData, as: UTF8.self)
-        try #require(!containsBattleTag(actualText), "golden '\(name)' would contain a BattleTag", sourceLocation: sourceLocation)
-
         let url = goldenDirectory.appending(path: "\(name).json")
-        if isRecording {
-            try FileManager.default.createDirectory(at: goldenDirectory, withIntermediateDirectories: true)
-            try actualData.write(to: url)
-            return
-        }
-
-        let expectedData = try #require(
-            try? Data(contentsOf: url),
-            "missing golden \(url.lastPathComponent); run with TAVERN_RECORD_GOLDENS=1 to create it",
-            sourceLocation: sourceLocation
-        )
-        let expected = try JSONDecoder().decode(Golden.self, from: expectedData)
-        #expect(!containsBattleTag(String(decoding: expectedData, as: UTF8.self)), "golden '\(name)' contains a BattleTag", sourceLocation: sourceLocation)
-
+        guard let (expected, actualText) = try recordOrLoad(actual, at: url, sourceLocation: sourceLocation) else { return }
         #expect(expected.games == actual.games, "games differ from golden '\(name)':\n\(actualText)", sourceLocation: sourceLocation)
         for checkpoint in checkpoints {
             let key = checkpoint.description
@@ -136,9 +157,10 @@ enum GoldenHarness {
         }
     }
 
-    /// `Name#1234`-shaped text. Goldens must be redacted.
+    /// `Name#1234`-shaped text. Goldens must be redacted. (The engine's own detector, which
+    /// bookmark exports use.)
     static func containsBattleTag(_ text: String) -> Bool {
-        text.contains(/[\p{L}\p{N}_]+#\d{3,}/)
+        BattleTag.appears(in: text)
     }
 
     private static func describe(_ entry: TimelineEntry?) -> String {

@@ -14,7 +14,7 @@ struct CombatOddsFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func fullGame() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         let requests = result.combatRequests
         #expect(requests.map(\.bgTurn) == Array(1...12))
         let seen = try #require(result.records.first?.journal.boardsSeen)
@@ -54,7 +54,7 @@ struct CombatOddsFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func fullGameResolvedTribes() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)), pool: PoolFixture.pool)
+        let result = try FixtureReplays.result(Fixtures.fullGame, .pool)
         let lobby: [HS.Race] = [.aberration, .dragon, .elemental, .quilboar, .undead]
         let requests = result.combatRequests
         #expect(requests.map(\.bgTurn) == Array(1...12))
@@ -74,7 +74,7 @@ struct CombatOddsFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.truncatedGame), "private fixture log not present")
     )
     func truncatedGame() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.truncatedGame)))
+        let result = try FixtureReplays.result(Fixtures.truncatedGame)
         let turn4 = try #require(result.combatRequests.first { $0.bgTurn == 4 })
         #expect(turn4.position.line == 36_936)
         let input = turn4.input

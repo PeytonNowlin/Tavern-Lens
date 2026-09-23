@@ -10,8 +10,7 @@ struct BuildFixtureTests {
     static let bothFixtures = Fixtures.isAvailable(Fixtures.fullGame) && Fixtures.isAvailable(Fixtures.truncatedGame)
 
     static func replay(_ fixture: String) throws -> ReplayResult {
-        let url = try #require(Fixtures.url(fixture))
-        return try TavernEngine.replay(fileAt: url, cards: PoolFixture.cards, pool: PoolFixture.pool, builds: BuildFixture.catalog)
+        try FixtureReplays.result(fixture, .builds)
     }
 
     /// What a checkpoint's builds look like in the golden: compact, and without names.
@@ -60,20 +59,8 @@ struct BuildFixtureTests {
 
     static func verify(_ result: ReplayResult, golden name: String) throws {
         let actual = golden(result)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        var data = try encoder.encode(actual)
-        data.append(0x0A)
-        try #require(!GoldenHarness.containsBattleTag(String(decoding: data, as: UTF8.self)))
         let url = GoldenHarness.goldenDirectory.appending(path: "\(name).json")
-        if GoldenHarness.isRecording {
-            try data.write(to: url)
-            return
-        }
-        let expected = try JSONDecoder().decode(
-            Golden.self,
-            from: try #require(try? Data(contentsOf: url), "missing golden \(name).json; record with TAVERN_RECORD_GOLDENS=1")
-        )
+        guard let (expected, _) = try GoldenHarness.recordOrLoad(actual, at: url) else { return }
         #expect(expected.catalog == actual.catalog)
         for key in Set(expected.checkpoints.keys).union(actual.checkpoints.keys).sorted() {
             #expect(expected.checkpoints[key] == actual.checkpoints[key], "checkpoint \(key) differs from golden '\(name)'")

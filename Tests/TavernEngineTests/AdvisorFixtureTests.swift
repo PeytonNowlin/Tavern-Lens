@@ -35,7 +35,7 @@ struct AdvisorFixtureTests {
     @Test("The start of each late recruit phase of the full game scores to its golden advice",
           .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present"))
     func goldenAdvice() async throws {
-        let replay = try AdvisorFixture.replay(Fixtures.fullGame, builds: BuildFixture.catalog)
+        let replay = try AdvisorFixture.replay(Fixtures.fullGame, withBuilds: true)
         let simulate = try AdvisorFixture.simulate()
         var advice: [String: AdviceView] = [:]
         for turn in 8...12 {

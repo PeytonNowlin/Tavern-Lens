@@ -88,7 +88,7 @@ struct BookmarkFixtureTests {
         let url = try #require(Fixtures.url(Fixtures.fullGame))
         let session = try #require(LogSession(directory: url.deletingLastPathComponent(), timeZone: .gmt))
         // Attach at turn 4 (about 30% in), then follow to the end.
-        let reference = try TavernEngine.replay(fileAt: url)
+        let reference = try FixtureReplays.result(Fixtures.fullGame)
         let attach = try #require(reference.timeline.first { $0.state.game?.bgTurn == 4 }).position.line
         var live = try LiveRead(url: url, session: session, caughtUpAt: attach)
 

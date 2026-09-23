@@ -22,44 +22,93 @@ struct AdvisorSyntheticTests {
         return stub
     }
 
-    @Test("Candidates: affordable buys, playable hand minions, sells, modelled spells and the tavern buttons")
-    func candidates() throws {
-        let shop = [
-            S.shopMinion(901, attack: 5, health: 5), S.shopMinion(902, attack: 3, health: 3, cost: 5),
-            S.spell(903, "BG28_897"), S.spell(904, "BG28_512"),  // Banana (modelled), Enchanted Lasso (not)
-        ]
-        let hand = [S.shopMinion(905, attack: 2, health: 2), S.spell(906, "BG28_168")]  // a minion, Shiny Ring
-        let request = try S.request(boardCount: 5, shop: shop, hand: hand, gold: 4, levelCost: 7)
-        let ids = Set(Advisor.initialCandidates(for: request).map(\.id))
-        #expect(ids == [
-            "keep", "buy:s0@5", "play:h0@5", "sell:b0", "sell:b1", "sell:b2", "sell:b3", "sell:b4",
-            // Banana on the strongest minion (the 67/67), Shiny Ring on everyone.
-            "cast:shop2o0-b3", "cast:hand1o0", "roll", "freeze",
-        ], "the 5-gold minion, the unmodelled spell and the 7-gold level aren't affordable or modelled")
+    /// The suggestions' actions, in rank order.
+    static func actions(_ advice: Advice) -> [AdvisorAction] { advice.suggestions.map(\.action) }
 
-        // Stage 1: the other placements of the best buy, the other targets, moves, and the dear minion for next turn.
-        let refinements = Advisor.refinements(for: request, bestFirst: ["buy:s0", "cast:shop2", "play:h0"]).map(\.id)
-        for id in ["buy:s0@0", "buy:s0@4", "cast:shop2o0-b0", "play:h0@0", "move:b4@0", "move:b0@4", "next:buy:s1@5"] {
-            #expect(refinements.contains(id), "\(id) in \(refinements)")
-        }
-        #expect(!refinements.contains("buy:s0@5"), "stage 0's candidates aren't repeated")
+    static func isBuy(_ action: AdvisorAction, shop index: Int? = nil) -> Bool {
+        if case .buy(let shop, _, _) = action { return index.map { $0 == shop } ?? true }
+        return false
     }
 
-    @Test("A full board swaps instead of buying; a full hand can't buy; no data means no candidates")
-    func limits() throws {
-        let shop = [S.shopMinion(901, attack: 5, health: 5)]
+    static func isSwap(_ action: AdvisorAction) -> Bool {
+        if case .swap = action { true } else { false }
+    }
+
+    static func isCast(_ action: AdvisorAction, from source: AdvisorAction.SpellSource, index: Int) -> Bool {
+        if case .cast(let from, let i, _, _, _, _) = action { return from == source && i == index }
+        return false
+    }
+
+    static func stats(_ card: AdvisorCard) -> Int { card.entity.attack + card.entity.health }
+
+    @Test("Candidates: affordable buys, playable hand minions, sells, modelled spells and the tavern buttons")
+    func candidates() async throws {
+        // A strong minion in hand is played.
+        let hand = try S.request(boardCount: 5, hand: [S.shopMinion(905, attack: 30, health: 30)], gold: 0)
+        let played = try await Self.run(hand, Self.stub(hand)).advice
+        guard case .play(hand: 0, _, _) = try #require(played.suggestions.first).action else {
+            Issue.record("top is \(Self.actions(played))")
+            return
+        }
+
+        // The affordable buy is suggested; the dearer minion isn't, however strong, nor is a 7-gold level at 4 gold.
+        let shop = [S.shopMinion(901, attack: 5, health: 5), S.shopMinion(902, attack: 40, health: 40, cost: 5)]
+        let buying = try S.request(boardCount: 5, shop: shop, gold: 4, levelCost: 7)
+        let bought = try await Self.run(buying, Self.stub(buying)).advice
+        #expect(Self.actions(bought).contains { Self.isBuy($0, shop: 0) }, "\(Self.actions(bought))")
+        #expect(!Self.actions(bought).contains { Self.isBuy($0, shop: 1) || Self.isSwap($0) })
+        #expect(!Self.actions(bought).contains { if case .level = $0 { true } else { false } })
+
+        // A minion that costs the combat more than its stats are worth is sold.
+        let selling = try S.request(boardCount: 5, gold: 0)
+        let weak = try #require(selling.board.indices.min { Self.stats(selling.board[$0]) < Self.stats(selling.board[$1]) })
+        var stub = Self.stub(selling)
+        let entity = selling.board[weak].entity
+        stub.minionPoints[entity.entityId] = -Double(entity.attack + entity.health) / stub.perPoint - 20
+        let sold = try await Self.run(selling, stub).advice
+        #expect(sold.suggestions.first?.action == .sell(board: weak, cardID: entity.cardId), "\(Self.actions(sold))")
+
+        // Banana is modelled, so it's cast; Enchanted Lasso isn't, so it never is.
+        let spells = try S.request(boardCount: 5, shop: [S.spell(903, "BG28_897"), S.spell(904, "BG28_512")], gold: 3)
+        let cast = try await Self.run(spells, Self.stub(spells)).advice
+        #expect(Self.actions(cast).contains { Self.isCast($0, from: .shop, index: 0) }, "\(Self.actions(cast))")
+        #expect(!Self.actions(cast).contains { Self.isCast($0, from: .shop, index: 1) })
+
+        // Shiny Ring from hand buffs the board, so it's played.
+        let ring = try S.request(boardCount: 5, hand: [S.spell(906, "BG28_168")], gold: 0)
+        let ringed = try await Self.run(ring, Self.stub(ring)).advice
+        #expect(Self.actions(ringed).contains { Self.isCast($0, from: .hand, index: 0) }, "\(Self.actions(ringed))")
+    }
+
+    @Test("Moves: with the leftmost minion counting most, a stronger minion is moved to the front")
+    func moves() async throws {
+        let request = try S.request(boardCount: 5, gold: 0)
+        let advice = try await Self.run(request, Self.stub(request, leftmostWeight: 3)).advice
+        let top = try #require(advice.suggestions.first)
+        guard case .move = top.action else {
+            Issue.record("top is \(Self.actions(advice))")
+            return
+        }
+        #expect(top.gain > 0 && top.targets.first?.kind == .board)
+    }
+
+    @Test("A full board swaps instead of buying; a full hand can't buy; no data means no suggestions")
+    func limits() async throws {
+        let shop = [S.shopMinion(901, attack: 30, health: 30)]
+        // 2 gold + 1 for the sale buys it, in place of a minion.
         let full = try S.request(boardCount: 7, shop: shop, gold: 2)
-        let ids = Advisor.initialCandidates(for: full).map(\.id)
-        #expect(!ids.contains { $0.hasPrefix("buy:") })
-        // 2 gold + 1 for the sale buys it, in place of the weakest minion (BG25_354, 5/11, slot 7).
-        #expect(ids.contains("swap:s0-b6"))
+        let swapped = try await Self.run(full, Self.stub(full)).advice
+        #expect(!Self.actions(swapped).contains { Self.isBuy($0) })
+        #expect(Self.actions(swapped).contains(where: Self.isSwap), "\(Self.actions(swapped))")
 
         let hand = (0..<10).map { S.shopMinion(950 + $0, attack: 1, health: 1) }
         let crowded = try S.request(boardCount: 7, shop: shop, hand: hand)
-        #expect(!Advisor.initialCandidates(for: crowded).contains { $0.id.hasPrefix("buy:") || $0.id.hasPrefix("swap:") })
+        let stuck = try await Self.run(crowded, Self.stub(crowded)).advice
+        #expect(!Self.actions(stuck).contains { Self.isBuy($0) || Self.isSwap($0) }, "\(Self.actions(stuck))")
 
         let unseen = try S.request(boardCount: 5, shop: shop, hasData: false)
-        #expect(Advisor.initialCandidates(for: unseen).isEmpty)
+        let none = try await Self.run(unseen, Self.stub(try S.request())).advice
+        #expect(none.status == .noData && none.suggestions.isEmpty)
     }
 
     @Test("Without data the advice says so and simulates nothing")
@@ -171,21 +220,20 @@ struct AdvisorSyntheticTests {
         #expect(top.reason == "Cuts lethal risk 30% → 0%")
     }
 
-    @Test("The same state gives the same advice; a pass simulates every candidate with the same seed")
+    @Test("The same state gives the same advice; the best options and the baseline get the refine pass's extra simulations")
     func deterministic() async throws {
         let shop = [S.shopMinion(901, attack: 5, health: 5), S.shopMinion(902, attack: 9, health: 3), S.spell(903, "BG28_897")]
         let request = try S.request(boardCount: 6, shop: shop, gold: 7)
         let stub = Self.stub(request, leftmostWeight: 2)
-        let calls = S.Calls()
-        let first = try await Self.run(request, stub, calls: calls)
+        let first = try await Self.run(request, stub)
         let second = try await Self.run(request, stub)
         #expect(first.advice == second.advice && first.evaluations == second.evaluations && first.isComplete)
-        // Stage 0, stage 1 and the refinement: three passes, each with one seed for all its candidates.
-        let passes = Dictionary(grouping: calls.all, by: \.seed)
-        #expect(passes.count == 3)
-        let refined = try #require(passes.values.first { $0.first?.simulations == S.plan.refineSimulations })
-        #expect(refined.count == S.plan.refinedGroups + 1, "the best groups and the baseline refined")
-        #expect(refined.allSatisfy { $0.simulations == S.plan.refineSimulations })
+        let refined = S.plan.simulations + S.plan.refineSimulations
+        #expect(first.advice.baseline?.simulations == refined, "the baseline is refined")
+        let top = try #require(first.advice.suggestions.first)
+        #expect(top.odds?.simulations == refined, "the best option is refined")
+        let boardChanges = first.advice.suggestions.filter { $0.action.changesBoard }
+        #expect(boardChanges.filter { $0.odds?.simulations == refined }.count <= S.plan.refinedGroups)
     }
 
     @Test("Stopping after N evaluations gives the advice shown after N, so a bookmark's advice replays")
@@ -215,34 +263,30 @@ struct AdvisorSyntheticTests {
     }
 
     @Test("Modelled tavern spells change the board as their text says")
-    func spells() throws {
+    func spells() async throws {
         // Winner's Bread (+2/+3) on the 67/67, Perfect Vision (20/20) on the weakest, Energizing Chamber (+7/+7 Deity).
         let shop = [S.spell(903, "BG36_883"), S.spell(904, "BG28_838"), S.spell(905, "BG36_371")]
         let request = try S.request(boardCount: 5, shop: shop, gold: 10)
-        let byID = Dictionary(uniqueKeysWithValues: Advisor.initialCandidates(for: request).map { ($0.id, $0) })
-        let bread = try #require(byID["cast:shop0o0-b3"]?.input)
-        #expect(bread.playerBoard.board[3].attack == 69 && bread.playerBoard.board[3].health == 70)
-        let vision = try #require(byID["cast:shop1o0-b4"]?.input, "the 14/12 golden is the weakest")
-        #expect(vision.playerBoard.board[4].attack == 20 && vision.playerBoard.board[4].maxHealth == 20)
-        let deity = try #require(byID["cast:shop2o0"]?.input?.playerBoard.player.secrets.first?.tags)
-        #expect(deity == ["4914": 243, "4915": 229])
+        let calls = S.Calls()
+        _ = try await Self.run(request, Self.stub(request), calls: calls)
+        // What the simulator was asked to fight with.
+        let boards = calls.all.map(\.input.playerBoard).filter { $0.board.count == 5 }
+        #expect(boards.contains { $0.board[3].attack == 69 && $0.board[3].health == 70 }, "Winner's Bread on the 67/67")
+        #expect(boards.contains { $0.board[4].attack == 20 && $0.board[4].maxHealth == 20 },
+                "Perfect Vision on the 14/12 golden, the weakest")
+        #expect(boards.contains { $0.player.secrets.first?.tags == ["4914": 243, "4915": 229] }, "Energizing Chamber on the Deity")
     }
 }
 
 /// The advisor runner with the stub scorer: it follows the state within the turn, drops stale
 /// scoring, and keeps to its time budget.
-@Suite("Advisor runner")
+@Suite("Advisor runner", .timeLimit(.simulationWait))
 @MainActor
 struct AdvisorRunnerTests {
     typealias S = AdvisorSynthetic
 
-    /// Generous: in the full suite other main-actor tests can hold the main actor for minutes.
-    static func wait(_ runner: AdvisorRunner, timeout: Duration = .seconds(600), until done: (AdviceView?) -> Bool) async throws {
-        let deadline = ContinuousClock.now + timeout
-        while !done(runner.current) {
-            try #require(ContinuousClock.now < deadline, "timed out; current: \(String(describing: runner.current))")
-            try await Task.sleep(for: .milliseconds(5))
-        }
+    static func wait(_ runner: AdvisorRunner, until done: (AdviceView?) -> Bool) async throws {
+        try await waitUntil { done(runner.current) }
     }
 
     @Test("Suggestions follow the state within the turn: a new shop is re-scored, the old scoring dropped")
@@ -252,8 +296,9 @@ struct AdvisorRunnerTests {
         var stub = AdvisorSyntheticTests.stub(first)
         stub.delay = .milliseconds(5)
         let calls = S.Calls()
+        // No time budget to speak of: the test is about following the state, however busy the machine.
         let runner = AdvisorRunner(simulate: S.simulate(stub, calls: calls), plan: S.plan, debounce: .milliseconds(20),
-                                   refreshInterval: .milliseconds(1))
+                                   timeBudget: .seconds(3600), refreshInterval: .milliseconds(1))
         var views: [AdviceView?] = []
         runner.onChange = { views.append($0) }
 
@@ -305,7 +350,7 @@ struct AdvisorRunnerTests {
         let runner = AdvisorRunner(simulate: S.simulate(S.Stub(baseline: 0), calls: calls), plan: S.plan)
         runner.update(try S.request(boardCount: 5, hasData: false))
         #expect(runner.current?.advice.status == .noData)
-        try await Task.sleep(for: .milliseconds(400))
+        try await Task.sleep(for: .milliseconds(100))
         #expect(calls.all.isEmpty)
     }
 }

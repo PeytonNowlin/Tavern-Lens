@@ -13,12 +13,12 @@ struct OddsPreviewFixtureTests {
     static let games = [Fixtures.fullGame, Fixtures.truncatedGame, stressGame]
 
     /// For one combat: the preview as it was at the recruit phase's last publish, and the combat's request.
-    struct Pair {
+    struct Pair: Sendable {
         var preview: OddsPreviewRequest
         var combat: CombatSimulationRequest
     }
 
-    struct Replay {
+    struct Replay: Sendable {
         var pairs: [Pair]
         /// Every distinct preview, in order.
         var previews: [OddsPreviewRequest]
@@ -28,7 +28,14 @@ struct OddsPreviewFixtureTests {
         var previewsOutsideRecruit = 0
     }
 
+    private static let replays = Memo<String, Replay>()
+
+    /// Read once per run for every test that looks at it.
     static func replay(_ path: String) throws -> Replay {
+        try replays.value(path) { try computeReplay(path) }
+    }
+
+    private static func computeReplay(_ path: String) throws -> Replay {
         var engine = TavernEngine()
         var published = 0
         var latest: OddsPreviewRequest?
@@ -162,18 +169,26 @@ struct OddsPreviewFixtureTests {
 
     @Test(
         "Full game turn 11: run through the preview runner, the end-of-recruit preview against the unchanged board gives the combat's odds",
-        .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
+        .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present"),
+        .timeLimit(.simulationWait)
     )
     @MainActor
     func turn11Odds() async throws {
-        let replay = try Self.replay(Fixtures.fullGame)
+        // Replayed off the main actor, which the other runner tests share.
+        let replay = try await Task.detached { try Self.replay(Fixtures.fullGame) }.value
         let pair = try #require(replay.pairs.first { $0.combat.bgTurn == 11 })
         var preview = pair.preview
         preview.input?.opponentBoard = pair.combat.input.opponentBoard
+        // Seeded like the golden run: the committed input, so exactly `CombatOddsGoldenTests`'s odds.
         let simulator = try CombatGoldens.makeSimulator()
-        let runner = OddsPreviewRunner(simulator: { simulator }, debounce: .milliseconds(10), budget: .golden)
+        let runner = OddsPreviewRunner(
+            simulate: { input, budget, progress in
+                try await simulator.simulate(input, budget: budget, seed: CombatGoldens.seed, progress: progress)
+            },
+            debounce: .milliseconds(10), budget: .golden
+        )
         runner.update(preview)
-        let odds = try await OddsPreviewRunnerTests.waitForFinal(runner, timeout: .seconds(600))
+        let odds = try await OddsPreviewRunnerTests.waitForFinal(runner)
         CombatOddsGoldenTests.expectFullGameTurn11(odds)
     }
 }

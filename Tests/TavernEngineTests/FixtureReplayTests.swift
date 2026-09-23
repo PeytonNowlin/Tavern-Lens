@@ -10,7 +10,7 @@ struct FixtureReplayTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func fullGame() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
 
         let game = try #require(result.games.only)
         #expect(game.gameType == "GT_BATTLEGROUNDS")
@@ -35,7 +35,7 @@ struct FixtureReplayTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.truncatedGame), "private fixture log not present")
     )
     func truncatedGame() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.truncatedGame)))
+        let result = try FixtureReplays.result(Fixtures.truncatedGame)
 
         let game = try #require(result.games.only)
         #expect(game.end == nil)

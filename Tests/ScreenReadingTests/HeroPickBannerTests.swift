@@ -112,8 +112,10 @@ struct HeroPickBannerTests {
 
     /// Capture itself isn't exercised here (it needs Screen Recording and the real screen);
     /// the app logs each capture's time. This measures recognition, the bulk of the work.
-    @Test("Recognition is fast enough to run during the hero pick")
-    func latency() throws {
+    /// A benchmark (`scripts/benchmark.sh`): the time depends on the machine and on what else runs.
+    @Test("Recognition is fast enough to run during the hero pick",
+          .enabled(if: ProcessInfo.processInfo.environment["TAVERN_BENCHMARKS"] == "1", "benchmarks run with TAVERN_BENCHMARKS=1"))
+    func benchmarkLatency() throws {
         let l = BannerFixture.layout
         let image = BannerFixture.capture(l.heroPickCapture, pixelScale: 1.6)
         let clock = ContinuousClock()

@@ -23,7 +23,7 @@ struct AdvisorTuningTests {
     /// With the private fixture: the full game's late recruit phases, with their golden advice.
     static func fixtureCases() throws -> [AdvisorCase] {
         guard Fixtures.isAvailable(Fixtures.fullGame) else { return [] }
-        let replay = try AdvisorFixture.replay(Fixtures.fullGame, builds: BuildFixture.catalog)
+        let replay = try AdvisorFixture.replay(Fixtures.fullGame, withBuilds: true)
         let golden = try AdvisorFixture.load([String: AdviceView].self, golden: "full-game-advice")
         return (8...12).compactMap { turn in
             guard let request = replay.mostGold[turn] else { return nil }
@@ -87,7 +87,12 @@ struct AdvisorTuningTests {
         #expect(AdvisorCase(bookmark: bookmark) == nil, "the request must be the one the advice was for")
     }
 
-    @Test("Every committed and fixture case re-scores to its recorded advice and breaks no sanity rule")
+    /// Re-scoring every case under the recorded weights is the regression check, but most cases are
+    /// already re-scored elsewhere: the fixture turns by `AdvisorFixtureTests.goldenAdvice` and the
+    /// turn-11 state by `AdvisorSimulatorTests.golden`, each against the same golden. So this
+    /// re-scores only the bookmark cases (from their kept requests, without the log), and checks
+    /// every case's recorded advice against the sanity rules, which needs no simulation.
+    @Test("Every committed and fixture case breaks no sanity rule; the bookmark cases re-score to their recorded advice")
     func regression() async throws {
         let cases = try Self.committedCases() + Self.fixtureCases()
         #expect(cases.count >= 1)
@@ -100,7 +105,9 @@ struct AdvisorTuningTests {
                 #expect(AdvisorSanity.violations(advice, request: item.request).isEmpty, "\(item.name)")
             }
         }
-        let report = try await AdvisorTuning.replay(cases, weights: .standard, simulate: try AdvisorFixture.simulate())
+        let bookmarkCases = AdvisorCase.goldenCases(in: BookmarkGoldenTests.directory)
+        #expect(!bookmarkCases.isEmpty)
+        let report = try await AdvisorTuning.replay(bookmarkCases, weights: .standard, simulate: try AdvisorFixture.simulate())
         #expect(report.changed.isEmpty, "\(report.text)")
         #expect(report.rows.allSatisfy { $0.violations.isEmpty }, "\(report.text)")
     }

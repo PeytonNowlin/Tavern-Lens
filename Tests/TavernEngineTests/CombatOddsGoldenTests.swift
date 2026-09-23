@@ -5,11 +5,14 @@ import TavernEngine
 /// The pinned simulator on the committed combat-start inputs of the captured games. These run
 /// without the private logs, and `scripts/update-simulator.sh` runs them before accepting a
 /// new simulator version: a bump that moves the odds away from the research fails here.
-@Suite("Combat odds goldens (pinned simulator)")
+///
+/// Every budget here is a number of simulations with no effective time limit, and the golden
+/// runs are seeded, so the results don't depend on how fast (or how busy) the machine is.
+@Suite("Combat odds goldens (pinned simulator)", .timeLimit(.simulationWait))
 struct CombatOddsGoldenTests {
     /// §8.1: 8.2 / 17.9 / 73.9, 8.8 damage taken (7–13); the real combat lost for 10.
     static func expectFullGameTurn11(_ odds: CombatOdds, sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(odds.isFinal && odds.simulations == 8000, "\(odds)", sourceLocation: sourceLocation)
+        #expect(odds.isFinal && odds.simulations == SimulationBudget.golden.simulations, "\(odds)", sourceLocation: sourceLocation)
         #expect(abs(odds.lost - 74) <= 3, "lost \(odds.lost)%", sourceLocation: sourceLocation)
         #expect(abs(odds.won - 8) <= 3, "won \(odds.won)%", sourceLocation: sourceLocation)
         #expect(abs(odds.averageDamageLost - 8.8) <= 1, "damage \(odds.averageDamageLost)", sourceLocation: sourceLocation)
@@ -22,7 +25,7 @@ struct CombatOddsGoldenTests {
 
     /// §8.2: 95.6% loss, 3.2 damage (3–4); the real combat lost for 3.
     static func expectTruncatedGameTurn4(_ odds: CombatOdds, sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(odds.isFinal && odds.simulations == 8000, "\(odds)", sourceLocation: sourceLocation)
+        #expect(odds.isFinal && odds.simulations == SimulationBudget.golden.simulations, "\(odds)", sourceLocation: sourceLocation)
         #expect(abs(odds.lost - 96) <= 2, "lost \(odds.lost)%", sourceLocation: sourceLocation)
         let range = odds.damageLostRange
         #expect(range.map { $0.min <= 3 && 3 <= $0.max } == true, "range \(String(describing: range))",
@@ -54,39 +57,40 @@ struct CombatOddsGoldenTests {
         #expect(odds.won > 60, "won \(odds.won)%")  // §8.1: 78.0% won
     }
 
-    @Test("A late board's first result comes well within 500 ms and refines in place to the final one")
+    @Test("A late board's result refines in place, step by step, to the final one")
     func progressive() async throws {
         let simulator = try CombatGoldens.makeSimulator()
         let input = try JSONEncoder().encode(CombatGoldens.input(CombatGoldens.fullGameTurn11))
         let partials = Locked<[CombatOdds]>([])
-        let odds = try await simulator.simulate(input: input, budget: .standard) { partial in
+        let budget = SimulationBudget(simulations: 600, maxDurationMilliseconds: 600_000, intermediateResults: 50)
+        let odds = try await simulator.simulate(input: input, budget: budget, seed: 11) { partial in
             partials.withLock { $0.append(partial) }
         }
         let steps = partials.withLock { $0 }
-        // Timed from the simulation's start, since simulations queue on the one JavaScript thread.
-        // Under `swift test` JavaScriptCore has no JIT; in the packaged app it takes tens of milliseconds.
-        let first = try #require(steps.first)
-        #expect(first.elapsedMilliseconds < 500, "first result after \(first.elapsedMilliseconds) ms")
-        #expect(steps.count >= 3)
-        #expect(steps.map(\.simulations) == steps.map(\.simulations).sorted())
+        // One partial every `intermediateResults` simulations, then the final one. (How soon the
+        // first comes is a matter of the machine: the packaged app, with the JIT, times it.)
+        let counts = steps.map(\.simulations)
+        #expect(counts.count >= 10 && counts == counts.sorted() && Set(counts).count == counts.count && counts.last! < 600,
+                "\(counts)")
         #expect(steps.allSatisfy { !$0.isFinal })
-        #expect(odds.isFinal && odds.simulations >= steps.last?.simulations ?? 0)
-        #expect(odds.elapsedMilliseconds <= SimulationBudget.standard.maxDurationMilliseconds + 250)
+        #expect(odds.isFinal && odds.simulations == 600)
     }
 
     @Test("Cancelling stops a simulation at its next step")
     func cancel() async throws {
         let simulator = try CombatGoldens.makeSimulator()
         let input = try JSONEncoder().encode(CombatGoldens.input(CombatGoldens.fullGameTurn11))
+        let started = Locked(false)
         let task = Task {
-            try await simulator.simulate(input: input, budget: CombatGoldens.slow)
+            try await simulator.simulate(input: input, budget: CombatGoldens.slow) { _ in started.withLock { $0 = true } }
         }
-        try await Task.sleep(for: .milliseconds(100))
+        // Cancelled once it's running (its first step reported), not before it had its turn.
+        try await waitUntil { started.withLock { $0 } }
         task.cancel()
         await #expect(throws: CancellationError.self) { try await task.value }
         // The simulator is free again at once.
         let odds = try await simulator.simulate(
-            input: input, budget: SimulationBudget(simulations: 400, maxDurationMilliseconds: 5000, intermediateResults: 200)
+            input: input, budget: SimulationBudget(simulations: 200, maxDurationMilliseconds: 600_000, intermediateResults: 200)
         )
         #expect(odds.isFinal)
     }
@@ -113,9 +117,9 @@ struct CombatOddsGoldenTests {
 
 extension CombatGoldens {
     /// Long enough to still be running when cancelled.
-    static let slow = SimulationBudget(simulations: 1_000_000, maxDurationMilliseconds: 30_000, intermediateResults: 200)
+    static let slow = SimulationBudget(simulations: 1_000_000, maxDurationMilliseconds: 600_000, intermediateResults: 50)
     /// Enough to tell a likely win from a likely loss.
-    static let quick = SimulationBudget(simulations: 1500, maxDurationMilliseconds: 600_000, intermediateResults: 500)
+    static let quick = SimulationBudget(simulations: 800, maxDurationMilliseconds: 600_000, intermediateResults: 800)
 
     static let repositoryRoot = URL(filePath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

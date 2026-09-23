@@ -125,23 +125,37 @@ struct CatchUpTests {
         #expect(entry.gameSeed == nil)
     }
 
-    @Test("Captured logs: the entry point of a 36 MB log is found in well under a second")
+    @Test("Captured logs: the entry point of a 36 MB log is its latest game's first line")
     func capturedLog() throws {
+        guard let url = Self.capturedLogURL() else { return }  // private fixtures absent
+        let entry = PowerLogEntryPoint.find(in: url)
+        #expect(entry?.line == 2)
+        #expect(entry?.byteOffset == UInt64("D 21:09:40.3435500 GameState.DebugPrintPowerList() - Count=44\n".utf8.count))
+        #expect(entry?.gameSeed != nil)
+    }
+
+    /// A benchmark (`scripts/benchmark.sh`): the time depends on the machine and on what else runs.
+    @Test("The entry point of a 36 MB log is found in well under a second",
+          .enabled(if: ProcessInfo.processInfo.environment["TAVERN_BENCHMARKS"] == "1", "benchmarks run with TAVERN_BENCHMARKS=1"))
+    func benchmarkEntryPoint() throws {
+        guard let url = Self.capturedLogURL() else { return }  // private fixtures absent
+        let clock = ContinuousClock()
+        var entry: PowerLogEntryPoint?
+        let elapsed = clock.measure { entry = PowerLogEntryPoint.find(in: url) }
+        #expect(entry?.line == 2)
+        print("entry point of the full game found in \(elapsed)")
+        #expect(elapsed < .milliseconds(500), "entry point took \(elapsed)")
+    }
+
+    static func capturedLogURL() -> URL? {
         let override = ProcessInfo.processInfo.environment["TAVERN_FIXTURES_DIR"].map { URL(filePath: $0) }
         let candidates = override.map { [$0] }
             ?? Self.ancestors(of: URL(filePath: #filePath)).map { $0.appending(path: "fixtures/private-logs") }
         let game = "Hearthstone_2026_09_22_21_08_40/Power.log"
         guard let directory = candidates.first(where: {
             FileManager.default.fileExists(atPath: $0.appending(path: game).path(percentEncoded: false))
-        }) else { return }  // private fixtures absent
-        let url = directory.appending(path: game)
-        let clock = ContinuousClock()
-        var entry: PowerLogEntryPoint?
-        let elapsed = clock.measure { entry = PowerLogEntryPoint.find(in: url) }
-        #expect(entry?.line == 2)
-        #expect(entry?.byteOffset == UInt64("D 21:09:40.3435500 GameState.DebugPrintPowerList() - Count=44\n".utf8.count))
-        #expect(entry?.gameSeed != nil)
-        #expect(elapsed < .milliseconds(500), "entry point took \(elapsed)")
+        }) else { return nil }
+        return directory.appending(path: game)
     }
 
     static func ancestors(of url: URL) -> [URL] {

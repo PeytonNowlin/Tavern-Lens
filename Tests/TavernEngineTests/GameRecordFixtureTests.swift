@@ -58,9 +58,8 @@ struct GameRecordFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func midGameAttach() throws {
-        var lines: [String] = []
-        try LogFileReader.forEachLine(in: #require(Fixtures.url(Fixtures.fullGame))) { lines.append($0) }
-        let live = TavernEngine.replay(lines: lines)
+        let lines = try FixtureReplays.lines(Fixtures.fullGame)
+        let live = try FixtureReplays.result(Fixtures.fullGame)
         let timeline = live.timeline
 
         // Recruit, combat, a turn with a board seen, and the game-over state.
@@ -76,11 +75,13 @@ struct GameRecordFixtureTests {
         }
     }
 
+    /// A benchmark (`scripts/benchmark.sh`): the time depends on the machine and on what else runs.
     @Test(
         "Catch-up of the 36 MB game from its entry point, with the UI suppressed",
+        .enabled(if: Benchmarks.enabled, "benchmarks run with TAVERN_BENCHMARKS=1 (scripts/benchmark.sh)"),
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
-    func catchUpTime() throws {
+    func benchmarkCatchUp() throws {
         let url = try #require(Fixtures.url(Fixtures.fullGame))
         let clock = ContinuousClock()
         var engine = TavernEngine(session: try Self.session(Fixtures.fullGame))

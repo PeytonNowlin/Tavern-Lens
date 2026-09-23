@@ -29,7 +29,7 @@ struct MechanicsFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func fullGame() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         let timeline = result.timeline
 
         for bgTurn in 1...12 {
@@ -87,7 +87,7 @@ struct MechanicsFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func unnamedCounters() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         let counters = try #require(result.timeline.last?.state.game?.player?.mechanics?.counters)
 
         // The local Player entity at end of log, with tag names as the pinned enums resolve them.
@@ -111,7 +111,7 @@ struct MechanicsFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.truncatedGame), "private fixture log not present")
     )
     func truncatedGame() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.truncatedGame)))
+        let result = try FixtureReplays.result(Fixtures.truncatedGame)
         let timeline = result.timeline
 
         // The placeholders exist in the log, but no view ever shows a trinket.

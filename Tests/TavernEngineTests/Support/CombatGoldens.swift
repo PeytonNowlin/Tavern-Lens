@@ -15,32 +15,13 @@ enum CombatGoldens {
 
     static func url(_ name: String) -> URL { directory.appending(path: "\(name).input.json") }
 
-    static func encode(_ input: BattleInput) throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        var data = try encoder.encode(input)
-        data.append(0x0A)
-        return data
-    }
-
     static func input(_ name: String) throws -> BattleInput {
         try JSONDecoder().decode(BattleInput.self, from: Data(contentsOf: url(name)))
     }
 
     /// Compares `input` to the committed golden, or records it.
     static func verify(_ input: BattleInput, golden name: String, sourceLocation: SourceLocation = #_sourceLocation) throws {
-        let data = try encode(input)
-        try #require(!GoldenHarness.containsBattleTag(String(decoding: data, as: UTF8.self)), sourceLocation: sourceLocation)
-        if GoldenHarness.isRecording {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try data.write(to: url(name))
-            return
-        }
-        let expected = try #require(
-            try? Self.input(name), "missing golden \(name); run with TAVERN_RECORD_GOLDENS=1", sourceLocation: sourceLocation
-        )
-        #expect(expected == input, "simulator input differs from golden \(name):\n\(String(decoding: data, as: UTF8.self))",
-                sourceLocation: sourceLocation)
+        try GoldenHarness.verify(input, at: url(name), sourceLocation: sourceLocation)
     }
 
     static func makeSimulator() throws -> CombatSimulator {
@@ -49,15 +30,21 @@ enum CombatGoldens {
         return simulator
     }
 
-    /// Runs `input` on a simulator of its own, so tests simulate in parallel. (The test runner
-    /// has no JIT entitlement, so JavaScriptCore interprets here, several times slower than in the app.)
+    /// The seed of the golden runs: with it and a budget of simulations only, a run gives the same
+    /// odds on any machine.
+    static let seed: UInt32 = 20_260_922
+
+    /// Runs `input`, seeded, on a simulator of its own. Every simulator in the process shares one
+    /// JavaScript thread, so simulations queue rather than run in parallel; and the test runner has
+    /// no JIT entitlement, so JavaScriptCore interprets here, several times slower than in the app.
+    /// Keep test budgets small.
     static func run(_ input: BattleInput, budget: SimulationBudget = .golden) async throws -> CombatOdds {
-        try await makeSimulator().simulate(input: JSONEncoder().encode(input), budget: budget)
+        try await makeSimulator().simulate(input, budget: budget, seed: seed)
     }
 }
 
 extension SimulationBudget {
-    /// The full 8000 simulations however busy the machine is (no JIT under `swift test`), so the
-    /// percentages are stable.
-    static let golden = SimulationBudget(simulations: 8000, maxDurationMilliseconds: 600_000, intermediateResults: 200)
+    /// Enough simulations for the research's percentages (about ±1 point of noise, fixed by the
+    /// seed), with no time limit that could cut them short.
+    static let golden = SimulationBudget(simulations: 3000, maxDurationMilliseconds: 600_000, intermediateResults: 3000)
 }

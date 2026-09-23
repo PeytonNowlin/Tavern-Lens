@@ -21,7 +21,11 @@ struct TribeFixtureTests {
         Case(log: stressGame, tribes: ["ABERRATION", "DEMON", "MECHANICAL", "MURLOC", "PIRATE"]),
     ]
 
-    static func replay(_ log: String, pool: MinionPool = PoolFixture.pool) throws -> ReplayResult {
+    static func replay(_ log: String) throws -> ReplayResult {
+        try FixtureReplays.result(log, .pool)
+    }
+
+    static func replay(_ log: String, pool: MinionPool) throws -> ReplayResult {
         try TavernEngine.replay(fileAt: #require(Fixtures.url(log)), pool: pool)
     }
 

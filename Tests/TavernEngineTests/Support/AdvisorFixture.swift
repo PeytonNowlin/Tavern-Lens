@@ -12,7 +12,7 @@ enum AdvisorFixture {
         lobbyGroups: 2
     )
 
-    struct Replay {
+    struct Replay: Sendable {
         /// The request at each recruit phase's last publish, by BG turn.
         var endOfRecruit: [Int: AdvisorRequest] = [:]
         /// The first request of each recruit phase with a shop and the most gold to spend (the
@@ -29,8 +29,22 @@ enum AdvisorFixture {
         var mismatches: [String] = []
     }
 
-    /// - Parameter builds: with the build catalog, so requests carry the detected builds.
-    static func replay(_ path: String, builds: BuildCatalog? = nil) throws -> Replay {
+    private struct Key: Hashable, Sendable {
+        var path: String
+        var builds: Bool
+    }
+
+    private static let replays = Memo<Key, Replay>()
+
+    /// Read once per run for every test that looks at it.
+    /// - Parameter withBuilds: with `BuildFixture.catalog`, so requests carry the detected builds.
+    static func replay(_ path: String, withBuilds: Bool = false) throws -> Replay {
+        try replays.value(Key(path: path, builds: withBuilds)) {
+            try computeReplay(path, builds: withBuilds ? BuildFixture.catalog : nil)
+        }
+    }
+
+    private static func computeReplay(_ path: String, builds: BuildCatalog?) throws -> Replay {
         var engine = TavernEngine(builds: builds)
         var published = 0
         var replay = Replay()
@@ -63,7 +77,8 @@ enum AdvisorFixture {
         return replay
     }
 
-    /// Scores on a simulator of its own (so tests run in parallel), seeded by the plan.
+    /// Scores on a simulator of its own, seeded by the plan. (Its simulations still queue on the one
+    /// JavaScript thread every simulator in the process shares.)
     static func simulate() throws -> AdvisorEvaluation.Simulate {
         let simulator = try CombatGoldens.makeSimulator()
         return AdvisorEvaluation.simulate(on: { simulator })
@@ -71,31 +86,11 @@ enum AdvisorFixture {
 
     static let directory = GoldenHarness.goldenDirectory.appending(path: "Advisor", directoryHint: .isDirectory)
 
-    static func encoder() -> JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        return encoder
-    }
-
     /// Compares `value` to the committed golden `name`, or records it (`TAVERN_RECORD_GOLDENS=1`).
     static func verify<T: Codable & Equatable>(
         _ value: T, golden name: String, sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
-        var data = try encoder().encode(value)
-        data.append(0x0A)
-        try #require(!GoldenHarness.containsBattleTag(String(decoding: data, as: UTF8.self)), sourceLocation: sourceLocation)
-        let url = directory.appending(path: "\(name).json")
-        if GoldenHarness.isRecording {
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try data.write(to: url)
-            return
-        }
-        let expected = try #require(
-            try? JSONDecoder().decode(T.self, from: Data(contentsOf: url)),
-            "missing golden \(name); run with TAVERN_RECORD_GOLDENS=1", sourceLocation: sourceLocation
-        )
-        #expect(expected == value, "differs from golden \(name):\n\(String(decoding: data, as: UTF8.self))",
-                sourceLocation: sourceLocation)
+        try GoldenHarness.verify(value, at: directory.appending(path: "\(name).json"), sourceLocation: sourceLocation)
     }
 
     static func load<T: Decodable>(_ type: T.Type, golden name: String) throws -> T {

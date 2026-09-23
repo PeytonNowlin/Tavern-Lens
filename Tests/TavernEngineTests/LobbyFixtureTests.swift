@@ -53,7 +53,7 @@ struct LobbyFixtureTests {
     func combats() throws {
         var checked = 0
         for (path, combats) in [(Fixtures.fullGame, Self.fullGame), (Fixtures.truncatedGame, Self.truncatedGame)] {
-            let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(path)))
+            let result = try FixtureReplays.result(path)
             for combat in combats {
                 try expect(result.timeline, matches: combat)
                 checked += 1
@@ -67,7 +67,7 @@ struct LobbyFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func lobbyStaysEight() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         let games = result.timeline.compactMap(\.state.game)
         let full = try #require(games.firstIndex { $0.lobby.count == 8 })
         #expect(games[full].phase == .heroPick)
@@ -93,7 +93,7 @@ struct LobbyFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func finalPlacement() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         let record = try #require(result.games.only)
         #expect(record.placement == 4)
         #expect(record.placementSource == .final)
@@ -110,7 +110,7 @@ struct LobbyFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.truncatedGame), "private fixture log not present")
     )
     func noPlacementWhenTruncated() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.truncatedGame)))
+        let result = try FixtureReplays.result(Fixtures.truncatedGame)
         #expect(result.games.only?.placement == nil)
         #expect(result.timeline.allSatisfy { $0.state.game?.placement == nil })
         let end = try #require(result.timeline.last?.state.game)
@@ -124,8 +124,7 @@ struct LobbyFixtureTests {
     )
     func displayNames() throws {
         for (path, fought) in [(Fixtures.fullGame, Set([1, 2, 3, 4, 5, 7, 8])), (Fixtures.truncatedGame, Set([3, 5, 6, 7]))] {
-            let url = try #require(Fixtures.url(path))
-            let result = try TavernEngine.replay(fileAt: url)
+            let result = try FixtureReplays.result(path)
             let lobby = try #require(result.timeline.last?.state.game?.lobby)
             let named = lobby.filter { $0.displayName != nil }
             #expect(Set(named.map(\.playerID)) == fought, "\(path)")
@@ -136,9 +135,9 @@ struct LobbyFixtureTests {
             // The log itself confirms each binding: the slot, under that name, gets the
             // opponent's PlayerID as its combat player. Names never leave this test.
             var bindings: Set<String> = []
-            try LogFileReader.forEachLine(in: url) { line in
+            for line in try FixtureReplays.lines(path) {
                 guard line.contains("PowerTaskList.DebugPrintPower()"), line.contains("tag=BACON_CURRENT_COMBAT_PLAYER_ID"),
-                      let range = line.range(of: "TAG_CHANGE Entity=") else { return }
+                      let range = line.range(of: "TAG_CHANGE Entity=") else { continue }
                 bindings.insert(String(line[range.upperBound...]).trimmingCharacters(in: .whitespaces))
             }
             for entry in named {

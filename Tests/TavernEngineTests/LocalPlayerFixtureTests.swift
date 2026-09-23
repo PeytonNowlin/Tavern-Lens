@@ -64,7 +64,7 @@ struct LocalPlayerFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func fullGameTurns() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         for row in Self.fullGame {
             try expect(result.timeline, matches: row)
         }
@@ -75,7 +75,7 @@ struct LocalPlayerFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.truncatedGame), "private fixture log not present")
     )
     func truncatedGameTurns() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.truncatedGame)))
+        let result = try FixtureReplays.result(Fixtures.truncatedGame)
         for row in Self.truncatedGame {
             try expect(result.timeline, matches: row)
         }
@@ -87,7 +87,7 @@ struct LocalPlayerFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func shopAndBoardSeparation() throws {
-        let result = try TavernEngine.replay(fileAt: #require(Fixtures.url(Fixtures.fullGame)))
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         let games = result.timeline.compactMap(\.state.game)
         for game in games where game.phase != .recruit {
             #expect(game.shop.cards.isEmpty, "shop shown in \(game.phase) of BG turn \(game.bgTurn)")
@@ -109,14 +109,13 @@ struct LocalPlayerFixtureTests {
         .enabled(if: Fixtures.isAvailable(Fixtures.fullGame), "private fixture log not present")
     )
     func publishedAtTaskListEnds() throws {
-        let url = try #require(Fixtures.url(Fixtures.fullGame))
         var taskListEnds: Set<Int> = []
         var lineNumber = 0
-        try LogFileReader.forEachLine(in: url) { line in
+        for line in try FixtureReplays.lines(Fixtures.fullGame) {
             lineNumber += 1
             if line.contains("PowerProcessor.EndCurrentTaskList()") { taskListEnds.insert(lineNumber) }
         }
-        let result = try TavernEngine.replay(fileAt: url)
+        let result = try FixtureReplays.result(Fixtures.fullGame)
         #expect(result.timeline.count > 100)
         let stray = result.timeline.map(\.position.line).filter { !taskListEnds.contains($0) && $0 != lineNumber }
         #expect(stray.isEmpty, "entries published mid-batch at lines \(stray.prefix(10))")

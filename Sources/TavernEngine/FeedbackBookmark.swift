@@ -275,7 +275,7 @@ public struct BookmarkGoldenCase: Codable, Hashable, Sendable {
 
     /// `Name#1234`-shaped text.
     public static func containsBattleTag(_ text: String) -> Bool {
-        text.contains(/[\p{L}\p{N}_]+#\d{3,}/)
+        BattleTag.appears(in: text)
     }
 }
 
@@ -360,6 +360,14 @@ public enum BookmarkExport {
 }
 
 // MARK: - Redaction
+
+/// Battle.net account names (`Name#1234`), which committed goldens and exported cases must never hold.
+public enum BattleTag {
+    /// Whether `text` holds anything shaped like a BattleTag.
+    public static func appears(in text: String) -> Bool {
+        text.contains(/[\p{L}\p{N}_]+#\d{3,}/)
+    }
+}
 
 extension TimelineEntry {
     /// Opponents' display names are real account names: keeps only that one is known, as `Opp-P<PlayerID>`.

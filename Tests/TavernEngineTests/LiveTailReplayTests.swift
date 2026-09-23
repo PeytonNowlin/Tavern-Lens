@@ -5,7 +5,7 @@ import Testing
 
 /// A log followed live, while it's being written in arbitrary chunks, must produce
 /// exactly the timeline that replaying the finished file produces.
-@Suite("Live tailing matches replay", .serialized)
+@Suite("Live tailing matches replay", .serialized, .timeLimit(.minutes(5)))
 struct LiveTailReplayTests {
     @Test("Synthetic game written in small uneven chunks")
     func synthetic() async throws {
@@ -20,10 +20,10 @@ struct LiveTailReplayTests {
     func capture() async throws {
         let url = try #require(Fixtures.url(Fixtures.truncatedGame))
         let bytes = try [UInt8](Data(contentsOf: url))
-        try await verifyLiveMatchesReplay(bytes, chunkSizes: [65_537, 1_000_003, 250_001], timeout: .seconds(60))
+        try await verifyLiveMatchesReplay(bytes, chunkSizes: [65_537, 1_000_003, 250_001])
     }
 
-    private func verifyLiveMatchesReplay(_ bytes: [UInt8], chunkSizes: [Int], timeout: Duration = .seconds(5)) async throws {
+    private func verifyLiveMatchesReplay(_ bytes: [UInt8], chunkSizes: [Int]) async throws {
         // Expected: every complete line ingested in order, without end-of-input
         // handling (a live log has no end).
         var expected = TavernEngine()
@@ -56,11 +56,7 @@ struct LiveTailReplayTests {
         }
         try writer.close()
 
-        let clock = ContinuousClock()
-        let deadline = clock.now + timeout
-        while live.linesRead < expected.linesRead, clock.now < deadline {
-            try await Task.sleep(for: .milliseconds(20))
-        }
+        try await waitUntil { live.linesRead >= expected.linesRead }
         #expect(live.linesRead == expected.linesRead)
         #expect(live.timeline == expected.timeline)
         #expect(!expected.timeline.isEmpty)
