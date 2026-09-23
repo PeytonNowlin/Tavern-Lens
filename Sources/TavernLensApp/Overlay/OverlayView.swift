@@ -26,6 +26,48 @@ final class OverlayModel {
         guard let layout, game != nil else { return [] }
         return [layout.hud]
     }
+
+    /// The leaderboard slot under the cursor, set by `OverlayController` from mouse moves.
+    /// Hover never makes the panel take clicks: the opponent panels ignore the mouse.
+    var hoveredSlot: Int?
+
+    /// The game while Hearthstone shows its leaderboard: recruit and combat of a game in progress.
+    var leaderboardGame: GameView? {
+        guard view.status == .inGame, let game = view.game, game.phase != .heroPick, !game.lobby.isEmpty
+        else { return nil }
+        return game
+    }
+
+    /// The lobby by leaderboard slot (`place - 1`; the lobby's order when a place is missing).
+    var slots: [Int: LobbyEntryView] {
+        guard let game = leaderboardGame else { return [:] }
+        var slots: [Int: LobbyEntryView] = [:]
+        for (index, entry) in game.lobby.enumerated() {
+            let slot = entry.place.map { $0 - 1 } ?? index
+            if (0..<(layout?.constants.leaderboardSlots ?? 8)).contains(slot), slots[slot] == nil {
+                slots[slot] = entry
+            }
+        }
+        return slots
+    }
+
+    /// The next opponent's slot, whose portrait Hearthstone pops out.
+    var nextOpponentSlot: Int? {
+        guard let id = leaderboardGame?.nextOpponentPlayerID else { return nil }
+        return slots.first { $0.value.playerID == id && !$0.value.isLocal }?.key
+    }
+
+    /// The opponent whose portrait is hovered; nil over the local player's own portrait.
+    var hoveredOpponent: LobbyEntryView? {
+        guard let hoveredSlot, let entry = slots[hoveredSlot], !entry.isLocal else { return nil }
+        return entry
+    }
+
+    /// The leaderboard slot at a content-local point, or nil when the leaderboard isn't up.
+    func leaderboardSlot(at point: CGPoint) -> Int? {
+        guard let layout, let game = leaderboardGame else { return nil }
+        return layout.leaderboardSlot(at: point, count: game.lobby.count, nextOpponent: nextOpponentSlot)
+    }
 }
 
 struct OverlayRootView: View {
@@ -43,6 +85,9 @@ struct OverlayRootView: View {
                               hide: model.hide)
                         .frame(width: layout.hud.width, height: layout.hud.height)
                         .offset(x: layout.hud.minX, y: layout.hud.minY)
+                }
+                if let game = model.leaderboardGame {
+                    OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
                 }
             }
         }
@@ -162,7 +207,11 @@ struct LayoutGuides: View {
                                style: StrokeStyle(lineWidth: 1, dash: dash ? [4, 3] : []))
             }
             stroke(layout.boardRegion, .white.opacity(0.35), dash: true)
-            for i in 0..<layout.constants.leaderboardSlots { stroke(layout.leaderboardSlot(i), .cyan) }
+            for i in 0..<layout.constants.leaderboardSlots {
+                stroke(layout.leaderboardSlot(i), .cyan)
+                stroke(layout.leaderboardArt(i), .cyan, dash: true)
+                stroke(layout.leaderboardHitRect(i), .mint.opacity(0.6))
+            }
             for k in 0..<7 {
                 stroke(layout.boardSlot(.top, index: k, of: 7), .orange)
                 stroke(layout.boardSlot(.player, index: k, of: 7), .green)
@@ -170,6 +219,8 @@ struct LayoutGuides: View {
             for element in HSElement.allCases { stroke(layout.rect(element), .pink) }
             for i in 0..<10 { stroke(layout.goldCoin(i), .yellow) }
             stroke(layout.hud, .white)
+            stroke(layout.nextOpponentPreview, .white, dash: true)
+            stroke(layout.opponentPanel, .white, dash: true)
         }
         .allowsHitTesting(false)
     }

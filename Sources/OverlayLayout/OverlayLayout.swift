@@ -68,6 +68,45 @@ public struct OverlayLayout: Hashable, Sendable {
         )
     }
 
+    /// The visible framed portrait of leaderboard slot `index`. It leans left down the column,
+    /// and the next opponent's portrait pops out to the right and grows.
+    public func leaderboardArt(_ index: Int, isNextOpponent: Bool = false) -> CGRect {
+        let c = constants
+        let slot = leaderboardSlot(index)
+        var kx = c.leaderboardArtCentreKx + CGFloat(index) * c.leaderboardArtLeanKx
+        if isNextOpponent { kx += c.leaderboardNextPopoutKx }
+        let size = isNextOpponent ? c.leaderboardNextArtSize : c.leaderboardArtSize
+        return centred(
+            midX: x(kx: kx), midY: slot.midY + c.leaderboardArtCentreDy * height,
+            width: size.width * height, height: size.height * height
+        )
+    }
+
+    /// Where the cursor counts as hovering leaderboard slot `index`: the slot's band of the
+    /// column, from the tile's left edge (rank badges reach it) to the right of its portrait.
+    /// The next opponent's popped-out portrait is covered whole, overlapping its neighbours'
+    /// bands; `leaderboardSlot(at:)` gives it precedence there, since it's drawn on top.
+    public func leaderboardHitRect(_ index: Int, isNextOpponent: Bool = false) -> CGRect {
+        let slot = leaderboardSlot(index)
+        let art = leaderboardArt(index, isNextOpponent: isNextOpponent)
+        let band = CGRect(x: slot.minX, y: slot.minY, width: max(slot.maxX, art.maxX) - slot.minX, height: slot.height)
+        return isNextOpponent ? band.union(art) : band
+    }
+
+    /// The leaderboard slot under `point` (content-local, top-left origin), or nil.
+    /// - Parameters:
+    ///   - count: how many heroes the leaderboard shows (8 in solo).
+    ///   - nextOpponent: the next opponent's slot index, whose portrait is popped out.
+    public func leaderboardSlot(at point: CGPoint, count: Int? = nil, nextOpponent: Int? = nil) -> Int? {
+        let slots = 0..<min(count ?? constants.leaderboardSlots, constants.leaderboardSlots)
+        if let next = nextOpponent, slots.contains(next),
+           leaderboardHitRect(next, isNextOpponent: true).contains(point) {
+            return next
+        }
+        // The next opponent's rect contains its own band, so it's done.
+        return slots.first { $0 != nextOpponent && leaderboardHitRect($0).contains(point) }
+    }
+
     public enum BoardRow: Hashable, Sendable {
         /// Bob's shop in recruit, the opponent's warband in combat.
         case top
@@ -110,6 +149,23 @@ public struct OverlayLayout: Hashable, Sendable {
         let size = CGSize(width: constants.hudSize.width * s, height: constants.hudSize.height * s)
         let inset = constants.hudInset * s
         return CGRect(x: width - inset - size.width, y: inset, width: size.width, height: size.height)
+    }
+
+    /// The opponent panel shown while a leaderboard portrait is hovered: pinned to the top
+    /// edge and centred on the board, where the trackers put theirs. It shows only on hover
+    /// and never takes clicks, so covering Bob's controls meanwhile is harmless.
+    public var opponentPanel: CGRect {
+        let s = panelScale
+        let size = CGSize(width: constants.opponentPanelSize.width * s, height: constants.opponentPanelSize.height * s)
+        return CGRect(x: centreX - size.width / 2, y: constants.hudInset * s, width: size.width, height: size.height)
+    }
+
+    /// The next opponent's compact board preview: under the HUD, in the right margin.
+    public var nextOpponentPreview: CGRect {
+        let s = panelScale
+        let hud = self.hud
+        return CGRect(x: hud.minX, y: hud.maxY + constants.panelGap * s,
+                      width: hud.width, height: constants.nextOpponentPreviewHeight * s)
     }
 
     private func slotOffset(_ index: Int, of count: Int) -> CGFloat {

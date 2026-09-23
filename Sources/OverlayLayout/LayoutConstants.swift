@@ -71,6 +71,17 @@ public struct LayoutConstants: Hashable, Sendable {
     public var leaderboardSlots: Int
     /// Left edge of the leaderboard tiles, as `kx` (the left edge of the 4:3 region).
     public var leaderboardLeftKx: CGFloat
+    /// Centre of slot 0's visible framed portrait, as `kx`. Lower slots lean left by
+    /// `leaderboardArtLeanKx` each (the leaderboard is drawn in perspective).
+    public var leaderboardArtCentreKx: CGFloat
+    public var leaderboardArtLeanKx: CGFloat
+    /// The visible frame's centre sits this far (in `h`) from the slot's centre (negative = higher).
+    public var leaderboardArtCentreDy: CGFloat
+    /// The visible framed portrait, in units of `h`.
+    public var leaderboardArtSize: CGSize
+    /// The next opponent's portrait pops out to the right by this much and grows to `leaderboardNextArtSize`.
+    public var leaderboardNextPopoutKx: CGFloat
+    public var leaderboardNextArtSize: CGSize
 
     // Board rows: the top row is Bob's shop in recruit and the opponent's warband in combat.
     public var rowHeight: CGFloat
@@ -97,6 +108,13 @@ public struct LayoutConstants: Hashable, Sendable {
     /// The status HUD, anchored to the window's top-right corner (in reference points).
     public var hudSize: CGSize
     public var hudInset: CGFloat
+    /// The opponent panel shown while a leaderboard portrait is hovered: pinned to the top
+    /// edge and centred, like the trackers' (in reference points).
+    public var opponentPanelSize: CGSize
+    /// The next opponent's board preview, under the HUD (in reference points; its width is the HUD's).
+    public var nextOpponentPreviewHeight: CGFloat
+    /// Space between stacked panels (in reference points).
+    public var panelGap: CGFloat
 }
 
 extension LayoutConstants {
@@ -113,6 +131,16 @@ extension LayoutConstants {
         leaderboardSpan: 0.69,
         leaderboardSlots: 8,
         leaderboardLeftKx: -2.0 / 3.0,
+        // §8c: frame centres kx −0.601 (slot 1) … −0.623 (slot 6), so −0.0044 per slot from
+        // −0.5966 at slot 0; visible centres 0.0013 h above the model; frame 0.056 × 0.074 h.
+        leaderboardArtCentreKx: -0.5966,
+        leaderboardArtLeanKx: -0.0044,
+        leaderboardArtCentreDy: -0.0013,
+        leaderboardArtSize: CGSize(width: 0.056, height: 0.074),
+        // Pop-out from the trackers' next-opponent label nudge (+0.023 f ≈ +0.031 h); the popped
+        // size from one capture (U4 slot 7: 0.100 × 0.109 h). Estimated: ±0.01 h.
+        leaderboardNextPopoutKx: 0.031,
+        leaderboardNextArtSize: CGSize(width: 0.100, height: 0.109),
         rowHeight: 0.158,
         playerRowTop: 0.47,
         topRowTop: 0.297,
@@ -157,6 +185,9 @@ extension LayoutConstants {
         ],
         panelScaleRange: 0.8...1.3,
         hudSize: CGSize(width: 140, height: 60),
-        hudInset: 8
+        hudInset: 8,
+        opponentPanelSize: CGSize(width: 760, height: 160),
+        nextOpponentPreviewHeight: 184,
+        panelGap: 6
     )
 }

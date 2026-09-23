@@ -15,6 +15,8 @@ import TavernEngine
 /// - Re-shows the panel after fullscreen transitions and Space changes, because a window
 ///   shown before the transition isn't moved into the new Space on its own.
 /// - Click-through, except while the cursor is inside one of the model's interactive regions.
+/// - Tracks which leaderboard portrait the cursor is over from global mouse moves, which need
+///   no permission and arrive while the panel is click-through (Hearthstone gets the events).
 @MainActor
 @Observable
 final class OverlayController {
@@ -55,6 +57,8 @@ final class OverlayController {
 
     func start() {
         model.hide = { [weak self] in self?.setHidden(true) }
+        // Card names for the opponent panels; the live engine runs without card data.
+        CardDataModel.shared.loadIfNeeded()
         let panel = OverlayPanel()
         panel.contentView = OverlayHostingView(rootView: OverlayRootView(model: model))
         self.panel = panel
@@ -93,12 +97,12 @@ final class OverlayController {
 
         let mouseMoved: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged]
         if let global = NSEvent.addGlobalMonitorForEvents(matching: mouseMoved, handler: { [weak self] _ in
-            MainActor.assumeIsolated { self?.updateClickThrough() }
+            MainActor.assumeIsolated { self?.updatePointer() }
         }) {
             mouseMonitors.append(global)
         }
         if let local = NSEvent.addLocalMonitorForEvents(matching: mouseMoved, handler: { [weak self] event in
-            MainActor.assumeIsolated { self?.updateClickThrough() }
+            MainActor.assumeIsolated { self?.updatePointer() }
             return event
         }) {
             mouseMonitors.append(local)
@@ -180,7 +184,7 @@ final class OverlayController {
             panel.orderFrontRegardless()
             isShown = true
         }
-        updateClickThrough()
+        updatePointer()
         setPolling(true)
     }
 
@@ -189,6 +193,7 @@ final class OverlayController {
         panel.orderOut(nil)
         panel.ignoresMouseEvents = true
         isShown = false
+        if model.hoveredSlot != nil { model.hoveredSlot = nil }
     }
 
     private func setPolling(_ on: Bool) {
@@ -205,8 +210,9 @@ final class OverlayController {
         }
     }
 
-    /// Takes clicks only while the cursor is over an interactive region; otherwise clicks go to Hearthstone.
-    private func updateClickThrough() {
+    /// Takes clicks only while the cursor is over an interactive region; otherwise clicks go to
+    /// Hearthstone. Also hit-tests the leaderboard for the hovered portrait.
+    private func updatePointer() {
         guard let panel, isShown, let content = window?.contentFrame,
               let primaryHeight = NSScreen.screens.first?.frame.maxY
         else { return }
@@ -217,5 +223,7 @@ final class OverlayController {
         if panel.ignoresMouseEvents == interactive {
             panel.ignoresMouseEvents = !interactive
         }
+        let hovered = model.leaderboardSlot(at: point)
+        if model.hoveredSlot != hovered { model.hoveredSlot = hovered }
     }
 }
