@@ -24,7 +24,7 @@ struct HeroPickSyntheticTests {
         )
     }
 
-    static func set(_ windows: [HeroStatsWindow: [FirestoneHeroStat]], updatedAt: Date = updatedAt) -> HeroStatsSet {
+    static func set(_ windows: [HeroStatsWindow: [FirestoneHeroStat]], updatedAt: Date? = updatedAt) -> HeroStatsSet {
         HeroStatsSet(files: windows.mapValues { stats in
             FirestoneHeroStatsFile(lastUpdateDate: updatedAt, dataPoints: stats.map(\.dataPoints).reduce(0, +), heroStats: stats)
         })
@@ -130,7 +130,7 @@ struct HeroPickSyntheticTests {
         #expect(!String(decoding: json, as: UTF8.self).contains("\"heroPick\":"))
     }
 
-    @Test("The tribe adjustment is Firestone's: impacts of the lobby's tribes summed, noisy rows and forced tribes left out")
+    @Test("Until the lobby's tribes are known the numbers are Firestone's own; then its exact adjustment: impacts of the lobby's tribes summed, noisy rows and forced tribes left out")
     func tribeAdjustment() throws {
         func row(_ race: String, _ games: Int, missing: Int, impact: Double) -> FirestoneHeroStat.TribeStat {
             .init(tribe: HS.Race(name: race)!.rawValue, dataPoints: games, dataPointsOnMissingTribe: missing, impactAveragePosition: impact)
@@ -147,7 +147,11 @@ struct HeroPickSyntheticTests {
         let lobby = ["ABERRATION", "DRAGON", "ELEMENTAL", "QUILBOAR", "UNDEAD"].map { HS.Race(name: $0)! }
 
         var engine = try Self.engine(Self.pickScreen(), stats: stats, pool: PoolFixture.pool, session: "Hearthstone_2026_09_23_01_00_00")
-        #expect(engine.state.game?.heroPick?.tribeAdjustment == .estimated)
+        // The tribes aren't known yet (only the heroes offered hint at them): no guess.
+        #expect(engine.state.game?.tribes?.isResolved == false)
+        let before = try #require(engine.state.game?.heroPick)
+        #expect(before.tribeAdjustment == .none)
+        #expect(before.offers[0].stats?.averagePlacement == 4.0 && before.offers[0].stats?.tribeModifier == 0)
         engine.ingestScreenTribes(ScreenTribeReading(tribes: lobby))
         let pick = try #require(engine.state.game?.heroPick)
         #expect(pick.tribeAdjustment == .exact)
@@ -169,7 +173,10 @@ struct HeroPickSyntheticTests {
         heroes.append(Self.stat("BG_TINY", games: 29, average: 1.0))  // under 30 games: not in the field
         let engine = try Self.engine(Self.pickScreen(["BG_A", "BG_M1", "BG_E", "BG_TINY"]), stats: Self.set([.pastThree: heroes]))
         let offers = try #require(engine.state.game?.heroPick?.offers)
-        #expect(offers.map { $0.stats?.tier } == [.A, .C, .E, .S])
+        // Too few games for a letter: "low data", with its numbers still shown.
+        #expect(offers.map { $0.stats?.tier } == [.A, .C, .E, nil])
+        #expect(offers.map { $0.stats?.isLowData } == [false, false, false, true])
+        #expect(offers[3].stats?.averagePlacement == 1.0)
     }
 
     @Test("Heroes with under 300 games in the past three days fall back to the past seven, then to the last patch")
@@ -187,8 +194,14 @@ struct HeroPickSyntheticTests {
         #expect(offers.map { $0.stats?.dataPoints } == [2000, 450, 900, 700])
     }
 
-    @Test("The stale badge shows when the stats are more than 24 hours old at the game's time")
+    @Test("The stale badge shows when the stats are more than 24 hours old at the game's time, or of unknown age")
     func staleBadge() throws {
+        let undated = Self.set([.pastThree: [Self.stat("BG_A"), Self.stat("BG_B"), Self.stat("BG_C"), Self.stat("BG_D")]],
+                               updatedAt: nil)
+        let unknownAge = try Self.engine(Self.pickScreen(), stats: undated, session: "Hearthstone_2026_09_23_01_00_00")
+        #expect(unknownAge.state.game?.heroPick?.isStale == true && unknownAge.state.game?.heroPick?.statsUpdatedAt == nil)
+        // Without the game's time either, an undated file is still stale.
+        #expect(try Self.engine(Self.pickScreen(), stats: undated).state.game?.heroPick?.isStale == true)
         let fresh = try Self.engine(Self.pickScreen(), session: "Hearthstone_2026_09_23_23_00_00")
         #expect(fresh.state.game?.heroPick?.isStale == false)
         let stale = try Self.engine(Self.pickScreen(), session: "Hearthstone_2026_09_24_01_00_00")

@@ -48,7 +48,9 @@ struct HeroPickFixtureTests {
         #expect(first.offers.map { $0.stats?.dataPoints } == [2877, 1464, 825, 1168])
         // Two of the four are locked (no Tavern Pass): the outer ones.
         #expect(first.offers.map(\.isLocked) == [true, false, false, true])
-        #expect(first.tribeAdjustment == .estimated)
+        // The lobby's tribes aren't known at the first hero-pick publish: Firestone's own numbers.
+        #expect(first.tribeAdjustment == .none)
+        #expect(first.offers.map { $0.stats?.averagePlacement } == first.offers.map { $0.stats?.baseAveragePlacement })
         #expect(first.statsUpdatedAt == "2026-09-23T00:10:26Z")
         #expect(!first.isStale)  // the game started about an hour after the rebuild
 

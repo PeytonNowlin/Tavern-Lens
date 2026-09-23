@@ -52,7 +52,8 @@ struct HeroPickOverlays: View {
     }
 }
 
-/// Tier letter, average placement (tribe-adjusted), then top-4 % and win %.
+/// Tier letter ("low data" under 30 games), average placement (tribe-adjusted once the lobby's
+/// tribes are known), then top-4 % and win %.
 struct HeroPickPlate: View {
     let offer: HeroOfferView
     let isStale: Bool
@@ -64,11 +65,18 @@ struct HeroPickPlate: View {
         VStack(alignment: .leading, spacing: m.rowSpacing * scale) {
             if let stats = offer.stats {
                 HStack(spacing: m.itemSpacing * scale) {
-                    Text(stats.tier.rawValue)
-                        .font(.system(size: m.tierFontSize * scale, weight: .heavy))
-                        .foregroundStyle(.black.opacity(0.85))
-                        .frame(width: m.tierBadgeSize * scale, height: m.tierBadgeSize * scale)
-                        .background(Self.tierColor(stats.tier), in: RoundedRectangle(cornerRadius: 4 * scale, style: .continuous))
+                    if let tier = stats.tier {
+                        Text(tier.rawValue)
+                            .font(.system(size: m.tierFontSize * scale, weight: .heavy))
+                            .foregroundStyle(.black.opacity(0.85))
+                            .frame(width: m.tierBadgeSize * scale, height: m.tierBadgeSize * scale)
+                            .background(Self.tierColor(tier), in: RoundedRectangle(cornerRadius: 4 * scale, style: .continuous))
+                    } else {
+                        Text("low data")
+                            .font(.system(size: m.captionFontSize * scale, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .help("Fewer than 30 games: too few for a tier")
+                    }
                     Text(stats.averagePlacement.formatted(.number.precision(.fractionLength(2))))
                         .font(.system(size: m.averageFontSize * scale, weight: .bold))
                     Text("avg place")
@@ -110,7 +118,7 @@ struct HeroPickPlate: View {
             Image(systemName: "clock.badge.exclamationmark")
                 .font(.system(size: size))
                 .foregroundStyle(.orange)
-                .help("These stats are more than a day old")
+                .help("These stats are more than a day old, or their age is unknown")
         }
         if offer.isLocked {
             Image(systemName: "lock.fill")
@@ -194,7 +202,7 @@ struct PlacementChart: View {
         if pick.tribeAdjustment != .none, stats.tribeModifier != 0 {
             let sign = stats.tribeModifier > 0 ? "+" : "−"
             let value = abs(stats.tribeModifier).formatted(.number.precision(.fractionLength(2)))
-            parts.append("tribes \(sign)\(value)\(pick.tribeAdjustment == .estimated ? "?" : "")")
+            parts.append("tribes \(sign)\(value)")
         }
         if pick.isStale { parts.append("stale") }
         return parts.joined(separator: " · ")

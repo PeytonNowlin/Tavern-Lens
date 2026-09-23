@@ -17,7 +17,8 @@ public struct HeroPickView: Codable, Hashable, Sendable {
     public var tribeAdjustment: HeroTribeAdjustment
     /// When Firestone last rebuilt the oldest stats file shown (ISO 8601); nil without stats.
     public var statsUpdatedAt: String?
-    /// The stats shown are more than 24 hours old at the game's time: show a stale badge.
+    /// The stats shown are more than 24 hours old at the game's time, or their age isn't known
+    /// (a stats file without its date): show a stale badge.
     public var isStale: Bool
 
     public init(
@@ -85,7 +86,8 @@ public struct HeroPickStatsView: Codable, Hashable, Sendable {
     public var baseAveragePlacement: Double
     /// The tribes' adjustment, to 2 decimals (negative is better).
     public var tribeModifier: Double
-    public var tier: HeroTier
+    /// Nil with fewer than 30 games behind the numbers: show "low data" instead of a letter.
+    public var tier: HeroTier?
     /// Percent of games in the top 4, to 1 decimal.
     public var top4Percent: Double
     /// Percent of games won, to 1 decimal.
@@ -98,7 +100,7 @@ public struct HeroPickStatsView: Codable, Hashable, Sendable {
     public var window: HeroStatsWindow
 
     public init(
-        averagePlacement: Double, baseAveragePlacement: Double, tribeModifier: Double, tier: HeroTier,
+        averagePlacement: Double, baseAveragePlacement: Double, tribeModifier: Double, tier: HeroTier?,
         top4Percent: Double, winPercent: Double, placements: [Double], dataPoints: Int, window: HeroStatsWindow
     ) {
         self.averagePlacement = averagePlacement
@@ -111,6 +113,9 @@ public struct HeroPickStatsView: Codable, Hashable, Sendable {
         self.dataPoints = dataPoints
         self.window = window
     }
+
+    /// Too few games for a tier letter.
+    public var isLowData: Bool { tier == nil }
 
     init(_ stat: HeroPickStat) {
         self.init(
@@ -160,11 +165,14 @@ extension HeroPickView {
                 isLocked: offer.isLocked, stats: stat.map(HeroPickStatsView.init)
             )
         }
-        let oldest = windowsShown.compactMap(data.stats.lastUpdate(of:)).min()
+        let dates = windowsShown.map(data.stats.lastUpdate(of:))
+        let oldest = dates.compactMap { $0 }.min()
+        // A window shown without its date is of unknown age: stale, whatever the time.
+        let undated = dates.contains { $0 == nil }
         self.init(
             offers: offers, chosenCardID: pick.chosen?.cardID, mmrPercentile: data.stats.mmrPercentile,
             tribeAdjustment: tribeWeights.adjustment, statsUpdatedAt: oldest.map { $0.formatted(.iso8601) },
-            isStale: oldest != nil && now.map { HeroStatsSet.isStale(updatedAt: oldest, now: $0) } == true
+            isStale: undated || now.map { HeroStatsSet.isStale(updatedAt: oldest, now: $0) } == true
         )
     }
 }
