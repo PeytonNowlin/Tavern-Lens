@@ -20,6 +20,10 @@ enum GoldenHarness {
         case firstOfTurn(Int)
         /// The first entry with this status.
         case firstWithStatus(ViewState.Status)
+        /// The first entry of this BG turn's phase.
+        case startOfPhase(Int, BGPhase)
+        /// The last entry of this BG turn's phase, e.g. the state at the end of a recruit phase.
+        case endOfPhase(Int, BGPhase)
 
         var description: String {
             switch self {
@@ -27,6 +31,8 @@ enum GoldenHarness {
             case .last: "last"
             case .firstOfTurn(let n): "turn:\(n)"
             case .firstWithStatus(let s): "status:\(s.rawValue)"
+            case .startOfPhase(let n, let phase): "turn:\(n):\(phase.rawValue):start"
+            case .endOfPhase(let n, let phase): "turn:\(n):\(phase.rawValue):end"
             }
         }
 
@@ -36,7 +42,13 @@ enum GoldenHarness {
             case .last: timeline.last
             case .firstOfTurn(let n): timeline.first { $0.state.game?.bgTurn == n }
             case .firstWithStatus(let s): timeline.first { $0.state.status == s }
+            case .startOfPhase(let n, let phase): timeline.first { Self.isIn($0, n, phase) }
+            case .endOfPhase(let n, let phase): timeline.last { Self.isIn($0, n, phase) }
             }
+        }
+
+        private static func isIn(_ entry: TimelineEntry, _ bgTurn: Int, _ phase: BGPhase) -> Bool {
+            entry.state.game?.bgTurn == bgTurn && entry.state.game?.phase == phase
         }
     }
 

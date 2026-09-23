@@ -11,10 +11,11 @@ struct DebugWindow: View {
     private let cardData = CardDataModel.shared
     @State private var isImporting = false
     @State private var selection: TimelineRow.ID?
-    @State private var detail = Detail.viewState
+    @State private var detail = Detail.player
     @State private var entityFilter = ""
 
     enum Detail: String, CaseIterable, Identifiable {
+        case player = "Player & shop"
         case viewState = "View state"
         case entities = "Entities at end"
         var id: Self { self }
@@ -116,8 +117,16 @@ struct DebugWindow: View {
                     .width(min: 60, ideal: 80, max: 100)
                 TableColumn("Turn") { Text($0.entry.state.game.map { String($0.bgTurn) } ?? "–") }
                     .width(min: 30, ideal: 40, max: 60)
+                TableColumn("Phase") { Text($0.entry.state.game?.phase.rawValue ?? "–") }
+                    .width(min: 50, ideal: 65, max: 80)
+                TableColumn("HP") { Text($0.entry.state.game?.player?.hero.map { String($0.hp) } ?? "–").monospacedDigit() }
+                    .width(min: 30, ideal: 35, max: 50)
+                TableColumn("Gold") { Text(Self.goldLabel($0.entry.state.game?.player?.gold)).monospacedDigit() }
+                    .width(min: 40, ideal: 50, max: 70)
+                TableColumn("Tier") { Text($0.entry.state.game?.player?.tier.map(String.init) ?? "–").monospacedDigit() }
+                    .width(min: 25, ideal: 30, max: 40)
+                // Table takes at most 10 columns; the game type is in the summary above.
                 TableColumn("Hero") { Text(Self.heroLabel($0.entry.state.game)) }
-                TableColumn("Game type") { Text($0.entry.state.game?.gameType ?? "–") }
             }
             .frame(minWidth: 480)
 
@@ -129,6 +138,14 @@ struct DebugWindow: View {
                 .labelsHidden()
                 .padding(8)
                 switch detail {
+                case .player:
+                    ScrollView {
+                        Text(selectedPlayerText)
+                            .font(.body.monospaced())
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                    }
                 case .viewState:
                     ScrollView {
                         Text(selectedJSON)
@@ -143,6 +160,56 @@ struct DebugWindow: View {
             }
             .frame(minWidth: 260)
         }
+    }
+
+    static func goldLabel(_ gold: GoldView?) -> String {
+        guard let gold else { return "–" }
+        return "\(gold.available)/\(gold.thisTurn)"
+    }
+
+    // MARK: - Player & shop
+
+    private var selectedPlayerText: String {
+        guard let selection, let row = rows.first(where: { $0.id == selection }) else {
+            return "Select a timeline entry to see the player's state."
+        }
+        guard let game = row.entry.state.game else { return "No Battlegrounds game." }
+        return Self.describe(game)
+    }
+
+    /// The selected state as the player would read it off the screen.
+    static func describe(_ game: GameView) -> String {
+        var lines = ["BG turn \(game.bgTurn), \(game.phase.rawValue)", "Hero: \(heroLabel(game))"]
+        if let player = game.player {
+            if let hero = player.hero {
+                lines.append("HP \(hero.hp) (health \(hero.health) − damage \(hero.damage) + armor \(hero.armor)), triples \(hero.triples)")
+            }
+            let gold = player.gold
+            lines.append(
+                "Gold \(gold.available) available of \(gold.thisTurn) (used \(gold.used), temporary \(gold.temporary))"
+                    + (gold.cap.map { ", cap \($0)" } ?? "")
+            )
+            lines.append("Tavern tier \(player.tier.map(String.init) ?? "–")")
+            lines.append("")
+            lines.append("Board (\(player.board.count)):")
+            lines += player.board.map { "  " + describe($0) }
+            lines.append("Hand (\(player.hand.count)):")
+            lines += player.hand.map { "  " + describe($0) }
+        }
+        lines.append("Shop (\(game.shop.cards.count))\(game.shop.isFrozen ? ", frozen" : ""):")
+        lines += game.shop.cards.map { "  " + describe($0) }
+        return lines.joined(separator: "\n")
+    }
+
+    static func describe(_ card: CardView) -> String {
+        var text = card.name ?? card.cardID
+        if card.golden { text += " (golden)" }
+        if let attack = card.attack, let health = card.health { text += " \(attack)/\(health)" }
+        if card.kind != .minion { text += " [\(card.kind.rawValue)]" }
+        if let tier = card.tier, tier > 0 { text += " T\(tier)" }
+        if !card.keywords.isEmpty { text += " " + card.keywords.map(\.rawValue).joined(separator: ", ") }
+        if card.name != nil { text += "  \(card.cardID)" }
+        return text
     }
 
     static func heroLabel(_ game: GameView?) -> String {

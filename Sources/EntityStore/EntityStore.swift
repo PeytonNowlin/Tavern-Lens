@@ -83,6 +83,23 @@ public struct EntityStore: Sendable {
 
     private var announcedMetadata = GameMetadata()
     private var announcedGameStarted = false
+    /// Entity IDs by `(CONTROLLER, ZONE)`, kept in step with the tags so zone queries don't scan every entity.
+    private var zoneIndex: [ZoneKey: Set<Int>] = [:]
+
+    private struct ZoneKey: Hashable {
+        var controller: Int?
+        var zone: String?
+
+        init(_ entity: Entity) {
+            controller = entity.int(.controller)
+            zone = entity.name(.zone)
+        }
+
+        init(controller: Int, zone: String) {
+            self.controller = controller
+            self.zone = zone
+        }
+    }
 
     public init() {}
 
@@ -101,6 +118,12 @@ public struct EntityStore: Sendable {
 
     public subscript(id: Int) -> Entity? { entities[id] }
 
+    /// The entities with this `CONTROLLER` (a PlayerID) in this `ZONE` (`PLAY`, `HAND`, …), in no particular order.
+    public func entities(controller: Int, zone: String) -> [Entity] {
+        guard let ids = zoneIndex[ZoneKey(controller: controller, zone: zone)] else { return [] }
+        return ids.compactMap { entities[$0] }
+    }
+
     // MARK: - Reducer
 
     public mutating func apply(_ event: PowerEvent, changes: (EntityChange) -> Void = { _ in }) {
@@ -113,6 +136,7 @@ public struct EntityStore: Sendable {
             if announcedGameStarted { metadata.apply(field) }
         case .createGame:
             entities = [:]
+            zoneIndex = [:]
             gameEntityID = nil
             players = []
             metadata = announcedMetadata
@@ -158,9 +182,11 @@ public struct EntityStore: Sendable {
 
     private mutating func create(id: Int, cardID: String, tags: [TagAssignment], changes: (EntityChange) -> Void) {
         var entity = entities[id] ?? Entity(id: id)
+        let oldKey = entities[id].map(ZoneKey.init)
         entity.cardID = cardID
         for assignment in tags { entity.tags[assignment.tag] = assignment.value }
         entities[id] = entity
+        reindex(id, from: oldKey, to: ZoneKey(entity))
         changes(.entityCreated(id: id))
     }
 
@@ -168,11 +194,24 @@ public struct EntityStore: Sendable {
     private mutating func touch(_ id: Int) {
         guard entities[id] == nil else { return }
         diagnostics.implicitEntities += 1
-        entities[id] = Entity(id: id)
+        let entity = Entity(id: id)
+        entities[id] = entity
+        reindex(id, from: nil, to: ZoneKey(entity))
+    }
+
+    private mutating func reindex(_ id: Int, from old: ZoneKey?, to new: ZoneKey) {
+        guard old != new else { return }
+        if let old { zoneIndex[old]?.remove(id) }
+        zoneIndex[new, default: []].insert(id)
     }
 
     private mutating func set(_ id: Int, _ assignment: TagAssignment, changes: (EntityChange) -> Void) {
+        let movesZone = assignment.tag == .zone || assignment.tag == .controller
+        let oldKey = movesZone ? entities[id].map(ZoneKey.init) : nil
         let old = entities[id, default: Entity(id: id)].tags.updateValue(assignment.value, forKey: assignment.tag)
+        if movesZone, let entity = entities[id] {
+            reindex(id, from: oldKey, to: ZoneKey(entity))
+        }
         if old != assignment.value {
             changes(.tagChanged(entityID: id, tag: assignment.tag, old: old, new: assignment.value))
         }

@@ -5,6 +5,9 @@ import HSLog
 import PowerParser
 
 @_exported import struct BGState.BGGameRecord
+@_exported import enum BGState.BGPhase
+@_exported import enum BGState.BGCardKind
+@_exported import enum BGState.BGKeyword
 @_exported import struct PowerParser.LogPosition
 // Card data is an engine input (`TavernEngine(cards:)`), and the app loads it.
 @_exported import HSData
@@ -119,14 +122,7 @@ public struct TavernEngine: Sendable {
 
     static func viewState(snapshot: BGSnapshot?, record: BGGameRecord?, cards: CardDB?) -> ViewState {
         guard let snapshot, let record else { return .noGame }
-        let game = GameView(
-            gameType: snapshot.gameType,
-            localPlayerID: snapshot.localPlayerID,
-            localHeroCardID: snapshot.localHero?.cardID,
-            localHeroName: snapshot.localHero.flatMap { cards?.name(of: $0.cardID) },
-            bgTurn: snapshot.bgTurn
-        )
-        return ViewState(status: record.end == nil ? .inGame : .gameOver, game: game)
+        return ViewState(status: record.end == nil ? .inGame : .gameOver, game: GameView(snapshot, cards: cards))
     }
 }
 

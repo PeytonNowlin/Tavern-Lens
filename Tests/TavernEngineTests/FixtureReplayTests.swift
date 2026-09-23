@@ -25,6 +25,8 @@ struct FixtureReplayTests {
         try GoldenHarness.verify(
             result, golden: "full-game",
             checkpoints: [.first, .firstOfTurn(1), .firstOfTurn(6), .firstOfTurn(12), .firstWithStatus(.gameOver), .last]
+                + (1...12).map { .endOfPhase($0, .recruit) }
+                + [.startOfPhase(6, .combat)]
         )
     }
 
@@ -44,7 +46,7 @@ struct FixtureReplayTests {
 
         try GoldenHarness.verify(
             result, golden: "truncated-game",
-            checkpoints: [.first, .firstOfTurn(1), .firstOfTurn(5), .last]
+            checkpoints: [.first, .firstOfTurn(1), .firstOfTurn(5), .last] + (1...4).map { .endOfPhase($0, .recruit) }
         )
     }
 

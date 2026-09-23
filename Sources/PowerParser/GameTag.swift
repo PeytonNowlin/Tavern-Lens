@@ -71,6 +71,11 @@ public extension GameTag {
     static let gameSeed = GameTag.id(2042)
     static let baconCurrentCombatPlayerID = GameTag.id(2989)
     static let baconDuoTeamID = GameTag.id(3095)
+
+    // Unnamed tags (the client prints the number). Their meaning comes from the
+    // research notes and may change on a patch.
+    /// The most gold a Battlegrounds player can have per turn (10); on the Player entity.
+    static let baconGoldCap = GameTag.id(3148)
 }
 
 /// A tag value: a number, or an enum name such as `PLAY`, `MINION` or `COMPLETE`.

@@ -9,22 +9,185 @@
         "game" : {
           "bgTurn" : 0,
           "gameType" : "GT_BATTLEGROUNDS",
-          "localPlayerID" : 2
+          "localPlayerID" : 2,
+          "phase" : "heroPick",
+          "player" : {
+            "board" : [
+
+            ],
+            "gold" : {
+              "available" : 0,
+              "temporary" : 0,
+              "thisTurn" : 0,
+              "used" : 0
+            },
+            "hand" : [
+
+            ],
+            "tier" : 1
+          },
+          "shop" : {
+            "cards" : [
+
+            ],
+            "isFrozen" : false
+          }
         },
         "status" : "inGame"
       }
     },
     "last" : {
       "position" : {
-        "line" : 42118,
-        "time" : "20:40:33.0898310"
+        "line" : 46045,
+        "time" : "20:41:03.3430750"
       },
       "state" : {
         "game" : {
           "bgTurn" : 5,
           "gameType" : "GT_BATTLEGROUNDS",
           "localHeroCardID" : "BG36_HERO_002",
-          "localPlayerID" : 2
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+              {
+                "attack" : 2,
+                "cardID" : "BG36_101_G",
+                "golden" : true,
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BGS_119",
+                "health" : 4,
+                "keywords" : [
+                  "taunt",
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_110",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG31_815",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_116",
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              }
+            ],
+            "gold" : {
+              "available" : 0,
+              "cap" : 10,
+              "temporary" : 0,
+              "thisTurn" : 7,
+              "used" : 7
+            },
+            "hand" : [
+              {
+                "cardID" : "BG28_810",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG28_810",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG31_880",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              },
+              {
+                "attack" : 8,
+                "cardID" : "BG26_524",
+                "health" : 7,
+                "kind" : "minion",
+                "tier" : 3
+              }
+            ],
+            "hero" : {
+              "armor" : 1,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 31,
+              "triples" : 0
+            },
+            "tier" : 3
+          },
+          "shop" : {
+            "cards" : [
+              {
+                "attack" : 3,
+                "cardID" : "BG36_112",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 3
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG29_816",
+                "health" : 8,
+                "kind" : "minion",
+                "tier" : 3
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG36_345",
+                "health" : 3,
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG26_146",
+                "health" : 2,
+                "keywords" : [
+                  "magnetic"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG30_804",
+                "kind" : "tavernSpell",
+                "tier" : 3
+              }
+            ],
+            "isFrozen" : false
+          }
         },
         "status" : "inGame"
       }
@@ -39,7 +202,436 @@
           "bgTurn" : 1,
           "gameType" : "GT_BATTLEGROUNDS",
           "localHeroCardID" : "BG36_HERO_002",
-          "localPlayerID" : 2
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+
+            ],
+            "gold" : {
+              "available" : 0,
+              "temporary" : 0,
+              "thisTurn" : 0,
+              "used" : 0
+            },
+            "hand" : [
+
+            ],
+            "hero" : {
+              "armor" : 8,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 38,
+              "triples" : 0
+            },
+            "tier" : 1
+          },
+          "shop" : {
+            "cards" : [
+
+            ],
+            "isFrozen" : false
+          }
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:1:recruit:end" : {
+      "position" : {
+        "line" : 5810,
+        "time" : "20:35:54.1112950"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 1,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+              {
+                "attack" : 2,
+                "cardID" : "BGS_119",
+                "health" : 4,
+                "keywords" : [
+                  "taunt",
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              }
+            ],
+            "gold" : {
+              "available" : 0,
+              "cap" : 10,
+              "temporary" : 0,
+              "thisTurn" : 3,
+              "used" : 3
+            },
+            "hand" : [
+
+            ],
+            "hero" : {
+              "armor" : 8,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 38,
+              "triples" : 0
+            },
+            "tier" : 1
+          },
+          "shop" : {
+            "cards" : [
+              {
+                "attack" : 3,
+                "cardID" : "BG35_814",
+                "health" : 3,
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG26_146",
+                "health" : 2,
+                "keywords" : [
+                  "magnetic"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG31_815",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              }
+            ],
+            "isFrozen" : false
+          }
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:2:recruit:end" : {
+      "position" : {
+        "line" : 11352,
+        "time" : "20:36:40.9288490"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 2,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+              {
+                "attack" : 2,
+                "cardID" : "BGS_119",
+                "health" : 4,
+                "keywords" : [
+                  "taunt",
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              }
+            ],
+            "gold" : {
+              "available" : 0,
+              "cap" : 10,
+              "temporary" : 0,
+              "thisTurn" : 4,
+              "used" : 4
+            },
+            "hand" : [
+
+            ],
+            "hero" : {
+              "armor" : 8,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 38,
+              "triples" : 0
+            },
+            "tier" : 2
+          },
+          "shop" : {
+            "cards" : [
+              {
+                "attack" : 2,
+                "cardID" : "BG31_330",
+                "health" : 1,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG36_345",
+                "health" : 3,
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG35_814",
+                "health" : 3,
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG33_101",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              }
+            ],
+            "isFrozen" : false
+          }
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:3:recruit:end" : {
+      "position" : {
+        "line" : 18454,
+        "time" : "20:37:50.5270830"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 3,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+              {
+                "attack" : 2,
+                "cardID" : "BGS_119",
+                "health" : 4,
+                "keywords" : [
+                  "taunt",
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG31_815",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_116",
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              }
+            ],
+            "gold" : {
+              "available" : 0,
+              "cap" : 10,
+              "temporary" : 0,
+              "thisTurn" : 5,
+              "used" : 5
+            },
+            "hand" : [
+
+            ],
+            "hero" : {
+              "armor" : 8,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 38,
+              "triples" : 0
+            },
+            "tier" : 2
+          },
+          "shop" : {
+            "cards" : [
+              {
+                "attack" : 4,
+                "cardID" : "BG21_015",
+                "health" : 4,
+                "kind" : "minion",
+                "tier" : 2
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BGS_034",
+                "health" : 1,
+                "keywords" : [
+                  "divineShield",
+                  "reborn"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              },
+              {
+                "attack" : 1,
+                "cardID" : "BG29_888",
+                "health" : 4,
+                "keywords" : [
+                  "rally"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG31_880",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              }
+            ],
+            "isFrozen" : false
+          }
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:4:recruit:end" : {
+      "position" : {
+        "line" : 28710,
+        "time" : "20:39:10.5103680"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 4,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+              {
+                "attack" : 2,
+                "cardID" : "BG36_101_G",
+                "golden" : true,
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BGS_119",
+                "health" : 4,
+                "keywords" : [
+                  "taunt",
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_110",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG31_815",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_116",
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              }
+            ],
+            "gold" : {
+              "available" : 0,
+              "cap" : 10,
+              "temporary" : 0,
+              "thisTurn" : 6,
+              "used" : 6
+            },
+            "hand" : [
+
+            ],
+            "hero" : {
+              "armor" : 4,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 34,
+              "triples" : 0
+            },
+            "tier" : 2
+          },
+          "shop" : {
+            "cards" : [
+              {
+                "attack" : 3,
+                "cardID" : "BGS_119",
+                "health" : 2,
+                "keywords" : [
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG36_098",
+                "health" : 2,
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG31_177",
+                "health" : 1,
+                "kind" : "minion",
+                "tier" : 2
+              },
+              {
+                "cardID" : "BG28_503",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              }
+            ],
+            "isFrozen" : false
+          }
         },
         "status" : "inGame"
       }
@@ -54,7 +646,108 @@
           "bgTurn" : 5,
           "gameType" : "GT_BATTLEGROUNDS",
           "localHeroCardID" : "BG36_HERO_002",
-          "localPlayerID" : 2
+          "localPlayerID" : 2,
+          "phase" : "recruit",
+          "player" : {
+            "board" : [
+              {
+                "attack" : 2,
+                "cardID" : "BG36_101_G",
+                "golden" : true,
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BGS_119",
+                "health" : 4,
+                "keywords" : [
+                  "taunt",
+                  "divineShield",
+                  "windfury"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_110",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 3,
+                "cardID" : "BG31_815",
+                "health" : 3,
+                "keywords" : [
+                  "battlecry"
+                ],
+                "kind" : "minion",
+                "tier" : 1
+              },
+              {
+                "attack" : 2,
+                "cardID" : "BG36_116",
+                "health" : 2,
+                "keywords" : [
+                  "deathrattle"
+                ],
+                "kind" : "minion",
+                "tier" : 2
+              }
+            ],
+            "gold" : {
+              "available" : 0,
+              "cap" : 10,
+              "temporary" : 0,
+              "thisTurn" : 6,
+              "used" : 6
+            },
+            "hand" : [
+              {
+                "cardID" : "BG28_810",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG28_810",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              },
+              {
+                "cardID" : "BG28_827",
+                "kind" : "tavernSpell",
+                "tier" : 2
+              },
+              {
+                "cardID" : "BG31_880",
+                "kind" : "tavernSpell",
+                "tier" : 1
+              }
+            ],
+            "hero" : {
+              "armor" : 1,
+              "damage" : 0,
+              "health" : 30,
+              "hp" : 31,
+              "triples" : 0
+            },
+            "tier" : 2
+          },
+          "shop" : {
+            "cards" : [
+
+            ],
+            "isFrozen" : false
+          }
         },
         "status" : "inGame"
       }
