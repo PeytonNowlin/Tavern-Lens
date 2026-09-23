@@ -33,6 +33,11 @@ final class LiveTrackingModel {
         didSet { pipeline?.usePool(pool) }
     }
 
+    /// Firestone's hero stats and the card data the hero pick joins them with.
+    @ObservationIgnored var heroStats: (stats: HeroStatsSet?, cards: CardDB?) = (nil, nil) {
+        didSet { pipeline?.useHeroStats(heroStats.stats, cards: heroStats.cards) }
+    }
+
     /// Called on the main actor when a game ends (log housekeeping runs then).
     @ObservationIgnored var onGameEnded: (@MainActor () -> Void)?
 
@@ -142,6 +147,7 @@ final class LiveTrackingModel {
         }
         self.pipeline = pipeline
         pipeline.usePool(pool)
+        pipeline.useHeroStats(heroStats.stats, cards: heroStats.cards)
         pipeline.start(logsDirectory: Self.locations(for: client).logsDirectory, launchDate: client.launchDate)
     }
 

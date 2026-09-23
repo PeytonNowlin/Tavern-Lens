@@ -52,6 +52,8 @@ public struct GameView: Codable, Hashable, Sendable {
     public var combatOpponentMechanics: MechanicsView?
     /// The lobby's tribes; nil without a minion pool.
     public var tribes: TribesView?
+    /// The offered heroes with their stats, during the hero pick; nil without hero stats.
+    public var heroPick: HeroPickView?
 
     public init(
         gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int,

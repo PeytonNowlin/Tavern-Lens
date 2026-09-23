@@ -37,6 +37,8 @@ final class LivePipeline: @unchecked Sendable {
     private var session: LogSession?
     /// The minion pool for tribe inference; each new session's engine starts with it.
     private var pool: MinionPool?
+    /// Firestone's hero stats and the card data for the hero pick; each new engine starts with them.
+    private var heroStats: (stats: HeroStatsSet?, cards: CardDB?) = (nil, nil)
     private var lastPublished: LiveUpdate?
     private var lastPublishTime: ContinuousClock.Instant?
     private var pendingFlush = false
@@ -85,6 +87,7 @@ final class LivePipeline: @unchecked Sendable {
             let carried = engine.inProgressRecord ?? records?.latestInProgress()
             session = newSession
             engine = TavernEngine(pool: pool, session: newSession)
+            engine.useHeroStats(heroStats.stats, cards: heroStats.cards)
             if let carried { engine.resume(carried) }
             engine.beginCatchUp()
         case .powerLogEntry(let entry):
@@ -111,6 +114,15 @@ final class LivePipeline: @unchecked Sendable {
         defer { lock.unlock() }
         pool = newPool
         engine.usePool(newPool)
+        publishIfDue()
+    }
+
+    /// Uses new hero stats (and card data) from now on, including for a hero pick on screen.
+    func useHeroStats(_ stats: HeroStatsSet?, cards: CardDB?) {
+        lock.lock()
+        defer { lock.unlock() }
+        heroStats = (stats, cards)
+        engine.useHeroStats(stats, cards: cards)
         publishIfDue()
     }
 

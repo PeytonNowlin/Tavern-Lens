@@ -76,6 +76,9 @@ public struct TavernEngine: Sendable {
     public private(set) var resumedRecord: GameRecord?
     /// The minion pool and the lobby's tribes (nothing without a pool).
     private var tribes: TribeTracker
+    /// The local player's hero-pick offer, and the stats it's joined with (none without stats).
+    private var heroPick = BGHeroPickTracker()
+    private var heroPickData: HeroPickData?
 
     private struct RecordInfo: Sendable {
         var sessions: [String] = []
@@ -132,6 +135,14 @@ public struct TavernEngine: Sendable {
     public mutating func ingestScreenTribes(_ reading: ScreenTribeReading) {
         tribes.add(reading)
         if !isCatchingUp { publish() }
+    }
+
+    /// Sets (or replaces) Firestone's hero stats for the hero pick; nil leaves the hero pick out
+    /// of the view. `cards` maps skins to their base hero and names the heroes when the
+    /// engine has no card data of its own.
+    public mutating func useHeroStats(_ stats: HeroStatsSet?, cards: CardDB? = nil) {
+        heroPickData = stats.map { HeroPickData(stats: $0, cards: cards) }
+        if !isCatchingUp, timeline.last != nil { publish() }
     }
 
     /// Every game's full record.
@@ -290,6 +301,7 @@ public struct TavernEngine: Sendable {
             }
             history.observe(event, in: store)
             tribes.observe(event)
+            heroPick.observe(event)
             if event == .taskListEnd {
                 tribes.taskListEnded(store, at: position)
                 if !isCatchingUp { publish() }
@@ -322,10 +334,17 @@ public struct TavernEngine: Sendable {
     private mutating func publish() {
         history.refresh(from: store)
         let snapshot = BGSnapshot.project(store)
-        let next = Self.viewState(
+        var next = Self.viewState(
             snapshot: snapshot, record: history.current, lobby: history.lobby, cards: cards,
             tribes: tribes.view(bgTurn: snapshot?.bgTurn ?? 0)
         )
+        if next.game?.phase == .heroPick, let data = heroPickData, let pick = heroPick.project(store, lastTaskListEnded: parser.lastTaskListEnded) {
+            let pool = tribes.basePool
+            next.game?.heroPick = HeroPickView(
+                pick, data: data, cards: cards, tribes: tribes.estimate, heroRules: pool.map { pool in pool.heroRule },
+                now: clock?.currentDate
+            )
+        }
         guard next != state else { return }
         state = next
         timeline.append(TimelineEntry(position: LogPosition(line: linesRead, time: String(lastTimestamp)), state: next))
