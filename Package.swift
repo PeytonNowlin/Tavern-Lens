@@ -31,8 +31,10 @@ let package = Package(
             name: "TavernEngine",
             dependencies: ["HSLog", "PowerParser", "EntityStore", "BGState", "HSData", "BGIntel"]
         ),
+        // Pure overlay geometry: Hearthstone's content frame -> element rects (seam 2).
+        .target(name: "OverlayLayout"),
         // Thin menu-bar app: OS integration and UI only.
-        .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog"]),
+        .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog", "OverlayLayout"]),
         // Build-time codegen: HearthstoneJSON enums.json (Data/HearthstoneJSON) -> Swift enum tables.
         .executableTarget(name: "HSEnumsGenerator", path: "Tools/HSEnumsGenerator"),
         .plugin(name: "HSEnumsPlugin", capability: .buildTool(), dependencies: ["HSEnumsGenerator"]),
@@ -47,6 +49,13 @@ let package = Package(
             dependencies: ["TavernEngine", "HSLog"],
             // Golden JSON is read from (and recorded into) the source tree via #filePath.
             exclude: ["Golden"],
+            swiftSettings: commandLineToolsTesting.swift,
+            linkerSettings: commandLineToolsTesting.linker
+        ),
+        // Seam 2: layout geometry for the measured reference frames.
+        .testTarget(
+            name: "OverlayLayoutTests",
+            dependencies: ["OverlayLayout"],
             swiftSettings: commandLineToolsTesting.swift,
             linkerSettings: commandLineToolsTesting.linker
         ),

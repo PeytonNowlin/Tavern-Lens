@@ -9,7 +9,7 @@ struct TavernLensApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarContent(live: appDelegate.live, debugReplay: debugReplay)
+            MenuBarContent(live: appDelegate.live, overlay: appDelegate.overlay, debugReplay: debugReplay)
         } label: {
             MenuBarLabel(live: appDelegate.live)
         }
@@ -28,13 +28,21 @@ enum WindowID {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let live = LiveTrackingModel()
+    let live: LiveTrackingModel
+    let overlay: OverlayController
+
+    override init() {
+        live = LiveTrackingModel()
+        overlay = OverlayController(live: live)
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Menu-bar only. The bundle's Info.plist sets LSUIElement too; this also
         // covers running the bare executable with `swift run`.
         NSApp.setActivationPolicy(.accessory)
         live.start()
+        overlay.start()
     }
 }
 
@@ -57,6 +65,7 @@ struct MenuBarLabel: View {
 
 struct MenuBarContent: View {
     let live: LiveTrackingModel
+    let overlay: OverlayController
     let debugReplay: DebugReplayModel
     @Environment(\.openWindow) private var openWindow
 
@@ -75,6 +84,8 @@ struct MenuBarContent: View {
             Text("Session \(session.name)")
         }
         Divider()
+        OverlayMenuSection(overlay: overlay)
+        Divider()
         if debugReplay.isReplaying || debugReplay.result != nil {
             Text(debugReplay.menuStatus)
         }
@@ -88,5 +99,25 @@ struct MenuBarContent: View {
             NSApp.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+}
+
+struct OverlayMenuSection: View {
+    @Bindable var overlay: OverlayController
+
+    var body: some View {
+        Button(overlay.isHiddenByUser ? "Show Overlay" : "Hide Overlay") {
+            overlay.toggleHidden()
+        }
+        .keyboardShortcut("h", modifiers: [.control, .option])
+        if !overlay.hotKeyAvailable {
+            Text("⚠︎ The \(OverlayController.hotKeyName) hotkey is in use by another app")
+        }
+        Toggle("Show Layout Guides", isOn: $overlay.showsLayoutGuides)
+        if !overlay.accessibilityTrusted {
+            Button("Allow Accessibility for Better Window Tracking…") {
+                overlay.requestAccessibility()
+            }
+        }
     }
 }

@@ -1,0 +1,162 @@
+import CoreGraphics
+
+/// A rect of Hearthstone's own UI, normalized to the client height `h`.
+///
+/// `kx` is the centre's horizontal offset in units of `h`, measured from `anchor`:
+/// from the window's horizontal centre for board elements (the board scales with
+/// height and stays centred), or inwards from a window edge for Hearthstone's chrome.
+/// `fy` is the centre's distance from the top, and `w`/`h` the size, all in units of `h`.
+public struct NormalizedRect: Hashable, Sendable {
+    public enum Anchor: Hashable, Sendable {
+        /// `kx` is relative to the window's horizontal centre (positive to the right).
+        case centre
+        /// `kx` is the distance from the window's left edge to the centre.
+        case leftEdge
+        /// `kx` is the distance from the window's right edge to the centre.
+        case rightEdge
+    }
+
+    public var kx: CGFloat
+    public var fy: CGFloat
+    public var w: CGFloat
+    public var h: CGFloat
+    public var anchor: Anchor
+
+    public init(kx: CGFloat, fy: CGFloat, w: CGFloat, h: CGFloat, anchor: Anchor = .centre) {
+        self.kx = kx
+        self.fy = fy
+        self.w = w
+        self.h = h
+        self.anchor = anchor
+    }
+}
+
+/// Hearthstone UI elements with a fixed place in a solo Battlegrounds game.
+public enum HSElement: String, CaseIterable, Hashable, Sendable {
+    // Tavern controls (recruit phase, top of the board)
+    case tavernUpgradeButton, tavernUpgradeCost, bobTierBadge, bobPortrait
+    case refreshButton, refreshCost, freezeButton, freezeCost
+    // Right side of the board
+    case timerPlate
+    /// Seasonal (patch 36.x): moves or disappears with season changes.
+    case deityOrb
+    // The local player's hero cluster
+    case heroPortrait, heroArmor, heroHealth, heroPower, heroPowerCost, trinketNear, trinketOuter
+    case goldPill
+    // The opponent's hero cluster (combat phase)
+    case opponentHeroPortrait, opponentHeroArmor, opponentHeroHealth, opponentHeroPower
+    case opponentTrinketNear, opponentTrinketOuter
+    // Leaderboard
+    case leaderboardCrown
+    // Hearthstone chrome anchored to the window edges
+    case journalButton, settingsButton
+}
+
+/// The measured layout constants for one Hearthstone UI version.
+///
+/// Every value is hand-measured (see `docs/research/overlay-coordinates.md`), so a
+/// Battlegrounds patch can move things. When it does, add a new constants value with
+/// a new `version` rather than editing an old one, and point `current` at it.
+public struct LayoutConstants: Hashable, Sendable {
+    /// Which Hearthstone UI these constants were measured against.
+    public var version: String
+
+    // Board model
+    /// Width of the centred board region, as a multiple of `h` (4:3).
+    public var boardAspect: CGFloat
+
+    // Leaderboard (solo)
+    public var leaderboardTop: CGFloat
+    public var leaderboardSpan: CGFloat
+    public var leaderboardSlots: Int
+    /// Left edge of the leaderboard tiles, as `kx` (the left edge of the 4:3 region).
+    public var leaderboardLeftKx: CGFloat
+
+    // Board rows: the top row is Bob's shop in recruit and the opponent's warband in combat.
+    public var rowHeight: CGFloat
+    public var playerRowTop: CGFloat
+    public var topRowTop: CGFloat
+    public var minionWidth: CGFloat
+    public var slotPitch: CGFloat
+    /// Shop minion cells, including the tier shield (HDT's pinning cells).
+    public var shopCellWidth: CGFloat
+    public var shopCellHeight: CGFloat
+    public var shopCellCentreY: CGFloat
+
+    // Gold coins, left to right
+    public var goldCoinFirstKx: CGFloat
+    public var goldCoinPitch: CGFloat
+    public var goldCoinFy: CGFloat
+    public var goldCoinDiameter: CGFloat
+
+    /// Fixed Hearthstone UI rects.
+    public var elements: [HSElement: NormalizedRect]
+
+    // Our own panels, authored on a 1080-high reference canvas.
+    public var panelScaleRange: ClosedRange<CGFloat>
+    /// The status HUD, anchored to the window's top-right corner (in reference points).
+    public var hudSize: CGSize
+    public var hudInset: CGFloat
+}
+
+extension LayoutConstants {
+    /// The constants in use.
+    public static let current = patch36_6
+
+    /// Patch 36.6.1 (build 251952), measured 2026-09-22 from the player's own captures at
+    /// 1710×1073 and cross-checked on 16:9 web captures. Tracker-derived values come from
+    /// HSTracker c723bfd / HDT ef8ab6e. Uncertainty is about ±0.004 h unless noted.
+    public static let patch36_6 = LayoutConstants(
+        version: "36.6.1 (251952) measured 2026-09-22",
+        boardAspect: 4.0 / 3.0,
+        leaderboardTop: 0.15,
+        leaderboardSpan: 0.69,
+        leaderboardSlots: 8,
+        leaderboardLeftKx: -2.0 / 3.0,
+        rowHeight: 0.158,
+        playerRowTop: 0.47,
+        topRowTop: 0.297,
+        minionWidth: 0.12,
+        slotPitch: 0.12 + 2 * 0.0029 * 4.0 / 3.0,
+        shopCellWidth: 138.0 / 1080,
+        shopCellHeight: 190.0 / 1080,
+        shopCellCentreY: 395.0 / 1080,
+        goldCoinFirstKx: 0.343,
+        goldCoinPitch: 0.0282,
+        goldCoinFy: 0.927,
+        goldCoinDiameter: 0.025,
+        elements: [
+            .tavernUpgradeButton: .init(kx: -0.157, fy: 0.187, w: 0.088, h: 0.112),
+            .tavernUpgradeCost: .init(kx: -0.158, fy: 0.139, w: 0.040, h: 0.040),
+            .bobTierBadge: .init(kx: -0.071, fy: 0.209, w: 0.060, h: 0.062),
+            .bobPortrait: .init(kx: 0.002, fy: 0.176, w: 0.139, h: 0.153),
+            .refreshButton: .init(kx: 0.155, fy: 0.189, w: 0.088, h: 0.116),
+            .refreshCost: .init(kx: 0.155, fy: 0.139, w: 0.040, h: 0.040),
+            .freezeButton: .init(kx: 0.257, fy: 0.165, w: 0.076, h: 0.112),
+            .freezeCost: .init(kx: 0.258, fy: 0.122, w: 0.033, h: 0.033),
+            .timerPlate: .init(kx: 0.547, fy: 0.459, w: 0.137, h: 0.060),
+            .deityOrb: .init(kx: 0.598, fy: 0.284, w: 0.096, h: 0.094),
+            .heroPortrait: .init(kx: 0.000, fy: 0.763, w: 0.148, h: 0.165),
+            .heroArmor: .init(kx: 0.066, fy: 0.782, w: 0.052, h: 0.049),
+            .heroHealth: .init(kx: 0.068, fy: 0.835, w: 0.046, h: 0.040),
+            .heroPower: .init(kx: 0.165, fy: 0.767, w: 0.134, h: 0.134),
+            .heroPowerCost: .init(kx: 0.166, fy: 0.706, w: 0.048, h: 0.048),
+            .trinketNear: .init(kx: -0.129, fy: 0.810, w: 0.094, h: 0.094),
+            .trinketOuter: .init(kx: -0.200, fy: 0.742, w: 0.094, h: 0.094),
+            .goldPill: .init(kx: 0.279, fy: 0.924, w: 0.080, h: 0.035),
+            .opponentHeroPortrait: .init(kx: 0.000, fy: 0.178, w: 0.134, h: 0.148),
+            .opponentHeroArmor: .init(kx: 0.067, fy: 0.193, w: 0.051, h: 0.048),
+            .opponentHeroHealth: .init(kx: 0.067, fy: 0.244, w: 0.043, h: 0.036),
+            .opponentHeroPower: .init(kx: 0.163, fy: 0.223, w: 0.129, h: 0.129),
+            .opponentTrinketNear: .init(kx: -0.116, fy: 0.153, w: 0.092, h: 0.092),
+            .opponentTrinketOuter: .init(kx: -0.190, fy: 0.214, w: 0.094, h: 0.094),
+            .leaderboardCrown: .init(kx: -0.610, fy: 0.141, w: 0.060, h: 0.043),
+            // Centres measured (§8b); sizes estimated from the captures (±0.01 h).
+            .journalButton: .init(kx: 0.126, fy: 0.976, w: 0.060, h: 0.045, anchor: .rightEdge),
+            .settingsButton: .init(kx: 0.040, fy: 0.976, w: 0.045, h: 0.045, anchor: .rightEdge),
+        ],
+        panelScaleRange: 0.8...1.3,
+        hudSize: CGSize(width: 140, height: 60),
+        hudInset: 8
+    )
+}
