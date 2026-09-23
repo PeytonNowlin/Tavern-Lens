@@ -91,8 +91,8 @@ Layout is independently testable: window bounds map to overlay rectangles throug
 ### Build and launch
 
 ```sh
-git clone https://github.com/PeytonNowlin/Hearthstone-BG-Companion.git
-cd Hearthstone-BG-Companion
+git clone https://github.com/PeytonNowlin/Tavern-Lens.git
+cd Tavern-Lens
 scripts/bundle-app.sh
 open "build/Tavern Lens.app"
 ```

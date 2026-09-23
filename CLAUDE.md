@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues for `PeytonNowlin/Hearthstone-BG-Companion` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues for `PeytonNowlin/Tavern-Lens` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
