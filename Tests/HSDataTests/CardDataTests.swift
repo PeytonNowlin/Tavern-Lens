@@ -103,6 +103,32 @@ final class CardDataTests {
         #expect(source.requests.count == builds.count)
     }
 
+    @Test("The cache's limit comes from the retention setting: the current build plus that many earlier ones")
+    func configurableRetention() async throws {
+        let builds = [250_100, 250_200, 250_300, 251_952]
+        let source = StubSource(published: Set(builds), payload: try Self.fixture())
+        for build in builds {
+            _ = try await CardDataStore(cache: CardDataCache(directory: directory, limit: 2), source: source).load(build: build)
+        }
+        #expect(CardDataCache(directory: directory).builds == [251_952, 250_300])
+        // Keeping fewer later prunes the rest, never the build in use.
+        let removed = CardDataCache(directory: directory, limit: 1).prune(keeping: 250_300)
+        #expect(removed == [251_952] && CardDataCache(directory: directory).builds == [250_300])
+    }
+
+    @Test("Hearthstone starting with another build than the card data loaded needs a reload")
+    func reloadOnNewBuild() async throws {
+        let source = StubSource(published: [250_200, 251_952], payload: try Self.fixture())
+        let loaded = try await store(source).load(build: 250_200)
+        #expect(!loaded.needsReload(forRunning: 250_200))
+        #expect(loaded.needsReload(forRunning: 251_952), "a patch landed")
+        #expect(!loaded.needsReload(forRunning: nil), "an unknown build keeps what's loaded")
+        // A fallback for the running build (offline at the patch) is retried at the next launch.
+        source.goOffline()
+        let fallback = try await store(source).load(build: 252_000)
+        #expect(!fallback.isExact && fallback.needsReload(forRunning: 252_000))
+    }
+
     @Test("Offline with a new build: the newest cached build is used and marked stale")
     func offlineFallback() async throws {
         let source = StubSource(published: [250_100, 250_200], payload: try Self.fixture())

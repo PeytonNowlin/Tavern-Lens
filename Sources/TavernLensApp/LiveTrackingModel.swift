@@ -120,6 +120,9 @@ final class LiveTrackingModel {
         hearthstone = found
         stopFollowing()
         if let found {
+            // A patch may have landed: card data (and the pool and hero stats built on it)
+            // follows the build that's running.
+            CardDataModel.shared.reloadIfBuildChanged(appURL: found.bundleURL)
             // A launch has read, or is about to read, the config, so a fix made now
             // only takes effect after a restart.
             checkConfig(hearthstoneRunning: true, locations: Self.locations(for: found))

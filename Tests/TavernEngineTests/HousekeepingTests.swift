@@ -245,6 +245,8 @@ struct HousekeepingTests {
         #expect(RetentionSettings().maxReplays == 40)
         #expect(RetentionSettings().powerLogHintBytes == 800_000_000)
         #expect(RetentionSettings().maxArtCacheBytes == 1_000_000_000)
+        // Card data: the current build and the two before it.
+        #expect(decoded.previousCardDataBuilds == 2 && decoded.cardDataCache().limit == 3)
     }
 
     // MARK: - Captured log

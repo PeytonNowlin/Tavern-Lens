@@ -16,11 +16,19 @@ public struct RetentionSettings: Codable, Hashable, Sendable {
     public var powerLogHintBytes = PowerLogSizeHint.defaultThreshold
     /// Size cap for the card art cache (default 1 GB).
     public var maxArtCacheBytes = ArtCache.defaultLimit
+    /// Card data kept for builds before the running one (default 2: the current build and the
+    /// two before it), so a rollback or a replay of an older game has its names offline.
+    public var previousCardDataBuilds = 2
 
     public init() {}
 
     public var logPolicy: LogRetentionPolicy {
         LogRetentionPolicy(maxSessions: maxSessions, maxTotalBytes: maxLogBytes)
+    }
+
+    /// The card data cache with this retention: the current build plus `previousCardDataBuilds`.
+    public func cardDataCache(directory: URL = CardDataCache.defaultDirectory) -> CardDataCache {
+        CardDataCache(directory: directory, limit: 1 + max(0, previousCardDataBuilds))
     }
 
     /// Settings saved by an older version may lack newer keys; those get defaults.
@@ -33,6 +41,8 @@ public struct RetentionSettings: Codable, Hashable, Sendable {
         maxReplays = try container.decodeIfPresent(Int.self, forKey: .maxReplays) ?? defaults.maxReplays
         powerLogHintBytes = try container.decodeIfPresent(Int64.self, forKey: .powerLogHintBytes) ?? defaults.powerLogHintBytes
         maxArtCacheBytes = try container.decodeIfPresent(Int64.self, forKey: .maxArtCacheBytes) ?? defaults.maxArtCacheBytes
+        previousCardDataBuilds = try container.decodeIfPresent(Int.self, forKey: .previousCardDataBuilds)
+            ?? defaults.previousCardDataBuilds
     }
 }
 

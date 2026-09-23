@@ -61,9 +61,12 @@ final class HousekeepingModel {
         let settings = settings.settings
         // The session the app follows; the newest folder and open ones are protected anyway.
         let active = Set([live.update.session?.name].compactMap { $0 })
+        // Card data beyond the kept builds goes too, never the build in use.
+        let cardBuild = CardDataModel.shared.cards?.build
         Task {
             let report = await Task.detached(priority: .utility) {
-                housekeeper.run(settings: settings, activeSessions: active)
+                settings.cardDataCache().prune(keeping: cardBuild)
+                return housekeeper.run(settings: settings, activeSessions: active)
             }.value
             lastReport = report
             lastRun = Date()

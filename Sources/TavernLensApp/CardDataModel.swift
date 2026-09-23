@@ -2,8 +2,10 @@ import Foundation
 import Observation
 import TavernEngine
 
-/// Card data for the running Hearthstone build, loaded once per launch: from the cache,
-/// or downloaded once for a new build, or the newest cached build when offline.
+/// Card data for the running Hearthstone build: from the cache, or downloaded once for a new
+/// build, or the newest cached build when offline. Loaded at launch, and again when Hearthstone
+/// starts with a different build than the one loaded (`reloadIfBuildChanged`); the minion pool
+/// and the hero stats, which observe `loaded`, follow.
 @MainActor
 @Observable
 final class CardDataModel {
@@ -30,14 +32,37 @@ final class CardDataModel {
         }
     }
 
+    /// How many earlier builds' card data the cache keeps (the retention settings).
+    @ObservationIgnored var previousBuildsKept: () -> Int = { RetentionSettings().previousCardDataBuilds }
+
     func loadIfNeeded() {
         guard loaded == nil, !isLoading else { return }
+        load(appURL: nil)
+    }
+
+    /// Hearthstone just started (from `appURL`): if it's another build than the card data
+    /// loaded, loads that build's.
+    func reloadIfBuildChanged(appURL: URL?) {
+        guard !isLoading else { return }
+        let app = appURL ?? HearthstoneBuild.defaultAppURL
+        Task {
+            let running = await Task.detached(priority: .utility) { HearthstoneBuild.installed(appURL: app) }.value
+            guard !isLoading, let loaded, loaded.needsReload(forRunning: running) else { return }
+            load(appURL: app)
+        }
+    }
+
+    private func load(appURL: URL?) {
         isLoading = true
         errorMessage = nil
+        var settings = RetentionSettings()
+        settings.previousCardDataBuilds = previousBuildsKept()
+        let cache = settings.cardDataCache()
         Task {
             do {
                 loaded = try await Task.detached(priority: .userInitiated) {
-                    try await CardDataStore().load(build: HearthstoneBuild.installed())
+                    let build = HearthstoneBuild.installed(appURL: appURL ?? HearthstoneBuild.defaultAppURL)
+                    return try await CardDataStore(cache: cache).load(build: build)
                 }.value
             } catch {
                 errorMessage = "\(error)"

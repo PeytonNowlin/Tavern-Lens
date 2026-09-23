@@ -35,6 +35,12 @@ struct SettingsWindow: View {
                 Stepper(value: gigabytes(\.maxArtCacheBytes), in: 0.25...20, step: 0.25) {
                     LabeledContent("Card art cache", value: ByteSize.format(model.settings.maxArtCacheBytes))
                 }
+                Stepper(value: $model.settings.previousCardDataBuilds, in: 0...10) {
+                    LabeledContent(
+                        "Card data for earlier builds",
+                        value: model.settings.previousCardDataBuilds == 1 ? "1 build" : "\(model.settings.previousCardDataBuilds) builds"
+                    )
+                }
             }
             Section {
                 HStack {

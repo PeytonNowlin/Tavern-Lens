@@ -133,6 +133,13 @@ public struct LoadedCardData: Sendable {
         if case .fallback = origin { return false }
         return true
     }
+
+    /// Whether Hearthstone running `build` needs other card data than this: it's a different
+    /// build from the one loaded (a patch landed, or it was a fallback). Unknown builds don't.
+    public func needsReload(forRunning build: Int?) -> Bool {
+        guard let build else { return false }
+        return db.build != build
+    }
 }
 
 /// Loads the card data for the running build: from the cache when present, otherwise
