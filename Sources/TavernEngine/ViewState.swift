@@ -27,13 +27,16 @@ public struct GameView: Codable, Hashable, Sendable {
     public var localPlayerID: Int?
     /// Card ID of the local hero; nil until the hero pick resolves.
     public var localHeroCardID: String?
+    /// The local hero's name from the card data; nil without card data or before the hero pick.
+    public var localHeroName: String?
     /// The Battlegrounds turn (0 before the first recruit phase).
     public var bgTurn: Int
 
-    public init(gameType: String, localPlayerID: Int?, localHeroCardID: String?, bgTurn: Int) {
+    public init(gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int) {
         self.gameType = gameType
         self.localPlayerID = localPlayerID
         self.localHeroCardID = localHeroCardID
+        self.localHeroName = localHeroName
         self.bgTurn = bgTurn
     }
 }

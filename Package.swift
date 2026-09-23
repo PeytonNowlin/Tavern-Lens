@@ -17,13 +17,13 @@ let package = Package(
         // Log files on disk: discovery, config, tailing, retention. No Battlegrounds knowledge.
         .target(name: "HSLog"),
         // Log lines -> typed power events.
-        .target(name: "PowerParser"),
+        .target(name: "PowerParser", plugins: ["HSEnumsPlugin"]),
         // Generic, deterministic reducer of power events into entities and tags.
         .target(name: "EntityStore", dependencies: ["PowerParser"]),
         // Battlegrounds projection of the entity store, plus the event-driven game history.
         .target(name: "BGState", dependencies: ["EntityStore", "PowerParser"]),
         // Card data, generated enums, minion pool, hero and build stats.
-        .target(name: "HSData", dependencies: ["PowerParser"]),
+        .target(name: "HSData", dependencies: ["PowerParser"], plugins: ["HSEnumsPlugin"]),
         // Tribes, builds, shop highlights, hero-pick stats, simulator adapter, advisor.
         .target(name: "BGIntel", dependencies: ["BGState", "HSData"]),
         // Headless composition root: log lines in, timeline of view states and game records out.
@@ -33,6 +33,15 @@ let package = Package(
         ),
         // Thin menu-bar app: OS integration and UI only.
         .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog"]),
+        // Build-time codegen: HearthstoneJSON enums.json (Data/HearthstoneJSON) -> Swift enum tables.
+        .executableTarget(name: "HSEnumsGenerator", path: "Tools/HSEnumsGenerator"),
+        .plugin(name: "HSEnumsPlugin", capability: .buildTool(), dependencies: ["HSEnumsGenerator"]),
+        .testTarget(
+            name: "HSDataTests",
+            dependencies: ["HSData", "PowerParser"],
+            swiftSettings: commandLineToolsTesting.swift,
+            linkerSettings: commandLineToolsTesting.linker
+        ),
         .testTarget(
             name: "TavernEngineTests",
             dependencies: ["TavernEngine", "HSLog"],

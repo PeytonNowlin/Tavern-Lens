@@ -6,6 +6,8 @@ import PowerParser
 
 @_exported import struct BGState.BGGameRecord
 @_exported import struct PowerParser.LogPosition
+// Card data is an engine input (`TavernEngine(cards:)`), and the app loads it.
+@_exported import HSData
 
 /// Counts of input the engine tolerated rather than understood.
 public struct EngineDiagnostics: Codable, Hashable, Sendable {
@@ -19,6 +21,8 @@ public struct ReplayResult: Sendable {
     public var timeline: [TimelineEntry]
     public var games: [BGGameRecord]
     public var diagnostics: EngineDiagnostics
+    /// The last game's entities at end of input, for the debug window. Filled by `replay`.
+    public var entities: [EntityRow] = []
 }
 
 /// The headless composition root.
@@ -41,8 +45,12 @@ public struct TavernEngine: Sendable {
     private var store = EntityStore()
     private var history = BGGameHistory()
     private var lastTimestamp: Substring = ""
+    private let cards: CardDB?
 
-    public init() {}
+    /// - Parameter cards: card data for resolving card IDs to names; nil leaves names out.
+    public init(cards: CardDB? = nil) {
+        self.cards = cards
+    }
 
     public var games: [BGGameRecord] { history.games }
 
@@ -52,6 +60,11 @@ public struct TavernEngine: Sendable {
 
     public var result: ReplayResult {
         ReplayResult(timeline: timeline, games: games, diagnostics: diagnostics)
+    }
+
+    /// The current game's entities, by entity ID, with card and tag names resolved.
+    public var entityRows: [EntityRow] {
+        store.entities.values.sorted { $0.id < $1.id }.map { EntityRow($0, cards: cards) }
     }
 
     /// Ingests one log line (without its newline).
@@ -98,18 +111,19 @@ public struct TavernEngine: Sendable {
 
     private mutating func publish() {
         history.refresh(from: store)
-        let next = Self.viewState(snapshot: BGSnapshot.project(store), record: history.current)
+        let next = Self.viewState(snapshot: BGSnapshot.project(store), record: history.current, cards: cards)
         guard next != state else { return }
         state = next
         timeline.append(TimelineEntry(position: LogPosition(line: linesRead, time: String(lastTimestamp)), state: next))
     }
 
-    static func viewState(snapshot: BGSnapshot?, record: BGGameRecord?) -> ViewState {
+    static func viewState(snapshot: BGSnapshot?, record: BGGameRecord?, cards: CardDB?) -> ViewState {
         guard let snapshot, let record else { return .noGame }
         let game = GameView(
             gameType: snapshot.gameType,
             localPlayerID: snapshot.localPlayerID,
             localHeroCardID: snapshot.localHero?.cardID,
+            localHeroName: snapshot.localHero.flatMap { cards?.name(of: $0.cardID) },
             bgTurn: snapshot.bgTurn
         )
         return ViewState(status: record.end == nil ? .inGame : .gameOver, game: game)
@@ -118,18 +132,24 @@ public struct TavernEngine: Sendable {
 
 extension TavernEngine {
     /// Replays lines from memory.
-    public static func replay(lines: some Sequence<String>) -> ReplayResult {
-        var engine = TavernEngine()
+    public static func replay(lines: some Sequence<String>, cards: CardDB? = nil) -> ReplayResult {
+        var engine = TavernEngine(cards: cards)
         for line in lines { engine.ingest(line) }
         engine.finish()
-        return engine.result
+        return engine.replayResult
     }
 
     /// Replays a recorded Power.log from disk.
-    public static func replay(fileAt url: URL) throws -> ReplayResult {
-        var engine = TavernEngine()
+    public static func replay(fileAt url: URL, cards: CardDB? = nil) throws -> ReplayResult {
+        var engine = TavernEngine(cards: cards)
         try LogFileReader.forEachLine(in: url) { engine.ingest($0) }
         engine.finish()
-        return engine.result
+        return engine.replayResult
+    }
+
+    private var replayResult: ReplayResult {
+        var result = result
+        result.entities = entityRows
+        return result
     }
 }
