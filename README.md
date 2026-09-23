@@ -1,3 +1,5 @@
+![Tavern Lens — a gold and dark-metal crest with a glowing blue lens](docs/assets/tavern-lens-logo.png)
+
 # Tavern Lens
 
 A native macOS companion for **Hearthstone Battlegrounds**, built with Swift, SwiftUI, and AppKit. Tavern Lens reconstructs a match from Hearthstone's logs and overlays opponent history, build guidance, combat probabilities, and explainable action recommendations on the game.
