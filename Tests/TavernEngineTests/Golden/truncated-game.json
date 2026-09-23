@@ -1,0 +1,77 @@
+{
+  "checkpoints" : {
+    "first" : {
+      "position" : {
+        "line" : 617,
+        "time" : "20:34:34.2970160"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 0,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localPlayerID" : 2
+        },
+        "status" : "inGame"
+      }
+    },
+    "last" : {
+      "position" : {
+        "line" : 42118,
+        "time" : "20:40:33.0898310"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 5,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:1" : {
+      "position" : {
+        "line" : 3052,
+        "time" : "20:35:40.4779730"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 1,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:5" : {
+      "position" : {
+        "line" : 42118,
+        "time" : "20:40:33.0898310"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 5,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "BG36_HERO_002",
+          "localPlayerID" : 2
+        },
+        "status" : "inGame"
+      }
+    }
+  },
+  "games" : [
+    {
+      "bgTurn" : 5,
+      "buildNumber" : 251952,
+      "gameSeed" : 1858545615,
+      "gameType" : "GT_BATTLEGROUNDS",
+      "localHeroCardID" : "BG36_HERO_002",
+      "localPlayerID" : 2,
+      "start" : {
+        "line" : 250,
+        "time" : "20:34:33.1501960"
+      }
+    }
+  ]
+}

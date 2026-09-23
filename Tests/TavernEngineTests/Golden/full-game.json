@@ -1,0 +1,111 @@
+{
+  "checkpoints" : {
+    "first" : {
+      "position" : {
+        "line" : 618,
+        "time" : "21:09:41.6442830"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 0,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localPlayerID" : 6
+        },
+        "status" : "inGame"
+      }
+    },
+    "last" : {
+      "position" : {
+        "line" : 269966,
+        "time" : "21:33:14.4334940"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 12,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "TB_BaconShop_HERO_15",
+          "localPlayerID" : 6
+        },
+        "status" : "gameOver"
+      }
+    },
+    "status:gameOver" : {
+      "position" : {
+        "line" : 269966,
+        "time" : "21:33:14.4334940"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 12,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "TB_BaconShop_HERO_15",
+          "localPlayerID" : 6
+        },
+        "status" : "gameOver"
+      }
+    },
+    "turn:1" : {
+      "position" : {
+        "line" : 3006,
+        "time" : "21:10:20.1430780"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 1,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "TB_BaconShop_HERO_15",
+          "localPlayerID" : 6
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:12" : {
+      "position" : {
+        "line" : 232190,
+        "time" : "21:30:47.1073700"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 12,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "TB_BaconShop_HERO_15",
+          "localPlayerID" : 6
+        },
+        "status" : "inGame"
+      }
+    },
+    "turn:6" : {
+      "position" : {
+        "line" : 52718,
+        "time" : "21:16:20.8909730"
+      },
+      "state" : {
+        "game" : {
+          "bgTurn" : 6,
+          "gameType" : "GT_BATTLEGROUNDS",
+          "localHeroCardID" : "TB_BaconShop_HERO_15",
+          "localPlayerID" : 6
+        },
+        "status" : "inGame"
+      }
+    }
+  },
+  "games" : [
+    {
+      "bgTurn" : 12,
+      "buildNumber" : 251952,
+      "end" : {
+        "line" : 269962,
+        "time" : "21:33:14.4334940"
+      },
+      "gameSeed" : 1172082863,
+      "gameType" : "GT_BATTLEGROUNDS",
+      "localHeroCardID" : "TB_BaconShop_HERO_15",
+      "localPlayerID" : 6,
+      "start" : {
+        "line" : 402,
+        "time" : "21:09:40.3435500"
+      }
+    }
+  ]
+}
