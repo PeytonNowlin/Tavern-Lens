@@ -39,6 +39,12 @@ final class OverlayController {
         }
     }
 
+    /// The overlay's "misaligned" notice for this game (the screen reader's alignment check).
+    var alignmentWarning: String? {
+        get { model.alignmentWarning }
+        set { if model.alignmentWarning != newValue { model.alignmentWarning = newValue } }
+    }
+
     @ObservationIgnored private let live: LiveTrackingModel
     @ObservationIgnored private let model = OverlayModel()
     @ObservationIgnored private var panel: OverlayPanel?

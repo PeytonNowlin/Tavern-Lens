@@ -42,7 +42,7 @@ struct TribesPanel: View {
     @ViewBuilder private var status: some View {
         let size = metrics.titleFontSize * scale
         if tribes.screenConflict {
-            Text("screen ≠ log").font(.system(size: size)).foregroundStyle(.orange)
+            Text("⚠︎ screen ≠ log").font(.system(size: size)).foregroundStyle(.orange)
         } else if tribes.isUncertain {
             Text("uncertain").font(.system(size: size)).foregroundStyle(.orange)
         } else if tribes.isResolved {
@@ -97,7 +97,11 @@ struct TribesPanel: View {
     private var helpText: String {
         var lines = [tribes.isResolved ? "The lobby's tribes" : "The lobby's tribes, inferred from what has shown up so far"]
         if tribes.tribes.contains(where: \.isForced) { lines.append("Purple: in every lobby this patch") }
-        if tribes.source != .inferred { lines.append("Read from the hero-pick banner") }
+        if tribes.screenConflict {
+            lines.append("⚠︎ The hero-pick banner reading disagrees with what the game showed since; showing the inferred tribes")
+        } else if tribes.source != .inferred {
+            lines.append("Read from the hero-pick banner")
+        }
         if tribes.poolIsStale { lines.append("Minion pool data is out of date") }
         return lines.joined(separator: "\n")
     }

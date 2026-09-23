@@ -30,7 +30,7 @@ struct TribesPanelLayoutTests {
 
     /// The widest row: the longest tribe name with a percentage.
     static let names = ["Aberration", "Elemental", "Quilboar", "Undead", "Mech"]
-    static let titles = [("Tribes", "uncertain"), ("Tribes", "3 of 5 sure"), ("Tribes", "screen ≠ log")]
+    static let titles = [("Tribes", "uncertain"), ("Tribes", "3 of 5 sure"), ("Tribes", "⚠︎ screen ≠ log")]
 
     static func contentSize(_ m: TribesPanelMetrics, scale s: CGFloat) -> CGSize {
         let row = names.map { name in

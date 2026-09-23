@@ -11,6 +11,8 @@ final class OverlayModel {
     var layout: OverlayLayout?
     var view: ViewState = .noGame
     var showsLayoutGuides = false
+    /// Set when this game's alignment check failed (the hero-pick banner wasn't where expected).
+    var alignmentWarning: String?
     @ObservationIgnored var hide: () -> Void = {}
 
     /// The status HUD shows during a solo Battlegrounds game and on its game-over screen.
@@ -91,6 +93,9 @@ struct OverlayRootView: View {
                         .frame(width: layout.tribesPanel.width, height: layout.tribesPanel.height)
                         .offset(x: layout.tribesPanel.minX, y: layout.tribesPanel.minY)
                         .allowsHitTesting(false)
+                }
+                if let warning = model.alignmentWarning, model.game != nil {
+                    AlignmentWarningBadge(text: warning, scale: layout.panelScale, layout: layout)
                 }
                 if let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
@@ -232,6 +237,7 @@ struct LayoutGuides: View {
             stroke(layout.nextOpponentPreview, .white, dash: true)
             stroke(layout.opponentPanel, .white, dash: true)
             stroke(layout.tribesPanel, .white, dash: true)
+            stroke(layout.heroPickCapture, .purple)
         }
         .allowsHitTesting(false)
     }

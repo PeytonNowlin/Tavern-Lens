@@ -145,6 +145,11 @@ final class LiveTrackingModel {
         pipeline.start(logsDirectory: Self.locations(for: client).logsDirectory, launchDate: client.launchDate)
     }
 
+    /// The lobby's tribes read from the hero-pick banner, for the game in progress.
+    func ingestScreenTribes(_ reading: ScreenTribeReading) {
+        pipeline?.ingestScreenTribes(reading)
+    }
+
     /// The moment on screen as a bookmark with no note yet; nil with no game shown.
     func captureBookmark() -> FeedbackBookmark? {
         pipeline?.captureBookmark()

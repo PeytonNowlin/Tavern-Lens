@@ -149,10 +149,11 @@ struct TribeFixtureTests {
         #expect(end.source == .screenAndInferred)
         #expect(!end.screenConflict)
 
-        // A misread banner: the log disagrees, and says so.
+        // A misread banner: the log disagrees, says so, and its own answer is shown.
         let wrong = try replay(reading: ScreenTribeReading(tribes: [.aberration, .beast, .demon, .murloc, .pirate]))
         let misread = try #require(wrong.last?.state.game?.tribes)
         #expect(misread.screenConflict)
-        #expect(misread.source == .screen)
+        #expect(misread.source == .inferred)
+        #expect(misread.confirmedNames == Self.cases[1].tribes)
     }
 }

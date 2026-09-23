@@ -37,8 +37,11 @@ let package = Package(
         ),
         // Pure overlay geometry: Hearthstone's content frame -> element rects (seam 2).
         .target(name: "OverlayLayout"),
+        // Screen reading without the capture: Vision text recognition of the hero-pick banner
+        // (lobby tribes and the alignment check). Needs no permission, so it's tested on images.
+        .target(name: "ScreenReading", dependencies: ["BGIntel", "HSData", "OverlayLayout"]),
         // Thin menu-bar app: OS integration and UI only.
-        .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog", "OverlayLayout"]),
+        .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog", "OverlayLayout", "ScreenReading"]),
         // Build-time codegen: HearthstoneJSON enums.json (Data/HearthstoneJSON) -> Swift enum tables.
         .executableTarget(name: "HSEnumsGenerator", path: "Tools/HSEnumsGenerator"),
         .plugin(name: "HSEnumsPlugin", capability: .buildTool(), dependencies: ["HSEnumsGenerator"]),
@@ -60,6 +63,13 @@ let package = Package(
         .testTarget(
             name: "OverlayLayoutTests",
             dependencies: ["OverlayLayout"],
+            swiftSettings: commandLineToolsTesting.swift,
+            linkerSettings: commandLineToolsTesting.linker
+        ),
+        // The hero-pick banner reader on a cropped capture of the player's own hero pick.
+        .testTarget(
+            name: "ScreenReadingTests",
+            dependencies: ["ScreenReading", "OverlayLayout", "BGIntel", "HSData"],
             swiftSettings: commandLineToolsTesting.swift,
             linkerSettings: commandLineToolsTesting.linker
         ),

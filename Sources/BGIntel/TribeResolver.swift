@@ -57,6 +57,7 @@ public enum TribeConfidence: String, Codable, Hashable, Sendable {
 
 /// Where the current answer comes from.
 public enum TribeSource: String, Codable, Hashable, Sendable {
+    /// From the log alone: no screen reading, or one the log contradicts (`screenConflict`).
     case inferred
     case screen
     /// The screen reading and the inference agree.
@@ -233,21 +234,11 @@ public struct TribeResolver: Sendable {
     }
 
     /// The current answer. `bgTurn` decides when a weak answer counts as uncertain.
+    ///
+    /// With a screen reading, the answer combines it with the log's evidence, unless the
+    /// two disagree (a tribe one is sure of and the other rules out): then the reading is
+    /// taken as a misread, the answer is the log's alone, and `screenConflict` says so.
     public func estimate(bgTurn: Int = 0) -> TribeEstimate {
-        let combined = zip(logInferred, logScreen).map(+)
-        let posterior = Self.normalised(combined)
-        let probabilities = marginals(posterior)
-        let best = posterior.indices.max { posterior[$0] < posterior[$1] }
-        let tribes = rotation.indices.map { i in
-            TribeLikelihood(
-                tribe: rotation[i], probability: probabilities[i],
-                confidence: TribeConfidence(probability: probabilities[i]),
-                isForced: forced.contains(rotation[i])
-            )
-        }
-        let resolved = !lobbies.isEmpty && tribes.allSatisfy { $0.confidence == .confirmed || $0.confidence == .absent }
-        let bestProbability = best.map { posterior[$0] } ?? 0
-
         var source = TribeSource.inferred
         var conflict = false
         if hasScreenReading {
@@ -260,8 +251,21 @@ public struct TribeResolver: Sendable {
                 if (screenIn && logOut) || (screenOut && logIn) { conflict = true }
             }
             let inferredResolved = inferred.allSatisfy { $0 >= 0.99 || $0 <= 0.01 }
-            source = inferredResolved && !conflict ? .screenAndInferred : .screen
+            source = conflict ? .inferred : inferredResolved ? .screenAndInferred : .screen
         }
+        let posterior = Self.normalised(conflict ? logInferred : zip(logInferred, logScreen).map(+))
+        let probabilities = marginals(posterior)
+        let best = posterior.indices.max { posterior[$0] < posterior[$1] }
+        let tribes = rotation.indices.map { i in
+            TribeLikelihood(
+                tribe: rotation[i], probability: probabilities[i],
+                confidence: TribeConfidence(probability: probabilities[i]),
+                isForced: forced.contains(rotation[i])
+            )
+        }
+        let resolved = !lobbies.isEmpty && tribes.allSatisfy { $0.confidence == .confirmed || $0.confidence == .absent }
+        let bestProbability = best.map { posterior[$0] } ?? 0
+
         return TribeEstimate(
             tribes: tribes, isResolved: resolved,
             mostLikely: best.map { mask in rotation.indices.filter { lobbies[mask] & (1 << $0) != 0 }.map { rotation[$0] } } ?? [],

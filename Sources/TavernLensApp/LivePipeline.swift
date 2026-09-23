@@ -114,6 +114,14 @@ final class LivePipeline: @unchecked Sendable {
         publishIfDue()
     }
 
+    /// The lobby's tribes read from the hero-pick banner, for the game in progress.
+    func ingestScreenTribes(_ reading: ScreenTribeReading) {
+        lock.lock()
+        defer { lock.unlock() }
+        engine.ingestScreenTribes(reading)
+        publishIfDue()
+    }
+
     // MARK: - Bookmarks
 
     /// The moment the engine last published, as a bookmark with no note yet: its state,

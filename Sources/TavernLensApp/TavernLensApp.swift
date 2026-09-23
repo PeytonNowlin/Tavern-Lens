@@ -12,7 +12,7 @@ struct TavernLensApp: App {
         MenuBarExtra {
             MenuBarContent(
                 live: appDelegate.live, overlay: appDelegate.overlay, feedback: appDelegate.feedback,
-                debugReplay: debugReplay, retention: appDelegate.retention
+                debugReplay: debugReplay, retention: appDelegate.retention, screenReader: appDelegate.screenReader
             )
         } label: {
             MenuBarLabel(live: appDelegate.live)
@@ -44,12 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let retention = RetentionSettingsModel()
     let housekeeping: HousekeepingModel
     let feedback: FeedbackController
+    let screenReader: HeroPickScreenReader
 
     override init() {
         live = LiveTrackingModel()
         overlay = OverlayController(live: live)
         housekeeping = HousekeepingModel(settings: retention, live: live)
         feedback = FeedbackController(live: live, overlay: overlay)
+        screenReader = HeroPickScreenReader(live: live, overlay: overlay)
         super.init()
     }
 
@@ -63,6 +65,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         live.start()
         overlay.start()
         feedback.start()
+        screenReader.start()
         // Log retention: a pass now, and one after every game.
         live.onGameEnded = { [housekeeping] in housekeeping.run() }
         housekeeping.run()
@@ -92,6 +95,7 @@ struct MenuBarContent: View {
     let feedback: FeedbackController
     let debugReplay: DebugReplayModel
     let retention: RetentionSettingsModel
+    let screenReader: HeroPickScreenReader
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -114,6 +118,7 @@ struct MenuBarContent: View {
         }
         Divider()
         OverlayMenuSection(overlay: overlay)
+        ScreenReadingMenuSection(reader: screenReader)
         FeedbackMenuSection(feedback: feedback)
         Divider()
         if debugReplay.isReplaying || debugReplay.result != nil {
