@@ -165,7 +165,7 @@ Hearthstone patches can change tags, card pools, combat mechanics, and screen co
 
 The current scope is **solo Battlegrounds**, with English card data and English banner recognition. Recruit-phase odds use an opponent's **last-seen** board, which may have changed. Advice is limited by the available observations, supported action modeling, and simulator coverage.
 
-Automatic alignment checking measures the hero-pick banner once per game; it cannot catch a patch that moves only another panel. Notarized releases, automatic updates, Duos support, rating tracking, and a session-recap UI are outside the current scope. The [deviations document](docs/deviations.md) records the implemented tradeoffs against the original specification.
+Automatic alignment checking measures the hero-pick banner and two board anchors (the gold pill and the hero's health) once per game; it cannot catch a patch that moves only another panel, such as the shop or the leaderboard. Notarized releases, automatic updates, Duos support, rating tracking, and a session-recap UI are outside the current scope. The [deviations document](docs/deviations.md) records the implemented tradeoffs against the original specification.
 
 ## Engineering notes
 

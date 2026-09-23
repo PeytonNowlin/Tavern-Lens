@@ -128,6 +128,8 @@ public struct LayoutConstants: Hashable, Sendable {
     public var tribesPanel = TribesPanelMetrics()
     /// The hero-pick banner the screen reader captures and checks alignment against.
     public var heroPickBanner = HeroPickBannerMetrics()
+    /// The first recruit phase's check that the board sits where these constants put it.
+    public var boardCheck = BoardCheckMetrics()
     /// The shop highlights and the build tips panel (under the tribes panel, the HUD's width).
     public var buildOverlay = BuildOverlayMetrics()
     /// The advisor's ranked list (bottom of the right margin) and its in-place rank badges.

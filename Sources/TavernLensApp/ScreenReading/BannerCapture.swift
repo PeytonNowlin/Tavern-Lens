@@ -15,7 +15,7 @@ enum BannerCapture {
             switch self {
             case .noPermission: "Screen Recording isn't allowed"
             case .windowNotFound: "Hearthstone's window isn't on screen"
-            case .outsideWindow: "the banner isn't inside Hearthstone's window"
+            case .outsideWindow: "the capture isn't inside Hearthstone's window"
             }
         }
     }

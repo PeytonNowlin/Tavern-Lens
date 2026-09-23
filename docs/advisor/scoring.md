@@ -16,7 +16,7 @@ Every suggestion's **gain** over keeping the board is the sum of four weighted t
 | Term | Weight | What it measures | How |
 |---|---|---|---|
 | combat | `combat` (1.0) | the next combat against the next opponent's last-seen board | simulated: equity + 0.5 × damage dealt − 1 × damage taken − lethal risk |
-| lobby | `lobby` (0.5) | the same board against every other living opponent's last-seen board | simulated for the baseline and the best `lobbyGroups` board changes, `lobbySimulations` each |
+| lobby | `lobby` (0.5) | the same board against every other living opponent's last-seen board | simulated for every board change: the baseline and the best `lobbyGroups` at `lobbySimulations` each, the rest at `lobbySweepSimulations` |
 | build | `build` (1.0) | progress toward the detected builds (0–2, the second at 60%) | rule of thumb |
 | economy | `economy` (1.0) | gold and levelling tempo over this turn and the next two | rule of thumb |
 
@@ -29,11 +29,20 @@ Each other opponent counts by `likelihood × freshness`: the one fought last tur
 `lobbyRecentFactor` (0.5), since they're less likely to come up again at once; a board counts half
 as much every `lobbyStaleHalfLife` (3) turns after the first. The lobby gain is the weighted mean,
 over the opponents both were scored against, of the candidate's combat value minus the baseline's.
-A suggestion outside the best few has no lobby term (nil), which counts as 0. Only the baseline and
-the best `lobbyGroups` board changes are scored against the lobby because each costs one evaluation
-per opponent: every candidate would be about 180 evaluations late in a game, far past the time
-budget, and the other terms have already ranked the rest too low for the lobby to change the top
-(`docs/deviations.md`).
+Every board change is scored against the lobby, in two passes, since each costs one evaluation per
+opponent (about 180 late in a game):
+
+- the **lobby pass**: the baseline and the best `lobbyGroups` (3) board changes, where the lobby
+  term most often settles a close call, at `lobbySimulations` (150) each;
+- the **lobby sweep**: every other group's best board change (and the too-dear buys a freeze would
+  keep), best first, at `lobbySweepSimulations` (30) each. Few simulations, but its noise is in the
+  suggestion's standard error, so a board change that's good only against the rest of the lobby
+  can come first, at the confidence its numbers support.
+
+Level, refresh and freeze don't change the board, so their lobby term is 0. A suggestion has no lobby
+term (nil) only when no other opponent has been seen, the plan has no lobby pass (a bookmark from
+before it), or the time budget ran out before the sweep reached it; the sweep goes last and best
+first, so that's the least likely suggestions.
 
 ### An unseen next opponent, or an old board: a stand-in
 
@@ -119,11 +128,12 @@ states and the fixture games' late turns) is checked with `AdvisorSanity.violati
 ## Determinism and time
 
 The plan (`AdvisorPlan`) runs fixed passes, each with one seed for all its simulations: stage 0,
-stage 1, the refine pass, then the lobby pass. The same request, plan and weights give the same
+stage 1, the refine pass, the lobby pass, then the lobby sweep. The same request, plan and weights give the same
 advice, and so does stopping after the same number of evaluations (what a bookmark records). The
 runner's time budget (6 s) stops only between evaluations, and a combat start cancels the advisor
 at once, so combat odds never wait for more than one evaluation. The live plan's lobby pass adds
-(1 + 3) × up to 6 opponents × 150 simulations, about 1 s with the JIT.
+(1 + 3) × up to 6 opponents × 150 simulations, about 1 s with the JIT, and the sweep up to about 25
+more groups × 6 × 30, about 1 s more.
 
 ## Tuning the weights
 

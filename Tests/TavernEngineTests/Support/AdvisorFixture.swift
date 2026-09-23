@@ -9,7 +9,7 @@ enum AdvisorFixture {
     /// Few simulations (JavaScriptCore interprets under `swift test`), but the full order of passes.
     static let plan = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 100, refineSimulations: 200, refinedGroups: 2, lobbySimulations: 50,
-        lobbyGroups: 2
+        lobbyGroups: 2, lobbySweepSimulations: 20
     )
 
     struct Replay: Sendable {

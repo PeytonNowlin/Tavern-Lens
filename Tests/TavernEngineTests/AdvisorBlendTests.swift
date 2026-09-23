@@ -2,16 +2,17 @@ import Foundation
 import Testing
 import TavernEngine
 
-/// The blended score on synthetic states with the stub scorer: the lobby term (the best board
-/// changes against the other opponents' last-seen boards), the build term, the economy term
+/// The blended score on synthetic states with the stub scorer: the lobby term (every board change
+/// against the other opponents' last-seen boards), the build term, the economy term
 /// (levelling tempo 1-2 turns ahead), how they add up and how they're weighted.
 @Suite("Advisor blended scoring")
 struct AdvisorBlendTests {
     typealias S = AdvisorSynthetic
 
-    /// The synthetic plan with a lobby pass.
+    /// The synthetic plan with a lobby pass and sweep.
     static let plan = AdvisorPlan(
-        seed: 42, simulations: 400, refineSimulations: 800, refinedGroups: 2, lobbySimulations: 300, lobbyGroups: 2
+        seed: 42, simulations: 400, refineSimulations: 800, refinedGroups: 2, lobbySimulations: 300, lobbyGroups: 2,
+        lobbySweepSimulations: 100
     )
 
     static func run(
@@ -131,6 +132,66 @@ struct AdvisorBlendTests {
         let combatOnly = try await Self.run(request, stub, plan: noPass, calls: noPassCalls)
         #expect(combatOnly.suggestions.allSatisfy { $0.terms.lobby == nil })
         #expect(noPassCalls.all.allSatisfy { $0.input.opponentBoard.player.entityId != 1002 })
+    }
+
+    @Test("Every board change gets a lobby term: one the next combat ranks outside the lobby pass's best can come first")
+    func lobbySweep() async throws {
+        // Buying the 4/4 is the weakest buy against the next opponent, but crushes P2's board.
+        let shop = [
+            S.shopMinion(901, attack: 8, health: 8), S.shopMinion(902, attack: 7, health: 7),
+            S.shopMinion(903, attack: 4, health: 4),
+        ]
+        let request = try S.request(boardCount: 5, shop: shop, gold: 3, lobby: [try S.lobbyOpponent(2, seenTurn: 9)])
+        var stub = AdvisorSyntheticTests.stub(request)
+        stub.versus = [1002: (903, 60)]
+        let calls = S.Calls()
+        let advice = try await Self.run(request, stub, calls: calls)
+
+        let top = try #require(advice.suggestions.first)
+        #expect(AdvisorSyntheticTests.isBuy(top.action, shop: 2), "\(AdvisorSyntheticTests.actions(advice))")
+        #expect(top.reason == "Stronger vs the rest of the lobby")
+        #expect(advice.suggestions.allSatisfy { $0.terms.lobby != nil }, "every suggestion's blend has its lobby term")
+        for suggestion in advice.suggestions where !suggestion.action.changesBoard {
+            #expect(suggestion.terms.lobby == 0, "\(suggestion.action) doesn't change the board")
+        }
+
+        // The sweep: after the lobby pass, every other group's best at the sweep's count, on its own seed.
+        let lobbyCalls = calls.all.filter { $0.simulations == Self.plan.lobbySimulations }
+        let sweepCalls = calls.all.filter { $0.simulations == Self.plan.lobbySweepSimulations }
+        #expect(lobbyCalls.count == 3, "the baseline and the best two groups")
+        #expect(!sweepCalls.isEmpty && Set(sweepCalls.map(\.seed)).count == 1)
+        #expect(Set(sweepCalls.map(\.seed)).isDisjoint(with: lobbyCalls.map(\.seed)))
+        #expect(sweepCalls.allSatisfy { $0.input.opponentBoard.player.entityId == 1002 })
+        #expect(sweepCalls.contains { $0.input.playerBoard.board.contains { $0.entityId == 903 } })
+
+        // Without the sweep the 4/4 has no lobby term, and the strongest buy comes first.
+        var noSweep = Self.plan
+        noSweep.lobbySweepSimulations = 0
+        let topOnly = try await Self.run(request, stub, plan: noSweep)
+        #expect(topOnly.suggestions.first.map { AdvisorSyntheticTests.isBuy($0.action, shop: 0) } == true)
+    }
+
+    @Test("All four terms blend into one buy's gain, and the same state scores the same every time")
+    func fourTerms() async throws {
+        // A core card of the build, strong against P2, that spends the gold for a level that's due.
+        let shop = [S.shopMinion(901, attack: 12, health: 12, cardID: "BG36_997")]
+        let request = try S.request(
+            boardCount: 5, shop: shop, gold: 3, tier: 5, levelCost: 3, lobby: [try S.lobbyOpponent(2, seenTurn: 9)],
+            builds: [Self.discard()]
+        )
+        var stub = AdvisorSyntheticTests.stub(request)
+        stub.versus = [1002: (901, 20)]
+        let advice = try await Self.run(request, stub)
+        let buy = try #require(advice.suggestions.first { AdvisorSyntheticTests.isBuy($0.action, shop: 0) })
+        let terms = buy.terms
+        #expect(terms.combat > 0)
+        #expect(try #require(terms.lobby) > 0)
+        #expect(terms.build == 6)
+        #expect(try #require(terms.economy) < 0, "it costs the level due now")
+        #expect(abs(buy.gain - terms.total) < 0.02)
+
+        let again = try await Self.run(request, stub)
+        #expect(again == advice)
     }
 
     @Test("The blend with the lobby is deterministic, and stopping partway through the lobby pass replays")

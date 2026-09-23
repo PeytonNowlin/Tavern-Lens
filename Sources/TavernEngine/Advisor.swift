@@ -10,7 +10,9 @@ import SimulatorRuntime
 /// and the shop cards too dear for now), each at `simulations` per candidate; then the best
 /// `refinedGroups` and the baseline get `refineSimulations` more; then the lobby pass: the
 /// baseline and the best `lobbyGroups` board changes against each other opponent's last-seen
-/// board, `lobbySimulations` each. Every simulation of a pass uses the same seed (common random
+/// board, `lobbySimulations` each; then the lobby sweep: every other group's best board change
+/// (the too-dear buys a freeze keeps too) against the same boards, `lobbySweepSimulations` each,
+/// so every suggestion's blend has its lobby term. Every simulation of a pass uses the same seed (common random
 /// numbers, so boards are compared on the same dice), and a candidate's result depends only on
 /// its input, the pass and the seed. So the advice after the first N evaluations is the same on
 /// any machine, however fast: a bookmark records N and replays to the same advice.
@@ -25,17 +27,20 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     public var lobbySimulations: Int
     /// How many of the best board changes (with the baseline) the lobby pass scores.
     public var lobbyGroups: Int
+    /// Per candidate and lobby opponent in the lobby sweep (every board change the lobby pass
+    /// left out); 0 skips it, leaving those without a lobby term.
+    public var lobbySweepSimulations: Int
     public var weights: AdvisorWeights
 
-    /// The app's: about 4 s of simulation for a late-game state with the JIT, less early on.
+    /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3
+        lobbyGroups: 3, lobbySweepSimulations: 30
     )
 
     public init(
         seed: UInt32, simulations: Int, refineSimulations: Int, refinedGroups: Int, lobbySimulations: Int = 0,
-        lobbyGroups: Int = 3, weights: AdvisorWeights = .standard
+        lobbyGroups: Int = 3, lobbySweepSimulations: Int = 0, weights: AdvisorWeights = .standard
     ) {
         self.seed = seed
         self.simulations = simulations
@@ -43,14 +48,16 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
         self.refinedGroups = refinedGroups
         self.lobbySimulations = lobbySimulations
         self.lobbyGroups = lobbyGroups
+        self.lobbySweepSimulations = lobbySweepSimulations
         self.weights = weights
     }
 
     private enum CodingKeys: String, CodingKey {
-        case seed, simulations, refineSimulations, refinedGroups, lobbySimulations, lobbyGroups, weights
+        case seed, simulations, refineSimulations, refinedGroups, lobbySimulations, lobbyGroups, lobbySweepSimulations
+        case weights
     }
 
-    /// A plan saved before the lobby pass existed had none.
+    /// A plan saved before the lobby pass (or its sweep) existed had none.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         seed = try c.decode(UInt32.self, forKey: .seed)
@@ -59,6 +66,7 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
         refinedGroups = try c.decode(Int.self, forKey: .refinedGroups)
         lobbySimulations = try c.decodeIfPresent(Int.self, forKey: .lobbySimulations) ?? 0
         lobbyGroups = try c.decodeIfPresent(Int.self, forKey: .lobbyGroups) ?? 3
+        lobbySweepSimulations = try c.decodeIfPresent(Int.self, forKey: .lobbySweepSimulations) ?? 0
         weights = try c.decodeIfPresent(AdvisorWeights.self, forKey: .weights) ?? .standard
     }
 
@@ -147,23 +155,33 @@ public enum AdvisorEvaluation {
                 .prefix(plan.refinedGroups)
             guard try await score(keep + best, pass: 2, simulations: plan.refineSimulations) else { return stopped() }
         }
-        // The lobby pass: the baseline and the best board changes against every other opponent seen.
+        // The lobby pass: the baseline and the best board changes against every other opponent
+        // seen; then the sweep: every other group's best, fewer simulations each, best first (so
+        // the time budget cuts the least likely first).
         let opponents = Advisor.lobbyOpponents(for: request)
-        if plan.lobbySimulations > 0, !opponents.isEmpty {
-            let best = Advisor.bestCandidates(request, candidates, tallies: tallies, weights: plan.weights)
-                .filter { !$0.isForNextTurn }
-                .prefix(plan.lobbyGroups)
-            for candidate in keep + best {
+        func scoreLobby(_ list: [AdvisorCandidate], pass: Int, simulations: Int) async throws -> Bool {
+            for candidate in list {
                 for opponent in opponents {
-                    guard mayGoOn() else { return stopped() }
+                    guard mayGoOn() else { return false }
                     try Task.checkCancellation()
                     let input = request.input(candidate.input ?? base, against: opponent)
-                    let odds = try await simulate(input, plan.budget(plan.lobbySimulations), plan.seed(pass: 3))
+                    let odds = try await simulate(input, plan.budget(simulations), plan.seed(pass: pass))
                     try Task.checkCancellation()
                     lobby[candidate.id, default: [:]][opponent.playerID, default: CombatTally()].add(odds)
                     evaluations += 1
                     report(Progress(advice: advice(complete: false), evaluations: evaluations, isComplete: false))
                 }
+            }
+            return true
+        }
+        if plan.lobbySimulations > 0, !opponents.isEmpty {
+            let ranked = Advisor.bestCandidates(request, candidates, tallies: tallies, weights: plan.weights)
+            let best = Array(ranked.filter { !$0.isForNextTurn }.prefix(plan.lobbyGroups))
+            guard try await scoreLobby(keep + best, pass: 3, simulations: plan.lobbySimulations) else { return stopped() }
+            if plan.lobbySweepSimulations > 0 {
+                let done = Set(best.map(\.id))
+                let rest = ranked.filter { !done.contains($0.id) }
+                guard try await scoreLobby(rest, pass: 4, simulations: plan.lobbySweepSimulations) else { return stopped() }
             }
         }
         let done = Progress(advice: advice(complete: true), evaluations: evaluations, isComplete: true)

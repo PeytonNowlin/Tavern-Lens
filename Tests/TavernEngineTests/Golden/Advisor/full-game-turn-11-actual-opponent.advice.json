@@ -39,7 +39,8 @@
         ],
         "terms" : {
           "combat" : 0,
-          "economy" : 5
+          "economy" : 5,
+          "lobby" : 0
         }
       },
       {
@@ -80,7 +81,7 @@
     ]
   },
   "bgTurn" : 11,
-  "evaluations" : 49,
+  "evaluations" : 129,
   "fingerprint" : "f20448d1a95aec00",
   "isComplete" : true,
   "isUpdating" : false,
@@ -88,6 +89,7 @@
   "plan" : {
     "lobbyGroups" : 2,
     "lobbySimulations" : 50,
+    "lobbySweepSimulations" : 20,
     "refineSimulations" : 200,
     "refinedGroups" : 2,
     "seed" : 430797136,

@@ -20,8 +20,9 @@ enum ScreenRecordingPermission {
             Recording allowed, Tavern Lens reads that line, so the tribes are exact from the start instead of \
             inferred by about turn 4. It also checks once per game that the overlay still lines up with the game.
 
-            It captures only that small strip of Hearthstone's window, only during the hero pick. Nothing is \
-            saved or sent anywhere. Without it, everything else works as before.
+            It captures only that small strip of Hearthstone's window during the hero pick, and two small spots \
+            of the board (the gold and your hero's health) at the first recruit phase. Nothing is saved or sent \
+            anywhere. Without it, everything else works as before.
             """
         explain.addButton(withTitle: "Continue")
         explain.addButton(withTitle: "Not Now")

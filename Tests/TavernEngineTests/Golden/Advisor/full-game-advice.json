@@ -43,13 +43,14 @@
           "terms" : {
             "build" : 0,
             "combat" : 0,
-            "economy" : 4
+            "economy" : 4,
+            "lobby" : 0
           }
         }
       ]
     },
     "bgTurn" : 10,
-    "evaluations" : 54,
+    "evaluations" : 130,
     "fingerprint" : "6769f82c602f3b15",
     "isComplete" : true,
     "isUpdating" : false,
@@ -57,6 +58,7 @@
     "plan" : {
       "lobbyGroups" : 2,
       "lobbySimulations" : 50,
+      "lobbySweepSimulations" : 20,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
@@ -186,7 +188,7 @@
               "to" : 0
             }
           },
-          "confidence" : "medium",
+          "confidence" : "low",
           "gain" : 3.35,
           "odds" : {
             "averageDamageDealt" : 11.5,
@@ -208,13 +210,14 @@
           "terms" : {
             "build" : 0,
             "combat" : 3.35,
-            "economy" : 0
+            "economy" : 0,
+            "lobby" : 0
           }
         }
       ]
     },
     "bgTurn" : 11,
-    "evaluations" : 49,
+    "evaluations" : 129,
     "fingerprint" : "546c6484c50134",
     "isComplete" : true,
     "isUpdating" : false,
@@ -222,6 +225,7 @@
     "plan" : {
       "lobbyGroups" : 2,
       "lobbySimulations" : 50,
+      "lobbySweepSimulations" : 20,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
@@ -356,42 +360,42 @@
         },
         {
           "action" : {
-            "cast" : {
-              "cardID" : "BG31_881",
-              "from" : "shop",
-              "index" : 6,
-              "option" : 0
+            "move" : {
+              "board" : 1,
+              "cardID" : "BG36_113",
+              "to" : 0
             }
           },
-          "confidence" : "medium",
-          "gain" : 12.95,
+          "confidence" : "low",
+          "gain" : 12.81,
           "odds" : {
-            "averageDamageDealt" : 1.34,
-            "averageDamageTaken" : 5.9,
+            "averageDamageDealt" : 1.2,
+            "averageDamageTaken" : 5.47,
             "lethalRisk" : 59,
             "lost" : 59,
-            "simulations" : 300,
-            "tied" : 28.67,
-            "won" : 12.33
+            "simulations" : 100,
+            "tied" : 30,
+            "won" : 11
           },
           "rank" : 3,
           "reason" : "Cuts lethal risk 67% → 59%",
           "targets" : [
             {
-              "index" : 6,
-              "kind" : "shop"
+              "index" : 1,
+              "kind" : "board"
             }
           ],
           "terms" : {
             "build" : 0,
-            "combat" : 12.95,
-            "economy" : 0
+            "combat" : 12.64,
+            "economy" : 0,
+            "lobby" : 0.16
           }
         }
       ]
     },
     "bgTurn" : 12,
-    "evaluations" : 44,
+    "evaluations" : 86,
     "fingerprint" : "afa8900a3b255dda",
     "isComplete" : true,
     "isUpdating" : false,
@@ -399,6 +403,7 @@
     "plan" : {
       "lobbyGroups" : 2,
       "lobbySimulations" : 50,
+      "lobbySweepSimulations" : 20,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
@@ -479,13 +484,14 @@
           "terms" : {
             "build" : 0,
             "combat" : 0,
-            "economy" : 4
+            "economy" : 4,
+            "lobby" : 0
           }
         }
       ]
     },
     "bgTurn" : 8,
-    "evaluations" : 59,
+    "evaluations" : 167,
     "fingerprint" : "a24a4fd7fde68d4d",
     "isComplete" : true,
     "isUpdating" : false,
@@ -493,6 +499,7 @@
     "plan" : {
       "lobbyGroups" : 2,
       "lobbySimulations" : 50,
+      "lobbySweepSimulations" : 20,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,
@@ -573,13 +580,14 @@
           "terms" : {
             "build" : 0,
             "combat" : 0,
-            "economy" : 4
+            "economy" : 4,
+            "lobby" : 0
           }
         }
       ]
     },
     "bgTurn" : 9,
-    "evaluations" : 54,
+    "evaluations" : 168,
     "fingerprint" : "b49755e65e8f4527",
     "isComplete" : true,
     "isUpdating" : false,
@@ -587,6 +595,7 @@
     "plan" : {
       "lobbyGroups" : 2,
       "lobbySimulations" : 50,
+      "lobbySweepSimulations" : 20,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,

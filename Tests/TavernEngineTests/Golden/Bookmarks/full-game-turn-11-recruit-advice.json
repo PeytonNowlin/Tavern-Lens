@@ -4915,6 +4915,7 @@
     "plan" : {
       "lobbyGroups" : 2,
       "lobbySimulations" : 50,
+      "lobbySweepSimulations" : 0,
       "refineSimulations" : 200,
       "refinedGroups" : 2,
       "seed" : 430797136,

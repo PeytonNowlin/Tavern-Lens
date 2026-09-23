@@ -202,8 +202,8 @@ public struct AdvisorWeights: Codable, Hashable, Sendable {
 
 /// The parts of a suggestion's value over keeping the board, each already weighted (the gain is
 /// their sum). Nil where a term doesn't apply: `lobby` when the suggestion wasn't scored against
-/// the rest of the lobby (no other opponent seen, or not among the best), `build` without
-/// detected builds.
+/// the rest of the lobby (no other opponent seen, no lobby pass in the plan, or the time budget
+/// ran out before the lobby sweep reached it), `build` without detected builds.
 public struct AdvisorTerms: Codable, Hashable, Sendable {
     /// The next combat's value gained over keeping the board (percentage points of win equity,
     /// adjusted for damage and lethal risk).
@@ -425,7 +425,7 @@ extension Advisor {
     /// Ranks the scored candidates into the advice shown.
     ///
     /// Each candidate's gain over keeping the board is the blend of four weighted terms: the next
-    /// combat (simulated), the rest of the lobby (simulated for the best few; `lobby`), build
+    /// combat (simulated), the rest of the lobby (simulated for every board change; `lobby`), build
     /// progress and economy (rules of thumb, `AdvisorTerms`). Options that gain at least
     /// `minimumGain`, by `minimumZ` standard errors of the simulated part, are improvements;
     /// only improvements are shown, best first, after the sanity layer (`AdvisorSanity`) has
@@ -486,9 +486,11 @@ extension Advisor {
         }
         let kept = max(keptBuy?.gain ?? 0, keptBuild?.value ?? 0)
 
-        // Level, roll and freeze: the next combat with the board as it is, valued by the rules of thumb.
+        // Level, roll and freeze: the next combat with the board as it is, valued by the rules of
+        // thumb. The board doesn't change, so neither does its strength against the lobby.
+        let lobbyScored = !(lobby[AdvisorAction.keep.id] ?? [:]).isEmpty
         for candidate in candidates where !candidate.isSimulated {
-            var terms = AdvisorTerms(combat: 0)
+            var terms = AdvisorTerms(combat: 0, lobby: lobbyScored ? 0 : nil)
             switch candidate.action {
             case .level(_, let tier):
                 terms.build = hasBuilds ? weights.build * builds.unlockValue(tier: tier) : nil
