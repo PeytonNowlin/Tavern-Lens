@@ -8687,8 +8687,12 @@
       "gameType" : "GT_BATTLEGROUNDS",
       "localHeroCardID" : "TB_BaconShop_HERO_15",
       "localPlayerID" : 6,
+      "outcome" : "complete",
       "placement" : 4,
       "placementSource" : "final",
+      "reconnects" : [
+
+      ],
       "start" : {
         "line" : 402,
         "time" : "21:09:40.3435500"

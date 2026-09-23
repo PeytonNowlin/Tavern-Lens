@@ -16,6 +16,7 @@ final class LogFileTailer {
     let url: URL
     private let queue: DispatchQueue
     private let onLines: ([String]) -> Void
+    private var onCaughtUp: (() -> Void)?
 
     private var handle: FileHandle?
     private var fileIdentity: (device: dev_t, inode: ino_t)?
@@ -23,15 +24,31 @@ final class LogFileTailer {
     private var splitter = LogLineSplitter()
     private var source: DispatchSourceFileSystemObject?
 
-    init(url: URL, queue: DispatchQueue, onLines: @escaping ([String]) -> Void) {
+    /// - Parameters:
+    ///   - startOffset: Where to start reading; must be the start of a line.
+    ///   - onCaughtUp: Called once, after the first read of what the file already held.
+    init(
+        url: URL, queue: DispatchQueue, startOffset: UInt64 = 0,
+        onLines: @escaping ([String]) -> Void, onCaughtUp: (() -> Void)? = nil
+    ) {
         self.url = url
         self.queue = queue
+        self.offset = startOffset
         self.onLines = onLines
+        self.onCaughtUp = onCaughtUp
     }
 
     /// Reads everything new since the last read.
     func poll() {
         dispatchPrecondition(condition: .onQueue(queue))
+        read()
+        if let caughtUp = onCaughtUp {
+            onCaughtUp = nil
+            caughtUp()
+        }
+    }
+
+    private func read() {
         var info = stat()
         guard stat(url.path(percentEncoded: false), &info) == 0 else {
             // Gone (or not created yet). Keep the offset: if the same file comes back

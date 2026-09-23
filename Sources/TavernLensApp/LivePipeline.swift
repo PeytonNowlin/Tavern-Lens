@@ -15,12 +15,19 @@ struct LiveUpdate: Sendable {
 /// feeds them straight into a `TavernEngine` there, so reading, parsing and
 /// reducing stay strictly ordered. Each new session (a client launch) gets a fresh
 /// engine. Updates reach `publish` only when something changed, at most about
-/// 10 times a second; a catch-up of a long log therefore publishes a handful of
-/// intermediate states and then the current one.
+/// 10 times a second.
+///
+/// Joining a session catches up silently: Power.log is read from its latest game
+/// (`PowerLogEntryPoint`) with publishing suppressed, and the state it arrives at is
+/// published once. A game still in progress carries over into the next session's
+/// engine (the client restarted mid-game), or comes from the saved records when the
+/// app itself restarted, so a reconnect keeps its history. Game records are saved as
+/// they reach checkpoints.
 final class LivePipeline: @unchecked Sendable {
     static let minimumPublishInterval: Duration = .milliseconds(100)
 
     private let publish: @Sendable (LiveUpdate) -> Void
+    private let records: GameRecordStore?
     private var follower: LogSessionFollower?
 
     // Guarded by `lock`: written on the follower's queue, and read by deferred flushes.
@@ -33,12 +40,16 @@ final class LivePipeline: @unchecked Sendable {
     private let flushQueue = DispatchQueue(label: "TavernLens.LivePipeline.flush")
     private let lock = NSLock()
 
-    init(publish: @escaping @Sendable (LiveUpdate) -> Void) {
+    /// - Parameter records: where game records are saved and resumed from; nil keeps them in memory.
+    init(records: GameRecordStore?, publish: @escaping @Sendable (LiveUpdate) -> Void) {
+        self.records = records
         self.publish = publish
     }
 
     func start(logsDirectory: URL, launchDate: Date?) {
-        let follower = LogSessionFollower(logsDirectory: logsDirectory, launchDate: launchDate) { [weak self] event in
+        let follower = LogSessionFollower(
+            logsDirectory: logsDirectory, launchDate: launchDate, startsAtLatestGame: true
+        ) { [weak self] event in
             self?.handle(event)
         }
         self.follower = follower
@@ -48,6 +59,9 @@ final class LivePipeline: @unchecked Sendable {
     func stop() {
         follower?.stop()
         follower = nil
+        lock.lock()
+        defer { lock.unlock() }
+        saveRecords()
     }
 
     private func handle(_ event: LogSessionFollower.Event) {
@@ -55,8 +69,17 @@ final class LivePipeline: @unchecked Sendable {
         defer { lock.unlock() }
         switch event {
         case .sessionStarted(let newSession):
+            saveRecords()
+            // A game the previous session left unfinished may be resumed in this one.
+            let carried = engine.inProgressRecord ?? records?.latestInProgress()
             session = newSession
-            engine = TavernEngine()
+            engine = TavernEngine(session: newSession)
+            if let carried { engine.resume(carried) }
+            engine.beginCatchUp()
+        case .powerLogEntry(let entry):
+            engine.skipLines(entry.line - 1)
+        case .caughtUp(let file):
+            if file == LogFileName.power { engine.endCatchUp() }
         case .lines(let file, let lines):
             switch file {
             case LogFileName.power:
@@ -67,7 +90,15 @@ final class LivePipeline: @unchecked Sendable {
                 break
             }
         }
+        if !engine.isCatchingUp { saveRecords() }
         publishIfDue()
+    }
+
+    /// Call with `lock` held.
+    private func saveRecords() {
+        for record in engine.takeUnsavedRecords() {
+            try? records?.save(record)
+        }
     }
 
     /// Call with `lock` held.

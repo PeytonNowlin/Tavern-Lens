@@ -1920,6 +1920,10 @@
       "gameType" : "GT_BATTLEGROUNDS",
       "localHeroCardID" : "BG36_HERO_002",
       "localPlayerID" : 2,
+      "outcome" : "inProgress",
+      "reconnects" : [
+
+      ],
       "start" : {
         "line" : 250,
         "time" : "20:34:33.1501960"

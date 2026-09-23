@@ -104,7 +104,7 @@ final class LiveTrackingModel {
     private func startFollowing(_ client: RunningClient) {
         generation += 1
         let token = generation
-        let pipeline = LivePipeline { [weak self] update in
+        let pipeline = LivePipeline(records: .standard) { [weak self] update in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
                 self.update = update
