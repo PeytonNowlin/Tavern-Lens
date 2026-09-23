@@ -78,10 +78,11 @@ sed -e "s|__BUNDLE_ID__|$BUNDLE_ID|" \
 plutil -lint -s "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-# SwiftPM resource bundles (none yet). When a module gains resources, its
-# <Package>_<Module>.bundle must be copied into Contents/Resources and looked up
-# from Bundle.main.resourceURL, because SwiftPM's generated accessor looks next to
-# the executable's bundle root, which code signing rejects.
+# SwiftPM resources. A module's <Package>_<Module>.bundle is a flat folder that SwiftPM's
+# accessor looks for next to the app's root, which code signing rejects, so its contents go
+# to Contents/Resources/<Module> and the module looks there first (HSDataResources).
+mkdir -p "$APP/Contents/Resources/HSData"
+cp -R "$BIN_DIR/TavernLens_HSData.bundle/bg-pool" "$APP/Contents/Resources/HSData/"
 
 echo "==> Signing"
 if security find-identity -p codesigning 2>/dev/null | grep -Fq "\"$IDENTITY\""; then

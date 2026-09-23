@@ -41,8 +41,9 @@ final class DebugBookmarksModel {
             status[row.id] = "No Power.log path recorded"
             return
         }
+        let pool = PoolDataModel.shared.pool
         run(row) {
-            let replayed = try TavernEngine.replay(bookmark, powerLog: URL(filePath: path))
+            let replayed = try TavernEngine.replay(bookmark, powerLog: URL(filePath: path), pool: pool)
             return replayed.timeline.last == bookmark.shown
                 ? "Replays to the identical snapshot"
                 : "⚠︎ Replays to a different snapshot (line \(bookmark.cut.endLine))"

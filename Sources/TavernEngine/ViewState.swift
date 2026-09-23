@@ -50,13 +50,15 @@ public struct GameView: Codable, Hashable, Sendable {
     public var mechanics: GameMechanicsView?
     /// The combat opponent's hero powers, trinkets, Deity and counters while fighting them.
     public var combatOpponentMechanics: MechanicsView?
+    /// The lobby's tribes; nil without a minion pool.
+    public var tribes: TribesView?
 
     public init(
         gameType: String, localPlayerID: Int?, localHeroCardID: String?, localHeroName: String? = nil, bgTurn: Int,
         phase: BGPhase = .heroPick, player: PlayerView? = nil, shop: ShopView = ShopView(),
         lobby: [LobbyEntryView] = [], nextOpponentPlayerID: Int? = nil, combatOpponentPlayerID: Int? = nil,
         placement: PlacementView? = nil, mechanics: GameMechanicsView? = nil,
-        combatOpponentMechanics: MechanicsView? = nil
+        combatOpponentMechanics: MechanicsView? = nil, tribes: TribesView? = nil
     ) {
         self.gameType = gameType
         self.localPlayerID = localPlayerID
@@ -72,6 +74,7 @@ public struct GameView: Codable, Hashable, Sendable {
         self.placement = placement
         self.mechanics = mechanics
         self.combatOpponentMechanics = combatOpponentMechanics
+        self.tribes = tribes
     }
 
     /// The next opponent's lobby entry.

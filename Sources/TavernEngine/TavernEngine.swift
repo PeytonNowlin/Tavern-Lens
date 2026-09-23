@@ -1,3 +1,4 @@
+import BGIntel
 import BGState
 import EntityStore
 import Foundation
@@ -29,6 +30,8 @@ public struct ReplayResult: Sendable {
     public var entities: [EntityRow] = []
     /// The full record of each game in `games`, as it would be saved.
     public var records: [GameRecord] = []
+    /// Cards the game flagged as pool minions that the pool lacked (added for their game).
+    public var poolDrift: [PoolDrift] = []
 }
 
 /// The headless composition root.
@@ -71,6 +74,8 @@ public struct TavernEngine: Sendable {
     public private(set) var startByteOffset: UInt64? = 0
     /// The in-progress record carried in with `resume(_:)`, as it was then, when it was accepted.
     public private(set) var resumedRecord: GameRecord?
+    /// The minion pool and the lobby's tribes (nothing without a pool).
+    private var tribes: TribeTracker
 
     private struct RecordInfo: Sendable {
         var sessions: [String] = []
@@ -83,10 +88,14 @@ public struct TavernEngine: Sendable {
 
     /// - Parameters:
     ///   - cards: card data for resolving card IDs to names; nil leaves names out.
+    ///   - pool: the live minion pool, for inferring the lobby's tribes; nil leaves tribes out.
     ///   - session: the session folder the Power.log is from. It dates the game records
     ///     (the logs only carry times of day); nil leaves records undated.
-    public init(cards: CardDB? = nil, session: LogSession? = nil, timeZone: TimeZone = .current) {
+    public init(
+        cards: CardDB? = nil, pool: MinionPool? = nil, session: LogSession? = nil, timeZone: TimeZone = .current
+    ) {
         self.cards = cards
+        tribes = TribeTracker(pool: pool)
         sessionName = session?.name
         clock = session.map { LogClock(session: $0, timeZone: timeZone) }
     }
@@ -98,7 +107,31 @@ public struct TavernEngine: Sendable {
     }
 
     public var result: ReplayResult {
-        ReplayResult(timeline: timeline, games: games, diagnostics: diagnostics, records: records)
+        ReplayResult(
+            timeline: timeline, games: games, diagnostics: diagnostics, records: records, poolDrift: tribes.drift
+        )
+    }
+
+    // MARK: - Pool and tribes
+
+    /// Cards the game flagged as pool minions that the pool lacked; each was added for its game.
+    public var poolDrift: [PoolDrift] { tribes.drift }
+
+    /// The current game's tribe inference; nil without a pool or a game.
+    public var tribeEstimate: TribeEstimate? { tribes.estimate }
+
+    /// Sets (or replaces) the minion pool, such as when card data finishes loading after a
+    /// game started. The current game's evidence so far is weighed again with it.
+    public mutating func usePool(_ pool: MinionPool?) {
+        tribes.usePool(pool)
+        if !isCatchingUp, timeline.last != nil { publish() }
+    }
+
+    /// The lobby's tribes read from the hero-pick banner: the strongest tribe evidence, which
+    /// the log's own evidence cross-checks. Ignored outside a solo Battlegrounds game.
+    public mutating func ingestScreenTribes(_ reading: ScreenTribeReading) {
+        tribes.add(reading)
+        if !isCatchingUp { publish() }
     }
 
     /// Every game's full record.
@@ -247,15 +280,19 @@ public struct TavernEngine: Sendable {
     private mutating func process(_ batch: [PowerEvent]) {
         guard !batch.isEmpty else { return }
         let position = LogPosition(line: linesRead, time: String(lastTimestamp))
+        let clock = clock
         for event in batch {
             var changes: [EntityChange] = []
             store.apply(event, changes: { changes.append($0) })
             for change in changes {
                 history.observe(change, in: store, at: position)
+                tribes.observe(change, in: store, history: history, date: { clock?.currentDate })
             }
             history.observe(event, in: store)
-            if event == .taskListEnd, !isCatchingUp {
-                publish()
+            tribes.observe(event)
+            if event == .taskListEnd {
+                tribes.taskListEnded(store, at: position)
+                if !isCatchingUp { publish() }
             }
         }
         if !history.changedGames.isEmpty { noteChangedGames() }
@@ -284,27 +321,30 @@ public struct TavernEngine: Sendable {
 
     private mutating func publish() {
         history.refresh(from: store)
+        let snapshot = BGSnapshot.project(store)
         let next = Self.viewState(
-            snapshot: BGSnapshot.project(store), record: history.current, lobby: history.lobby, cards: cards
+            snapshot: snapshot, record: history.current, lobby: history.lobby, cards: cards,
+            tribes: tribes.view(bgTurn: snapshot?.bgTurn ?? 0)
         )
         guard next != state else { return }
         state = next
         timeline.append(TimelineEntry(position: LogPosition(line: linesRead, time: String(lastTimestamp)), state: next))
     }
 
-    static func viewState(snapshot: BGSnapshot?, record: BGGameRecord?, lobby: BGLobbyMemory, cards: CardDB?) -> ViewState {
+    static func viewState(
+        snapshot: BGSnapshot?, record: BGGameRecord?, lobby: BGLobbyMemory, cards: CardDB?, tribes: TribesView? = nil
+    ) -> ViewState {
         guard let snapshot, let record else { return .noGame }
-        return ViewState(
-            status: record.end == nil ? .inGame : .gameOver,
-            game: GameView(snapshot, record: record, lobby: lobby, cards: cards)
-        )
+        var game = GameView(snapshot, record: record, lobby: lobby, cards: cards)
+        game.tribes = tribes
+        return ViewState(status: record.end == nil ? .inGame : .gameOver, game: game)
     }
 }
 
 extension TavernEngine {
     /// Replays lines from memory.
-    public static func replay(lines: some Sequence<String>, cards: CardDB? = nil) -> ReplayResult {
-        var engine = TavernEngine(cards: cards)
+    public static func replay(lines: some Sequence<String>, cards: CardDB? = nil, pool: MinionPool? = nil) -> ReplayResult {
+        var engine = TavernEngine(cards: cards, pool: pool)
         for line in lines { engine.ingest(line) }
         engine.finish()
         return engine.replayResult
@@ -312,9 +352,10 @@ extension TavernEngine {
 
     /// Replays a recorded Power.log from disk. With `session`, the records are dated.
     public static func replay(
-        fileAt url: URL, cards: CardDB? = nil, session: LogSession? = nil, timeZone: TimeZone = .current
+        fileAt url: URL, cards: CardDB? = nil, pool: MinionPool? = nil, session: LogSession? = nil,
+        timeZone: TimeZone = .current
     ) throws -> ReplayResult {
-        var engine = TavernEngine(cards: cards, session: session, timeZone: timeZone)
+        var engine = TavernEngine(cards: cards, pool: pool, session: session, timeZone: timeZone)
         try LogFileReader.forEachLine(in: url) { engine.ingest($0) }
         engine.finish()
         return engine.replayResult

@@ -168,6 +168,15 @@ public struct OverlayLayout: Hashable, Sendable {
                       width: hud.width, height: constants.nextOpponentPreviewHeight * s)
     }
 
+    /// The lobby's tribes: a small panel in the right margin, under the next opponent
+    /// preview's place (which is empty outside recruit), so the two never move each other.
+    public var tribesPanel: CGRect {
+        let s = panelScale
+        let preview = nextOpponentPreview
+        return CGRect(x: preview.minX, y: preview.maxY + constants.panelGap * s,
+                      width: preview.width, height: constants.tribesPanel.height * s)
+    }
+
     private func slotOffset(_ index: Int, of count: Int) -> CGFloat {
         (CGFloat(index) - CGFloat(count - 1) / 2) * constants.slotPitch
     }

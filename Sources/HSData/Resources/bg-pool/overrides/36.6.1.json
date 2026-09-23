@@ -1,0 +1,308 @@
+{
+  "patch": "36.6.1",
+  "client_build": 251952,
+  "valid_from": "2026-09-22T17:18:14Z",
+  "tribes_in_rotation": [
+    "BEAST",
+    "DEMON",
+    "DRAGON",
+    "ELEMENTAL",
+    "MECHANICAL",
+    "MURLOC",
+    "PIRATE",
+    "QUILBOAR",
+    "UNDEAD",
+    "ABERRATION"
+  ],
+  "tribes_per_lobby": 5,
+  "forced_tribes": [
+    {
+      "tribe": "ABERRATION",
+      "until": "2026-10-06T17:00:00Z",
+      "note": "Estimate: Blizzard says \"first two weeks ... starting September 22\". Confirm when announced."
+    }
+  ],
+  "minion_pool": {
+    "BG32_172": 0,
+    "BG35_140": 0,
+    "BG25_013": 0,
+    "BG36_369": 1,
+    "BG36_362": 1,
+    "BG36_700": 1,
+    "BG36_364": 1,
+    "BG36_848": 1,
+    "BG36_366": 1,
+    "BG36_367": 1,
+    "BG36_849": 1,
+    "BG36_370": 1,
+    "BGDUO_700": 1,
+    "BGDUO_701": 1
+  },
+  "minion_notes": {
+    "BG32_172": "Auto Assembler: Blizzard removed list; missing from HSReplay overrides",
+    "BG35_140": "Mama Mrrglton: Blizzard removed list; missing from HSReplay overrides",
+    "BG25_013": "Rot Hide Gnoll: raw IS_BACON_POOL_MINION is 2 (not in the pool); HearthstoneJSON flattens it to true",
+    "BG36_369": "Greedy Conniver: Blizzard new minion",
+    "BG36_362": "Sacrificial Wrathguard: Blizzard new minion",
+    "BG36_700": "Sewer Escapee: Blizzard new minion",
+    "BG36_364": "Hopebringer: Blizzard new minion; seen in a log with pool=1",
+    "BG36_848": "Lichling Hoarder: Blizzard new minion",
+    "BG36_366": "Resourceful Robot: Blizzard new minion",
+    "BG36_367": "Auto Reveille: Blizzard new minion",
+    "BG36_849": "Heroic Broodmother: Blizzard new minion; seen in a shop",
+    "BG36_370": "Victorious Geomant: Blizzard new minion; seen in a log with pool=1",
+    "BGDUO_700": "Voidpriest Cloner: Blizzard new Duos minion",
+    "BGDUO_701": "C'Thrax Wrecker: Blizzard new Duos minion"
+  },
+  "spell_pool": {
+    "BG33_899": 0,
+    "BG35_149": 0,
+    "BG32_337": 1
+  },
+  "non_shop": [
+    "BGFYM_000",
+    "BGFYM_011",
+    "BG36_205"
+  ],
+  "minion_tribe_gates": {
+    "BG20_203": [
+      "QUILBOAR"
+    ],
+    "BG21_002": [
+      "BEAST"
+    ],
+    "BG21_007": [
+      "DEMON"
+    ],
+    "BG21_011": [
+      "MURLOC"
+    ],
+    "BG21_013": [
+      "DRAGON"
+    ],
+    "BG21_036": [
+      "ELEMENTAL"
+    ],
+    "BG27_081": [
+      "DEMON"
+    ],
+    "BG28_303": [
+      "UNDEAD"
+    ],
+    "BG31_827": [
+      "PIRATE"
+    ],
+    "BG33_888": [
+      "QUILBOAR"
+    ],
+    "BG34_639": [
+      "DRAGON"
+    ],
+    "BG34_Giant_032": [
+      "ELEMENTAL"
+    ],
+    "BG34_Giant_064": [
+      "DRAGON"
+    ],
+    "BG34_Giant_328": [
+      "PIRATE"
+    ],
+    "BGS_012": [
+      "MECHANICAL"
+    ],
+    "BGS_017": [
+      "BEAST"
+    ],
+    "BGS_040": [
+      "DRAGON"
+    ],
+    "BGS_104": [
+      "ELEMENTAL"
+    ],
+    "BGS_105": [
+      "ELEMENTAL"
+    ],
+    "BG_DS1_070": [
+      "BEAST"
+    ],
+    "CFM_816": [
+      "BEAST"
+    ]
+  },
+  "hero_tribe_rules": {
+    "BG20_HERO_102": {
+      "needs_any": [
+        "DEMON",
+        "ELEMENTAL",
+        "MECHANICAL"
+      ]
+    },
+    "BG20_HERO_103": {
+      "needs_any": [
+        "QUILBOAR"
+      ]
+    },
+    "BG20_HERO_282": {
+      "banned_with_any": [
+        "DRAGON"
+      ]
+    },
+    "BG20_HERO_301": {
+      "banned_with_any": [
+        "NAGA"
+      ]
+    },
+    "BG21_HERO_030": {
+      "needs_any": [
+        "MECHANICAL",
+        "MURLOC"
+      ]
+    },
+    "BG22_HERO_007": {
+      "needs_any": [
+        "NAGA"
+      ]
+    },
+    "BG22_HERO_200": {
+      "needs_any": [
+        "MECHANICAL"
+      ]
+    },
+    "BG22_HERO_200_SKIN_B": {
+      "needs_any": [
+        "MECHANICAL"
+      ]
+    },
+    "BG22_HERO_305": {
+      "needs_any": [
+        "BEAST",
+        "UNDEAD"
+      ]
+    },
+    "BG23_HERO_304": {
+      "needs_any": [
+        "NAGA"
+      ]
+    },
+    "BG25_HERO_100": {
+      "needs_any": [
+        "UNDEAD"
+      ]
+    },
+    "BG25_HERO_103": {
+      "needs_any": [
+        "BEAST",
+        "UNDEAD"
+      ]
+    },
+    "BG26_HERO_101": {
+      "needs_any": [
+        "PIRATE"
+      ]
+    },
+    "BG31_HERO_801": {
+      "needs_any": [
+        "MECHANICAL"
+      ]
+    },
+    "BG31_HERO_802": {
+      "needs_any": [
+        "MECHANICAL"
+      ]
+    },
+    "TB_BaconShop_HERO_01": {
+      "needs_any": [
+        "ELEMENTAL",
+        "MURLOC",
+        "PIRATE"
+      ]
+    },
+    "TB_BaconShop_HERO_08": {
+      "banned_with_any": [
+        "DRAGON"
+      ]
+    },
+    "TB_BaconShop_HERO_10": {
+      "banned_with_any": [
+        "ELEMENTAL"
+      ]
+    },
+    "TB_BaconShop_HERO_17": {
+      "needs_any": [
+        "MECHANICAL"
+      ]
+    },
+    "TB_BaconShop_HERO_18": {
+      "needs_any": [
+        "PIRATE"
+      ]
+    },
+    "TB_BaconShop_HERO_25": {
+      "needs_any": [
+        "DEMON"
+      ]
+    },
+    "TB_BaconShop_HERO_37": {
+      "needs_any": [
+        "DEMON"
+      ]
+    },
+    "TB_BaconShop_HERO_53": {
+      "needs_any": [
+        "DRAGON"
+      ]
+    },
+    "TB_BaconShop_HERO_55": {
+      "needs_any": [
+        "MURLOC"
+      ]
+    },
+    "TB_BaconShop_HERO_56": {
+      "needs_any": [
+        "DRAGON"
+      ]
+    },
+    "TB_BaconShop_HERO_702": {
+      "needs_any": [
+        "UNDEAD"
+      ]
+    },
+    "TB_BaconShop_HERO_78": {
+      "needs_any": [
+        "ELEMENTAL"
+      ]
+    },
+    "TB_BaconShop_HERO_91": {
+      "banned_with_any": [
+        "ELEMENTAL"
+      ]
+    },
+    "TB_BaconShop_HERO_93": {
+      "needs_any": [
+        "BEAST",
+        "UNDEAD"
+      ]
+    },
+    "TB_BaconShop_HERO_95": {
+      "needs_any": [
+        "BEAST",
+        "UNDEAD"
+      ],
+      "banned_with_any": [
+        "MECHANICAL"
+      ]
+    }
+  },
+  "special": {
+    "BG36_360": "Dark Paradox: one ALL-type variant per game (t3..t9), tier varies; never tribe evidence"
+  },
+  "disputed": {
+    "BG26_537": "Flourishing Frostling: HSJSON+HSReplay pool, hsbg.cards absent, not on Blizzard lists; keep, watch sightings"
+  },
+  "sources": [
+    "https://hearthstone.blizzard.com/en-us/news/24302091/aberrations-join-battlegrounds-at-blizzcon",
+    "https://hsbg.cards/api/v1/patches/36.4.2_36.6.1",
+    "https://github.com/Zero-to-Heroes/hs-reference-data/blob/master/src/cards_rules.json (minion_tribe_gates, hero_tribe_rules)",
+    "docs/research/minion-pool-and-tribe-inference.md"
+  ]
+}

@@ -96,9 +96,11 @@ public struct ReplayStore: Sendable {
 extension TavernEngine {
     /// Replays a saved game slice exactly as the full log would: dated from its session,
     /// with the original line numbers.
-    public static func replay(_ replay: ReplayFile, cards: CardDB? = nil, timeZone: TimeZone = .current) throws -> ReplayResult {
+    public static func replay(
+        _ replay: ReplayFile, cards: CardDB? = nil, pool: MinionPool? = nil, timeZone: TimeZone = .current
+    ) throws -> ReplayResult {
         let data = try Gzip.decompress(Data(contentsOf: replay.url))
-        var engine = TavernEngine(cards: cards, session: replay.session(timeZone: timeZone), timeZone: timeZone)
+        var engine = TavernEngine(cards: cards, pool: pool, session: replay.session(timeZone: timeZone), timeZone: timeZone)
         engine.skipLines(replay.line - 1)
         var splitter = LogLineSplitter()
         splitter.append(data) { engine.ingest($0) }

@@ -86,6 +86,12 @@ struct OverlayRootView: View {
                         .frame(width: layout.hud.width, height: layout.hud.height)
                         .offset(x: layout.hud.minX, y: layout.hud.minY)
                 }
+                if let tribes = model.game?.tribes {
+                    TribesPanel(tribes: tribes, scale: layout.panelScale, metrics: layout.constants.tribesPanel)
+                        .frame(width: layout.tribesPanel.width, height: layout.tribesPanel.height)
+                        .offset(x: layout.tribesPanel.minX, y: layout.tribesPanel.minY)
+                        .allowsHitTesting(false)
+                }
                 if let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
                 }
@@ -225,6 +231,7 @@ struct LayoutGuides: View {
             stroke(layout.hud, .white)
             stroke(layout.nextOpponentPreview, .white, dash: true)
             stroke(layout.opponentPanel, .white, dash: true)
+            stroke(layout.tribesPanel, .white, dash: true)
         }
         .allowsHitTesting(false)
     }

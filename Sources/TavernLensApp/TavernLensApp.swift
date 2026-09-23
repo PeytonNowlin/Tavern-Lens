@@ -57,6 +57,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Menu-bar only. The bundle's Info.plist sets LSUIElement too; this also
         // covers running the bare executable with `swift run`.
         NSApp.setActivationPolicy(.accessory)
+        // The minion pool (card data + HSReplay + overrides) feeds the live tribe inference.
+        PoolDataModel.shared.onPoolChanged = { [live] pool in live.pool = pool }
+        PoolDataModel.shared.start()
         live.start()
         overlay.start()
         feedback.start()
