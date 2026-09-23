@@ -116,6 +116,34 @@ struct MechanicsSyntheticTests {
         #expect(try Self.localMechanics(log).bloodGem == StatBuffView(attack: 5, health: 4))
     }
 
+    @Test("Unnamed tags beyond the known counters are recorded by number in the game's record, not shown")
+    func otherCountersRecorded() throws {
+        var log = LobbySyntheticTests.lobbyGame()
+        log.localTag("3088", "20")   // a known counter
+        log.localTag("99999", "5")   // a counter a patch added, unnamed and unmapped
+        log.localTag("99998", "0")   // zero: left out
+        log.endTaskList()
+        log.turn(2)  // the end of the recruit phase: the turn snapshot
+        log.endTaskList()
+        let result = TavernEngine.replay(lines: log.lines)
+        let turn = try #require(result.records.only?.journal.turns.first)
+        let others = try #require(turn.mechanics?.otherCounters)
+        #expect(others[99999] == 5 && others[99998] == nil)
+        #expect(others[3088] == nil && turn.mechanics?.counters[3088] == 20, "known counters stay where they were")
+        #expect(others[3148] == nil, "the gold cap isn't a counter")
+        // The overlay's view shows the known counters only.
+        #expect(result.timeline.last?.state.game?.player?.mechanics?.counters == [3088: 20])
+
+        // An opponent's tag transfer: its unnamed tags go with their board seen.
+        var transfer = Self.combatAgainstP3(withTransfer: false)
+        transfer.playerEnchantment(807, "Bacon_TagTransferPlayerE", controller: Self.slot,
+                                   attachedTo: SyntheticLog.slotPlayerEntityID, extra: ["3088=32", "98765=7"])
+        transfer.combatStarts()
+        let seen = try #require(TavernEngine.replay(lines: transfer.lines).records.only?.journal.boardsSeen.first)
+        #expect(seen.mechanics?.otherCounters?[98765] == 7)
+        #expect(seen.mechanics?.counters[3088] == 32)
+    }
+
     @Test("The damage cap, anomaly and Deity come from the game entity, by name or number")
     func gameMechanics() throws {
         var log = LobbySyntheticTests.lobbyGame()

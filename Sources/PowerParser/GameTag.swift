@@ -24,6 +24,14 @@ public enum GameTag: Hashable, Sendable {
         if case .id(let n) = self { return n }
         return nil
     }
+
+    /// Whether HearthstoneJSON's enums name this tag (the client then prints the name).
+    public var hasName: Bool {
+        switch self {
+        case .id(let n): GameTag.nameByNumber[n] != nil
+        case .unresolved: true
+        }
+    }
 }
 
 extension GameTag: CustomStringConvertible {

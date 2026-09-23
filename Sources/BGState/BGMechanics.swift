@@ -227,6 +227,10 @@ public struct BGPlayerMechanics: Codable, Hashable, Sendable {
     /// Per-player counters by numeric tag ID (`counterTags`), whether or not the client
     /// printed a name. Only tags present and non-zero are kept.
     public var counters: [Int: Int] = [:]
+    /// Every other tag on the Player entity (or the opponent's tag transfer) that has no name
+    /// (the client prints its number), by number, non-zero only: counters a patch added that
+    /// `counterTags` doesn't list yet, recorded so they can be mapped later. Nil when none.
+    public var otherCounters: [Int: Int]?
     /// Enchantments on the Player entity carrying counters, in entity order.
     public var playerEnchantments: [BGPlayerEnchantment] = []
     /// Blood gem buff: the larger of the `BG26_159pe` enchantment and the Player tags 1844/2827.
@@ -270,6 +274,13 @@ public struct BGPlayerMechanics: Codable, Hashable, Sendable {
     /// Counters the game rewrites on the slot Player after the tag transfer, so the Player
     /// entity wins over the transfer for them (mapping §6).
     static let playerFirstTags: Set<Int> = [3989, 3990]
+
+    static let knownCounterTags = Set(counterTags)
+
+    /// Unnamed tags on the Player entity that are known not to be counters.
+    static let notCounterTags: Set<Int> = [
+        GameTag.baconGoldCap.number!,
+    ]
 
     static let tagTransferCardID = "Bacon_TagTransferPlayerE"
     static let bloodGemEnchantmentCardID = "BG26_159pe"
@@ -323,6 +334,17 @@ public struct BGPlayerMechanics: Codable, Hashable, Sendable {
             guard let value = sources.lazy.compactMap({ $0?.int(tag) }).first, value != 0 else { continue }
             mechanics.counters[number] = value
         }
+        // Unnamed tags beyond the known counters; the transfer wins, as for most counters.
+        var others: [Int: Int] = [:]
+        for source in [player, transfer] {
+            for (tag, value) in source?.tags ?? [:] {
+                guard let number = tag.number, !tag.hasName, !knownCounterTags.contains(number),
+                      !notCounterTags.contains(number), let value = value.intValue, value != 0
+                else { continue }
+                others[number] = value
+            }
+        }
+        if !others.isEmpty { mechanics.otherCounters = others }
 
         let gemEnchantment = mechanics.playerEnchantments.last { $0.cardID == bloodGemEnchantmentCardID }
         mechanics.bloodGem = BGStatBuff(
