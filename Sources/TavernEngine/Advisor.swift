@@ -279,10 +279,7 @@ public final class AdvisorRunner {
 
     private let simulate: AdvisorEvaluation.Simulate
     private var latest: AdvisorRequest?
-    private var generation = 0
-    private var pending: Task<Void, Never>?
-    private var running: Task<Void, Never>?
-    private var lastPublished: ContinuousClock.Instant?
+    private let runner: LatestRunner<(progress: AdvisorEvaluation.Progress, request: AdvisorRequest)>
 
     /// - Parameters:
     ///   - simulator: the simulator, ready (card DB loaded); awaited for each evaluation.
@@ -309,6 +306,10 @@ public final class AdvisorRunner {
         self.debounce = debounce
         self.timeBudget = timeBudget
         self.refreshInterval = refreshInterval
+        // Keep the previous state's advice up until this one has a ranking.
+        runner = LatestRunner(debounce: debounce, refreshInterval: refreshInterval) { $0.progress.advice.status != .thinking }
+        runner.onResult = { [weak self] result, _ in self?.receive(result.progress, for: result.request) }
+        runner.onFailure = { [weak self] error in self?.fail(error) }
     }
 
     /// The advisor's state as of now; nil outside recruit.
@@ -318,70 +319,43 @@ public final class AdvisorRunner {
             return
         }
         if request == latest { return }
-        generation += 1
         latest = request
-        pending?.cancel()
-        running?.cancel()
-        running = nil
         guard request.hasData else {
+            runner.stop()
             currentRequest = request
             current = AdviceView(request: request, plan: plan, advice: .noData, isComplete: true)
             return
         }
+        var replacing = false
         if var view = current, view.requestID == request.id {
             view.isUpdating = true
             current = view
+            replacing = true
         } else {
             currentRequest = request
             current = AdviceView(request: request, plan: plan, advice: Advice(status: .thinking))
         }
-        let token = generation
-        pending = Task { [weak self, debounce] in
-            try? await Task.sleep(for: debounce)
-            guard !Task.isCancelled else { return }
-            self?.run(request, token: token)
+        let plan = self.plan, simulate = self.simulate, timeBudget = self.timeBudget
+        runner.submit(replacing: replacing) { emit in
+            let deadline = ContinuousClock.now + timeBudget
+            let done = try await AdvisorEvaluation.run(
+                request, plan: plan, shouldContinue: { ContinuousClock.now < deadline }, simulate: simulate
+            ) { progress in
+                emit.onMain((progress, request))
+            }
+            return (done, request)
         }
     }
 
     /// Stops scoring and clears the advice (a combat is starting, or recruit ended).
     public func cancel() {
-        generation += 1
-        pending?.cancel()
-        pending = nil
-        running?.cancel()
-        running = nil
+        runner.stop()
         latest = nil
         currentRequest = nil
         current = nil
     }
 
-    private func run(_ request: AdvisorRequest, token: Int) {
-        guard token == generation else { return }
-        let plan = self.plan, simulate = self.simulate
-        let deadline = ContinuousClock.now + timeBudget
-        running = Task { [weak self] in
-            do {
-                let done = try await AdvisorEvaluation.run(
-                    request, plan: plan, shouldContinue: { ContinuousClock.now < deadline }, simulate: simulate
-                ) { progress in
-                    self?.receive(progress, for: request, token: token, force: false)
-                }
-                self?.receive(done, for: request, token: token, force: true)
-            } catch is CancellationError {
-                // A newer state replaced this one.
-            } catch {
-                self?.fail(error, token: token)
-            }
-        }
-    }
-
-    private func receive(_ progress: AdvisorEvaluation.Progress, for request: AdvisorRequest, token: Int, force: Bool) {
-        guard token == generation else { return }
-        // Keep the previous state's advice up until this one has a ranking.
-        if progress.advice.status == .thinking, current?.isUpdating == true { return }
-        let now = ContinuousClock.now
-        if !force, let lastPublished, now - lastPublished < refreshInterval, current?.isUpdating == false { return }
-        lastPublished = now
+    private func receive(_ progress: AdvisorEvaluation.Progress, for request: AdvisorRequest) {
         currentRequest = request
         current = AdviceView(
             request: request, plan: plan, advice: progress.advice, evaluations: progress.evaluations,
@@ -389,8 +363,8 @@ public final class AdvisorRunner {
         )
     }
 
-    private func fail(_ error: any Error, token: Int) {
-        guard token == generation, var view = current else { return }
+    private func fail(_ error: any Error) {
+        guard var view = current else { return }
         view.failure = "\(error)"
         view.isUpdating = false
         current = view

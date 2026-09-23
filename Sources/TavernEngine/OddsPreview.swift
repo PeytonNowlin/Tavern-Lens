@@ -43,7 +43,8 @@ public struct OddsPreviewView: Hashable, Sendable {
 /// Give it each new `OddsPreviewRequest` (`TavernEngine.oddsPreview`) as the state changes. A
 /// changed input waits `debounce` for the board to settle (a drag, a buy and its battlecry), then
 /// cancels the run in progress and simulates the new one; partial results refine `current`, at
-/// most once per `refreshInterval`. While a new run starts, the previous board's odds stay up,
+/// most once per `refreshInterval`, in order: a partial that arrives after a later one, or after
+/// the final one, is dropped (`LatestRunner`). While a new run starts, the previous board's odds stay up,
 /// marked updating, until the new run has `replaceAfter` simulations, so the numbers don't flicker.
 /// A request without data (the next opponent unseen) shows "no data" and runs nothing; nil
 /// (not recruit) stops everything.
@@ -66,27 +67,43 @@ public final class OddsPreviewRunner {
     public let refreshInterval: Duration
     public let replaceAfter: Int
 
-    private let simulator: @Sendable () async throws -> CombatSimulator
+    /// Simulates one input, reporting each partial result.
+    public typealias Simulate = @Sendable (
+        BattleInput, SimulationBudget, _ progress: @escaping @Sendable (CombatOdds) -> Void
+    ) async throws -> CombatOdds
+
+    private let simulate: Simulate
     /// The input `current` is for (or is waiting on).
     private var latestInput: BattleInput?
-    /// Bumped for every input accepted; results of older ones are dropped.
-    private var generation = 0
-    private var pending: Task<Void, Never>?
-    private var running: Task<Void, Never>?
+    private let runner: LatestRunner<CombatOdds>
 
     /// - Parameters:
     ///   - simulator: the simulator, ready (card DB loaded); awaited on each run.
     ///   - debounce: how long a board must stay unchanged before it's simulated.
     ///   - replaceAfter: simulations a new run needs before its result replaces the previous board's.
-    public init(
+    public convenience init(
         simulator: @escaping @Sendable () async throws -> CombatSimulator, debounce: Duration = .milliseconds(250),
         budget: SimulationBudget = .standard, refreshInterval: Duration = .milliseconds(100), replaceAfter: Int = 250
     ) {
-        self.simulator = simulator
+        self.init(
+            simulate: { input, budget, progress in try await simulator().simulate(input, budget: budget, progress: progress) },
+            debounce: debounce, budget: budget, refreshInterval: refreshInterval, replaceAfter: replaceAfter
+        )
+    }
+
+    /// Simulates with `simulate` (any scorer, such as a stub in tests).
+    public init(
+        simulate: @escaping Simulate, debounce: Duration = .milliseconds(250), budget: SimulationBudget = .standard,
+        refreshInterval: Duration = .milliseconds(100), replaceAfter: Int = 250
+    ) {
+        self.simulate = simulate
         self.debounce = debounce
         self.budget = budget
         self.refreshInterval = refreshInterval
         self.replaceAfter = replaceAfter
+        runner = LatestRunner(debounce: debounce, refreshInterval: refreshInterval) { $0.simulations >= replaceAfter }
+        runner.onResult = { [weak self] odds, _ in self?.receive(odds) }
+        runner.onFailure = { [weak self] error in self?.fail(error) }
     }
 
     /// The preview as of now; nil outside recruit.
@@ -97,37 +114,31 @@ public final class OddsPreviewRunner {
         }
         let sameOpponent = current?.requestID == request.id
         if sameOpponent, latestInput == request.input, current?.hasData == request.hasData { return }
-        generation += 1
         latestInput = request.input
-        pending?.cancel()
-        pending = nil
 
         guard let input = request.input else {
-            stopRunning()
+            runner.stop()
             current = OddsPreviewView(request: request)
             return
         }
+        var replacing = false
         if sameOpponent, var view = current, view.odds != nil {
             view.isUpdating = true
             view.failure = nil
             current = view
+            replacing = true
         } else {
             current = OddsPreviewView(request: request)
         }
-        let token = generation
-        pending = Task { [weak self, debounce] in
-            try? await Task.sleep(for: debounce)
-            guard !Task.isCancelled else { return }
-            self?.run(input, token: token)
+        let simulate = self.simulate, budget = self.budget
+        runner.submit(replacing: replacing) { emit in
+            try await simulate(input, budget) { partial in emit(partial) }
         }
     }
 
     /// Stops any run and clears the preview (a combat is starting, or recruit ended).
     public func cancel() {
-        generation += 1
-        pending?.cancel()
-        pending = nil
-        stopRunning()
+        runner.stop()
         latestInput = nil
         current = nil
     }
@@ -139,47 +150,18 @@ public final class OddsPreviewRunner {
         _ input: BattleInput, budget: SimulationBudget = .standard,
         progress: @escaping @Sendable (CombatOdds) -> Void = { _ in }
     ) async throws -> CombatOdds {
-        try await simulator().simulate(input, budget: budget, progress: progress)
+        try await simulate(input, budget, progress)
     }
 
-    private func stopRunning() {
-        running?.cancel()
-        running = nil
-    }
-
-    private func run(_ input: BattleInput, token: Int) {
-        guard token == generation else { return }
-        stopRunning()
-        let simulator = self.simulator
-        let budget = self.budget
-        let throttle = PreviewThrottle(interval: refreshInterval)
-        let refine: @Sendable (CombatOdds) -> Void = { [weak self] partial in
-            Task { @MainActor in self?.receive(partial, token: token) }
-        }
-        running = Task { [weak self] in
-            do {
-                let odds = try await simulator().simulate(input, budget: budget) { partial in
-                    if throttle.allows() { refine(partial) }
-                }
-                self?.receive(odds, token: token)
-            } catch is CancellationError {
-                // A newer board replaced this one.
-            } catch {
-                self?.fail(error, token: token)
-            }
-        }
-    }
-
-    private func receive(_ odds: CombatOdds, token: Int) {
-        guard token == generation, var view = current else { return }
-        if view.isUpdating, !odds.isFinal, odds.simulations < replaceAfter { return }
+    private func receive(_ odds: CombatOdds) {
+        guard var view = current else { return }
         view.odds = odds
         view.isUpdating = false
         current = view
     }
 
-    private func fail(_ error: any Error, token: Int) {
-        guard token == generation, var view = current else { return }
+    private func fail(_ error: any Error) {
+        guard var view = current else { return }
         view.failure = "\(error)"
         view.isUpdating = false
         current = view
@@ -196,24 +178,5 @@ extension CombatSimulator {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         return try await simulate(input: encoder.encode(input), budget: budget, seed: seed, progress: progress)
-    }
-}
-
-/// Lets a call through at most once per interval (the first always).
-private final class PreviewThrottle: @unchecked Sendable {
-    private let interval: Duration
-    private let clock = ContinuousClock()
-    private var last: ContinuousClock.Instant?
-    private let lock = NSLock()
-
-    init(interval: Duration) { self.interval = interval }
-
-    func allows() -> Bool {
-        lock.withLock {
-            let now = clock.now
-            if let last, now - last < interval { return false }
-            last = now
-            return true
-        }
     }
 }

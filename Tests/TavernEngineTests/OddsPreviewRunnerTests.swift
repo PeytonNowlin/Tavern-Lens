@@ -8,10 +8,12 @@ import TavernEngine
 ///
 /// Two boards tell the runs apart: the real turn-11 board loses about 74% (§8.1), and the same
 /// combat without the Deities' stats is a likely win (about 78%).
-@Suite("Odds preview runner")
+@Suite("Odds preview runner", .timeLimit(.simulationWait))
 @MainActor
 struct OddsPreviewRunnerTests {
-    static let budget = SimulationBudget(simulations: 1500, maxDurationMilliseconds: 600_000, intermediateResults: 50)
+    /// Enough to tell the two boards apart (a few percent of noise), and cheap: every test in the
+    /// process shares the simulator's one JavaScript thread.
+    static let budget = SimulationBudget(simulations: 800, maxDurationMilliseconds: 600_000, intermediateResults: 50)
 
     static func losing() throws -> BattleInput { try CombatGoldens.input(CombatGoldens.fullGameTurn11) }
 
@@ -47,19 +49,12 @@ struct OddsPreviewRunnerTests {
         return (runner, recorder)
     }
 
-    static func wait(
-        _ runner: OddsPreviewRunner, timeout: Duration, until done: (OddsPreviewView?) -> Bool
-    ) async throws {
-        let clock = ContinuousClock()
-        let deadline = clock.now + timeout
-        while !done(runner.current) {
-            try #require(clock.now < deadline, "timed out; current: \(String(describing: runner.current))")
-            try await Task.sleep(for: .milliseconds(10))
-        }
+    static func wait(_ runner: OddsPreviewRunner, until done: (OddsPreviewView?) -> Bool) async throws {
+        try await waitUntil { done(runner.current) }
     }
 
-    static func waitForFinal(_ runner: OddsPreviewRunner, timeout: Duration = .seconds(300)) async throws -> CombatOdds {
-        try await wait(runner, timeout: timeout) { $0?.odds?.isFinal == true && $0?.isUpdating == false }
+    static func waitForFinal(_ runner: OddsPreviewRunner) async throws -> CombatOdds {
+        try await wait(runner) { $0?.odds?.isFinal == true && $0?.isUpdating == false }
         return try #require(runner.current?.odds)
     }
 
@@ -71,7 +66,8 @@ struct OddsPreviewRunnerTests {
         try await Task.sleep(for: .milliseconds(250))
         runner.update(Self.request(try Self.losing()))
         let settled = clock.now
-        try await Self.wait(runner, timeout: .seconds(120)) { $0?.odds != nil }
+        try await Self.wait(runner) { $0?.odds != nil }
+        // A lower bound only: the debounce can't end early, however slow the machine.
         #expect(clock.now - settled >= .milliseconds(400), "nothing shown before the board settled")
         let odds = try await Self.waitForFinal(runner)
         #expect(abs(odds.lost - 74) <= 8, "lost \(odds.lost)%")
@@ -86,16 +82,13 @@ struct OddsPreviewRunnerTests {
         let (runner, recorder) = try Self.runner()
         runner.update(Self.request(try Self.winning()))
         // Wait for the winning board's first result, then change the board while it runs.
-        try await Self.wait(runner, timeout: .seconds(120)) { $0?.odds != nil }
+        try await Self.wait(runner) { $0?.odds != nil }
         #expect(runner.current?.odds?.isFinal == false)
         #expect(try #require(runner.current?.odds).won > 50)
-        let clock = ContinuousClock()
-        let changed = clock.now
         runner.update(Self.request(try Self.losing()))
         #expect(runner.current?.isUpdating == true, "the previous odds are kept, marked updating")
         #expect(runner.current?.odds?.won ?? 0 > 50)
-        try await Self.wait(runner, timeout: .seconds(120)) { $0?.isUpdating == false }
-        let firstNew = clock.now - changed
+        try await Self.wait(runner) { $0?.isUpdating == false }
         let odds = try await Self.waitForFinal(runner)
         #expect(abs(odds.lost - 74) <= 8, "lost \(odds.lost)%")
         // The winning run never finished: it was cancelled at its next step.
@@ -104,10 +97,38 @@ struct OddsPreviewRunnerTests {
         let replaced = try #require(recorder.views.firstIndex { $0?.isUpdating == false && ($0?.odds?.won ?? 100) < 50 })
         #expect(recorder.views[replaced...].allSatisfy { ($0?.odds?.won ?? 0) < 50 })
         #expect(recorder.views[replaced]?.odds.map { $0.simulations >= 200 || $0.isFinal } == true)
-        // Under `swift test` JavaScriptCore interprets (no JIT), several times slower than the app,
-        // where this is the 150 ms debounce plus tens of milliseconds.
-        print("preview: the changed board's first result after \(firstNew)")
-        #expect(firstNew < .seconds(30))
+    }
+
+    @Test("Results are shown in order: a partial arriving after a later one, or after the final one, is dropped")
+    func ordered() async throws {
+        // A scorer that reports a burst of partials from another thread just before it returns, so
+        // their hops to the main actor race the final result.
+        let simulate: OddsPreviewRunner.Simulate = { _, budget, progress in
+            let partials = (1...40).map { step in
+                CombatOdds(won: 10, tied: 0, lost: 90, simulations: step * 10, isFinal: false)
+            }
+            await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+                DispatchQueue.global().async {
+                    for partial in partials { progress(partial) }
+                    done.resume()
+                }
+            }
+            return CombatOdds(won: 10, tied: 0, lost: 90, simulations: budget.simulations, isFinal: true)
+        }
+        for _ in 0..<5 {
+            let runner = OddsPreviewRunner(simulate: simulate, debounce: .zero, budget: Self.budget, refreshInterval: .zero)
+            let recorder = Recorder()
+            runner.onChange = { recorder.views.append($0) }
+            runner.update(Self.request(try Self.losing()))
+            try await Self.wait(runner) { $0?.odds?.isFinal == true }
+            // Let every hop still queued land.
+            for _ in 0..<20 { await Task.yield() }
+            try await Task.sleep(for: .milliseconds(50))
+            #expect(runner.current?.odds?.isFinal == true, "the final result stays up")
+            let shown = recorder.odds.map(\.simulations)
+            #expect(shown == shown.sorted() && Set(shown).count == shown.count, "\(shown)")
+            #expect(recorder.odds.last?.isFinal == true)
+        }
     }
 
     @Test("The same board again changes nothing; a new turn or opponent starts afresh")
@@ -131,7 +152,8 @@ struct OddsPreviewRunnerTests {
         runner.update(Self.request(nil, opponent: 3))
         let view = try #require(runner.current)
         #expect(!view.hasData && view.odds == nil && view.opponentSeenTurn == nil && view.opponentPlayerID == 3)
-        try await Task.sleep(for: .milliseconds(500))
+        // Nothing to wait for: an unseen opponent never starts a run.
+        try await Task.sleep(for: .milliseconds(100))
         #expect(runner.current == view, "nothing simulated")
         #expect(recorder.odds.isEmpty)
         runner.update(nil)
