@@ -84,11 +84,27 @@ enum RecruitMechanics {
               let h = state.hand.firstIndex(where: { $0.entity.entityId == step.targetID }),
               !state.hand[h].entity.locked else { return false }
         let discarded = state.hand.remove(at: h)
+        state.gold -= availability.cost; state.usedActivations.insert(step.entityID)
+        guard discardEffects(discarded, state: &state, context: context) else { return false }
+        if body == "Discard a card to get a random Tavern spell." {
+            if state.hand.count + state.unknownRewards < AdvisorRequest.handLimit { state.unknownRewards += 1 }
+            state.terminal = true
+            state.limitations.append("Random Tavern spell: reveal it and reassess")
+        } else {
+            let text = String(body.dropFirst("Discard a card to ".count))
+            guard RecruitEffects.apply(RecruitEffects.effect(text.prefix(1).uppercased() + text.dropFirst()),
+                                       target: nil, state: &state, context: context) else { return false }
+        }
+
+        return true
+    }
+
+    /// Shared by activations and linked hero-power rewards.
+    static func discardEffects(_ discarded: AdvisorCard, state: inout RecruitState, context: RecruitContext) -> Bool {
         // Unknown discard text must not silently vanish with the card.
         let discardText = context.text(discarded.cardID)
         let sludge = discardText == "Give your minions +1/+1. If you discard this, cast it twice."
         if discardText.lowercased().contains("discard"), !sludge { return false }
-        state.gold -= availability.cost; state.usedActivations.insert(step.entityID)
         state.input.playerBoard.player.globalInfo["CardsDiscardedThisGame", default: 0] += 1
         for trinket in state.input.playerBoard.player.trinkets {
             let text = context.text(trinket.cardId)
@@ -116,16 +132,6 @@ enum RecruitMechanics {
                 }
             }
         }
-        if body == "Discard a card to get a random Tavern spell." {
-            if state.hand.count + state.unknownRewards < AdvisorRequest.handLimit { state.unknownRewards += 1 }
-            state.terminal = true
-            state.limitations.append("Random Tavern spell: reveal it and reassess")
-        } else {
-            let text = String(body.dropFirst("Discard a card to ".count))
-            guard RecruitEffects.apply(RecruitEffects.effect(text.prefix(1).uppercased() + text.dropFirst()),
-                                       target: nil, state: &state, context: context) else { return false }
-        }
-
         return true
     }
 

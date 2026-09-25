@@ -11,6 +11,10 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     public var powerCosts: [String: Int]
     public var build: Int?
     public var darkDiscovery: DarkDiscovery?
+    /// No recruit actions are available until an outstanding discover/choice resolves.
+    public var pendingChoice: Bool?
+    /// Hand minions linked by observed discard enchantment source and batch.
+    public var linkedDiscards: [Int: [Int]]?
     public struct DarkDiscovery: Codable, Hashable, Sendable {
         public var entityID: Int
         public var cost: Int
@@ -87,6 +91,22 @@ extension BattleInputBuilder {
             if let cost = store[power.entityId]?.int(GameTag.id(48)) { costs[power.cardId] = cost }
         }
         var context = RecruitContext(input: base, definitions: definitions, powerCosts: costs, build: cards.build)
+        // The combat enchantment schema keeps only script data 1/2. Recruit pairing also
+        // needs 3 (batch), so read it from the live store instead of guessing from card IDs.
+        var discardGroups: [String: [Int]] = [:]
+        for card in request.hand {
+            for enchantment in card.entity.enchantments where enchantment.cardId == "BG36_308e" {
+                guard let entity = store[enchantment.originEntityId],
+                      let source = entity.int(GameTag.id(3)), source > 0,
+                      let batch = entity.int(GameTag.id(2889)),
+                      entity.int(GameTag.id(2)) == 1 else { continue }
+                discardGroups["\(source):\(batch)", default: []].append(card.entity.entityId)
+            }
+        }
+        context.linkedDiscards = [:]
+        for ids in discardGroups.values {
+            for id in ids { context.linkedDiscards?[id] = ids.filter { $0 != id } }
+        }
         context.activations = [:]
         for card in request.board + request.hand + request.shop where context.text(card.cardID).contains("Activate (") {
             guard let entity = store[card.entity.entityId] else { continue }

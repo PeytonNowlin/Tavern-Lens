@@ -50,6 +50,11 @@ public enum RecruitEvaluation {
                 note: "Recruit card data unavailable; advice withheld"), evaluations: 0, isComplete: true)
             report(done); return done
         }
+        if context.pendingChoice == true {
+            let done = AdvisorEvaluation.Progress(advice: Advice(status: .noData,
+                note: "Finish the current choice; recruit advice resumes afterward"), evaluations: 0, isComplete: true)
+            report(done); return done
+        }
         try Task.checkCancellation()
         // Search uses a fixed node budget, not wall time, so archived evaluation limits reproduce it.
         let searchTask = Task.detached(priority: .userInitiated) {
@@ -152,6 +157,10 @@ public enum RecruitEvaluation {
                 let d = request.recruit?.darkDiscovery
                 let tiers = d.map { $0.minTier == $0.maxTier ? "Tier \($0.minTier)" : "Tier \($0.minTier)–\($0.maxTier)" } ?? "a"
                 reason = "Discover a \(tiers) minion with a Dark Gift; \(d?.remainingUses ?? 0) uses left. Reassess after choosing"
+            }
+            else if case .heroPower(let id, _, _, _) = first.action,
+                    let context = request.recruit, let explanation = RecruitHeroPowers.explanation(id, context: context) {
+                reason = explanation
             }
             else if first.kind == .activate { reason = "Uses your discard engine and its attached rewards" }
             else if first.kind == .roll { reason = "Keep enough gold to buy; reassess after the refresh" }

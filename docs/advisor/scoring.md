@@ -265,3 +265,21 @@ minion, Dark Gift or combat improvement. Its bounded option value accounts for o
 board space, health horizon and saving a limited charge for a later tier. It competes with known
 shop purchases and always discloses the unknown outcome. The suggestion names Dark Discovery
 and its cost; no screen highlight is drawn until the button has a calibrated layout target.
+
+
+### Hero powers during recruitment
+
+Observed hero-power costs, used flags and locks gate recruit actions. Deterministic supported
+buff/resource powers use the existing effect transitions. I Spy and Dark Ritual have explicit,
+card-ID and current-text checked reward models: spend the observed price, count gold spent,
+mark the power used, and stop to reassess once the reward is revealed. Both compete with shop
+purchases using conservative tier/board-space option value and low confidence, without an
+invented minion or combat improvement. I Spy does not assume the last opponent's board is the
+next opponent's warband. Dark Ritual values one retained minion, not two independent bodies,
+and requires two free hand slots before recommending activation.
+
+An outstanding GENERAL choice suspends recruitment advice. Dark Ritual's `BG36_308e`
+enchantments link hand minions by script data 2 (source) and 3 (batch); playing one removes only
+its linked partner and applies shared discard counters/trinket rewards. Old captures missing
+batch data explicitly report the unknown partner and withhold that play. Changed or unsupported
+hero-power effects remain coverage gaps rather than receiving made-up exact effects.

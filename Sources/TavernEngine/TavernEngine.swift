@@ -526,6 +526,7 @@ public struct TavernEngine: Sendable {
         request.recruit = BattleInputBuilder.recruitContext(
             store: store, snapshot: snapshot, cards: recruitCards ?? cards, request: request
         )
+        request.recruit?.pendingChoice = trinketPick.choice != nil
         if trinketPick.choice != nil { request.recruit?.darkDiscovery?.ready = false }
         guard request.hasData else { return request }
         request.lobby = lobby.sorted { $0.playerID < $1.playerID }

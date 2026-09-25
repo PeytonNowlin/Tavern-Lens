@@ -39,7 +39,7 @@ public enum RecruitPlanner {
     }
 
     public static func actions(_ state: RecruitState, context: RecruitContext, canFreeze: Bool = true) -> [RecruitStep] {
-        guard !state.terminal else { return [] }
+        guard !state.terminal, context.pendingChoice != true else { return [] }
         var actions: [RecruitStep] = []
         for (i, card) in state.shop.enumerated() where state.hand.count < AdvisorRequest.handLimit {
             let price = card.isMinion ? card.cost ?? 3 : card.cost ?? Int.max
@@ -83,9 +83,9 @@ public enum RecruitPlanner {
             }
         }
         for power in state.input.playerBoard.player.heroPowers where !power.used && power.locked == 0 {
-            guard let cost = context.powerCosts[power.cardId], cost <= state.gold else { continue }
+            guard let cost = context.powerCosts[power.cardId], cost >= 0, cost <= state.gold else { continue }
             let effect = RecruitEffects.effect(context.text(power.cardId))
-            guard RecruitEffects.isSupported(effect) else { continue }
+            guard RecruitHeroPowers.available(power.cardId, state: state, context: context) else { continue }
             let targets: [Int?] = RecruitEffects.needsTarget(effect) ? state.board.map { $0.entity.entityId } : [nil]
             for target in targets {
                 let i = state.board.firstIndex { $0.entity.entityId == target }
@@ -147,7 +147,7 @@ public enum RecruitPlanner {
 
     /// Returns nil for illegal or unsupported transitions. All edits are to a value copy.
     public static func applying(_ step: RecruitStep, to original: RecruitState, context: RecruitContext) -> RecruitState? {
-        guard !original.terminal, RecruitEffects.triggersSupported(step.kind, state: original, context: context) else { return nil }
+        guard !original.terminal, context.pendingChoice != true, RecruitEffects.triggersSupported(step.kind, state: original, context: context) else { return nil }
         var s = original
         switch step.kind {
         case .buy:
@@ -172,6 +172,7 @@ public enum RecruitPlanner {
                 s.pendingDiscover -= 1; s.terminal = true
                 s.limitations.append("Triple reward is unknown; choose it and replan")
             }
+            guard RecruitHeroPowers.resolveLinkedDiscard(card, state: &s, context: context) else { return nil }
         case .sell:
             guard let i = s.board.firstIndex(where: { $0.entity.entityId == step.entityID }), s.board.count > 1 else { return nil }
             let card = s.board.remove(at: i)
@@ -206,9 +207,10 @@ public enum RecruitPlanner {
         case .power:
             guard let i = s.input.playerBoard.player.heroPowers.firstIndex(where: { $0.entityId == step.entityID }) else { return nil }
             let p = s.input.playerBoard.player.heroPowers[i]
-            guard !p.used, p.locked == 0, let cost = context.powerCosts[p.cardId], cost <= s.gold else { return nil }
-            guard RecruitEffects.apply(RecruitEffects.effect(context.text(p.cardId)), target: step.targetID, state: &s, context: context) else { return nil }
+            guard !p.used, p.locked == 0, let cost = context.powerCosts[p.cardId], cost >= 0, cost <= s.gold else { return nil }
+            guard RecruitHeroPowers.apply(p.cardId, cost: cost, target: step.targetID, state: &s, context: context) else { return nil }
             s.gold -= cost; s.input.playerBoard.player.heroPowers[i].used = true
+            s.input.playerBoard.player.globalInfo["GoldSpentThisGame", default: 0] += cost
         case .darkDiscovery:
             guard let discovery = context.darkDiscovery, discovery.entityID == step.entityID,
                   discovery.ready, discovery.remainingUses > 0, discovery.cost <= s.gold,
@@ -297,6 +299,7 @@ public enum RecruitPlanner {
             let savedCharge = Double(6 - discovery.maxTier) * (discovery.remainingUses == 1 ? 0.5 : 0.25)
             v.economy += max(0, option - savedCharge)
         }
+        v.economy += RecruitHeroPowers.optionValue(s, context: context, horizon: horizon)
         v.economy += Double(s.unknownRewards) * 0.8
         return v
     }
@@ -348,6 +351,11 @@ public enum RecruitPlanner {
         var limitations = Set(baseline.projection.limitations + RecruitMechanics.limitations(initial, context: context))
         for card in request.board + request.hand + request.shop {
             if context.definitions[card.cardID] == nil { limitations.insert("Missing card definitions") }
+            if request.hand.contains(where: { $0.entity.entityId == card.entity.entityId }),
+               card.entity.enchantments.contains(where: { $0.cardId == "BG36_308e" }),
+               context.linkedDiscards?[card.entity.entityId] == nil {
+                limitations.insert("Discard partner unknown: \(name(card, context))")
+            }
             if card.isMinion, !request.board.contains(where: { $0.entity.entityId == card.entity.entityId }),
                !RecruitEffects.isSupported(RecruitEffects.battlecry(card, context: context)) {
                 limitations.insert("Unmodelled play effect: \(name(card, context))")
@@ -363,7 +371,7 @@ public enum RecruitPlanner {
         }
         for power in initial.input.playerBoard.player.heroPowers where !power.used && power.locked == 0 {
             if let cost = context.powerCosts[power.cardId], cost <= initial.gold,
-               !RecruitEffects.isSupported(RecruitEffects.effect(context.text(power.cardId))) {
+               !RecruitHeroPowers.supported(power.cardId, context) {
                 // Passive combat powers need no recruit action and are already handled by the combat simulator.
                 let text = context.text(power.cardId).lowercased()
                 if !text.contains("passive") && !text.contains("combat") && !text.contains("start of") {
