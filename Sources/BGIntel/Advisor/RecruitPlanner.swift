@@ -95,6 +95,12 @@ public enum RecruitPlanner {
                     action: action, title: action.title { context.definitions[$0]?.name ?? $0 }))
             }
         }
+        if let discovery = context.darkDiscovery, discovery.ready, discovery.remainingUses > 0,
+           discovery.cost <= state.gold, state.hand.count < AdvisorRequest.handLimit {
+            let action = AdvisorAction.darkDiscovery(cost: discovery.cost, minTier: discovery.minTier, maxTier: discovery.maxTier)
+            actions.append(RecruitStep(kind: .darkDiscovery, entityID: discovery.entityID,
+                action: action, title: action.title()))
+        }
         if let cost = state.levelCost, cost <= state.gold, state.tier < 6 {
             actions.append(RecruitStep(kind: .level, action: .level(cost: cost, toTier: state.tier + 1), title: "Level to tier \(state.tier + 1)"))
         }
@@ -203,6 +209,16 @@ public enum RecruitPlanner {
             guard !p.used, p.locked == 0, let cost = context.powerCosts[p.cardId], cost <= s.gold else { return nil }
             guard RecruitEffects.apply(RecruitEffects.effect(context.text(p.cardId)), target: step.targetID, state: &s, context: context) else { return nil }
             s.gold -= cost; s.input.playerBoard.player.heroPowers[i].used = true
+        case .darkDiscovery:
+            guard let discovery = context.darkDiscovery, discovery.entityID == step.entityID,
+                  discovery.ready, discovery.remainingUses > 0, discovery.cost <= s.gold,
+                  s.hand.count < AdvisorRequest.handLimit else { return nil }
+            // A discover goes to hand: never pre-sell just to make board room for an unknown card.
+            if s.steps.contains(where: { $0.kind == .sell }), s.gold - 1 >= discovery.cost { return nil }
+            s.gold -= discovery.cost
+            s.input.playerBoard.player.globalInfo["GoldSpentThisGame", default: 0] += discovery.cost
+            s.terminal = true
+            s.limitations.append("Dark Discovery minion and Dark Gift unknown; choose, then reassess")
         case .level:
             guard let cost = s.levelCost, cost <= s.gold, s.tier < 6 else { return nil }
             s.gold -= cost; s.tier += 1; s.levelCost = nil
@@ -272,6 +288,14 @@ public enum RecruitPlanner {
         if s.steps.last?.kind == .roll {
             // Small option value, never a fabricated new board or guaranteed desired card.
             v.economy += s.gold >= 3 ? 1.5 : 0
+        }
+        if s.steps.last?.kind == .darkDiscovery, let discovery = context.darkDiscovery {
+            // A bounded option value, not a fictional minion or promised combat improvement.
+            // Empty board slots increase usefulness; early limited charges retain future value.
+            let room = s.board.count < AdvisorRequest.boardLimit ? 1.0 : 0.35
+            let option = (Double(discovery.minTier) * 1.5 + 2) * room * min(1, horizon)
+            let savedCharge = Double(6 - discovery.maxTier) * (discovery.remainingUses == 1 ? 0.5 : 0.25)
+            v.economy += max(0, option - savedCharge)
         }
         v.economy += Double(s.unknownRewards) * 0.8
         return v

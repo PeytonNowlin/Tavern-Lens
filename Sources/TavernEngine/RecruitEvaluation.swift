@@ -148,6 +148,11 @@ public enum RecruitEvaluation {
             let delta = item.plan.value.scaling - baseline.value.scaling
             var reason: String
             if item.riskReduction >= 5 { reason = "Safer across the tested combat scenarios" }
+            else if first.kind == .darkDiscovery {
+                let d = request.recruit?.darkDiscovery
+                let tiers = d.map { $0.minTier == $0.maxTier ? "Tier \($0.minTier)" : "Tier \($0.minTier)–\($0.maxTier)" } ?? "a"
+                reason = "Discover a \(tiers) minion with a Dark Gift; \(d?.remainingUses ?? 0) uses left. Reassess after choosing"
+            }
             else if first.kind == .activate { reason = "Uses your discard engine and its attached rewards" }
             else if first.kind == .roll { reason = "Keep enough gold to buy; reassess after the refresh" }
             else if first.kind == .freeze { reason = "Preserves an unaffordable engine card for next turn" }

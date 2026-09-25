@@ -6,6 +6,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// The board as it is: the baseline every other action is compared with. Never suggested.
     case activate(board: Int, cardID: String, cost: Int, discard: Int?, discardedCardID: String?)
     case keep
+    case darkDiscovery(cost: Int, minTier: Int, maxTier: Int)
     case heroPower(cardID: String, cost: Int, target: Int?, targetCardID: String?)
     /// Buy a shop minion and play it at `place`.
     case buy(shop: Int, cardID: String, place: Int)
@@ -32,6 +33,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     public var group: String {
         switch self {
         case .activate(let board, _, _, _, _): "activate:b\(board)"
+        case .darkDiscovery: "darkDiscovery"
         case .heroPower: "heroPower"
         case .keep: "keep"
         case .buy(let shop, _, _): "buy:s\(shop)"
@@ -51,7 +53,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
         switch self {
         case .activate(_, _, _, let hand, _): "\(group)-h\(hand ?? -1)"
         case .heroPower(_, _, let target, _): "heroPower-b\(target ?? -1)"
-        case .keep, .level, .roll, .freeze, .sell: group
+        case .keep, .level, .roll, .freeze, .sell, .darkDiscovery: group
         case .buy(_, _, let place), .play(_, _, let place): "\(group)@\(place)"
         case .swap(_, _, let sell, _): "\(group)-b\(sell)"
         case .cast(_, _, _, let option, let target, _): "\(group)o\(option)" + (target.map { "-b\($0)" } ?? "")
@@ -62,7 +64,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// Whether it changes the board the next combat is fought with (level, roll and freeze don't).
     public var changesBoard: Bool {
         switch self {
-        case .keep, .level, .roll, .freeze: false
+        case .keep, .level, .roll, .freeze, .darkDiscovery: false
         default: true
         }
     }
@@ -73,6 +75,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
         switch self {
         case .activate(let board, _, _, let hand, _): [.init(.board, board)] + (hand.map { [.init(.hand, $0)] } ?? [])
         case .heroPower(_, _, let target, _): target.map { [.init(.board, $0)] } ?? []
+        case .darkDiscovery: [] // No calibrated screen target for this button yet.
         case .keep: []
         case .buy(let shop, _, _): [.init(.shop, shop)]
         case .play(let hand, _, _): [.init(.hand, hand)]
@@ -92,6 +95,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
         switch self {
         case .activate(_, let card, _, _, let discarded): discarded.map { "Activate \(name(card)): discard \(name($0))" } ?? "Activate \(name(card))"
         case .heroPower(let card, _, _, let target): target.map { "\(name(card)) on \(name($0))" } ?? "Use \(name(card))"
+        case .darkDiscovery(let cost, _, _): "Use Dark Discovery (\(cost) Gold)"
         case .keep: "Keep your board"
         case .buy(_, let card, _): "Buy \(name(card))"
         case .play(_, let card, _): "Play \(name(card))"

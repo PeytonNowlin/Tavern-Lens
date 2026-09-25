@@ -252,3 +252,16 @@ require a checked survival benefit; equivalent resulting plans occupy only one s
 Trinket choices have a separate panel with ranks, cost, fit reasons and fresh Firestone aggregate
 placement/sample counts. See [sources and limits](../research/trinket-rating-sources.md). These are
 low-confidence estimates, not population-adjusted predictions for the specific board.
+
+Dark Discovery is a separate recruit action, not a hero power or shop minion. Its context comes
+from the local PLAY `BG36_Button_DarkGift` entity: COST, script-data 2 (remaining uses), 3/4
+(offered tier range), LOCK_VISUAL, EXHAUSTED and CANT_READY. It requires turn 3+, an unlocked
+button, a remaining use, enough gold and hand space. An open GENERAL choice suppresses another
+press. PRESSABLE_VFX is not used as readiness because affordability is checked in each search
+state (selling can fund the action).
+
+The action pays the observed cost and stops before the unknown discover, without fabricating a
+minion, Dark Gift or combat improvement. Its bounded option value accounts for offered tier,
+board space, health horizon and saving a limited charge for a later tier. It competes with known
+shop purchases and always discloses the unknown outcome. The suggestion names Dark Discovery
+and its cost; no screen highlight is drawn until the button has a calibrated layout target.

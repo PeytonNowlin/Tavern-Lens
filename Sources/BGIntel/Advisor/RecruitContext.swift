@@ -10,6 +10,15 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     public var definitions: [String: Card]
     public var powerCosts: [String: Int]
     public var build: Int?
+    public var darkDiscovery: DarkDiscovery?
+    public struct DarkDiscovery: Codable, Hashable, Sendable {
+        public var entityID: Int
+        public var cost: Int
+        public var remainingUses: Int
+        public var minTier: Int
+        public var maxTier: Int
+        public var ready: Bool
+    }
     /// Observed interaction state. Absent in older archives: never assume an activation is ready.
     public var activations: [Int: Activation]?
     public struct Activation: Codable, Hashable, Sendable {
@@ -86,13 +95,27 @@ extension BattleInputBuilder {
                 ready: entity.int(GameTag.id(4089)) == 1,
                 cost: entity.int(GameTag.id(4090)) ?? parsed.flatMap { Int($0[0]) } ?? 0)
         }
+        if let player = store.localPlayer,
+           let button = store.entities(controller: player.playerID, zone: "PLAY")
+            .filter({ $0.cardID == "BG36_Button_DarkGift" && $0.name(.cardType) == "GAME_MODE_BUTTON" })
+            .max(by: { $0.id < $1.id }),
+           let cost = button.int(GameTag.id(48)), cost >= 0,
+           let uses = button.int(GameTag.id(3)),
+           let low = button.int(GameTag.id(2889)), let high = button.int(GameTag.id(2919)),
+           (1...6).contains(low), (low...6).contains(high) {
+            context.darkDiscovery = .init(entityID: button.id, cost: cost, remainingUses: max(0, uses),
+                minTier: low, maxTier: high, ready: snapshot.bgTurn >= 3 && uses > 0
+                    && button.int(GameTag.id(4414)) == 0
+                    && button.int(GameTag.id(43)) != 1 && button.int(GameTag.id(225)) != 1)
+            if let definition = cards[button.cardID] { context.definitions[button.cardID] = definition }
+        }
         return context
     }
 }
 
 /// Stable entity identities are used inside a plan; UI indices are resolved at each step.
 public struct RecruitStep: Codable, Hashable, Sendable {
-    public enum Kind: String, Codable, Sendable { case buy, play, sell, spell, power, activate, level, roll, freeze, move }
+    public enum Kind: String, Codable, Sendable { case buy, play, sell, spell, power, activate, darkDiscovery, level, roll, freeze, move }
     public var kind: Kind
     public var entityID: Int
     public var targetID: Int?
