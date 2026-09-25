@@ -279,6 +279,9 @@ public struct AdvisorSuggestion: Codable, Hashable, Sendable {
     /// The value gained over keeping the board: the sum of `terms`.
     public var gain: Double
     public var terms: AdvisorTerms
+    /// Ordered continuation; only the first action is highlighted in the current state.
+    public var continuation: [String]?
+    public var limitations: [String]?
 
     public init(
         rank: Int, action: AdvisorAction, targets: [AdvisorTarget], reason: String, confidence: AdvisorConfidence,

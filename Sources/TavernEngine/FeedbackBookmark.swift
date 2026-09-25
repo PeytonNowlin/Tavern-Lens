@@ -214,7 +214,7 @@ extension TavernEngine {
         let engine = try replay(
             cut, powerLog: url, resuming: record, screenTribes: screenTribes, setup: setup, timeZone: .gmt
         )
-        guard let request = engine.advisorRequest, AdviceView.fingerprint(of: request) == advice.fingerprint else {
+        guard let request = engine.advisorRequest, AdviceView.fingerprint(of: request, version: advice.plan.version) == advice.fingerprint else {
             throw BookmarkReplayError.adviceForAnotherState
         }
         return try await advice.replaying(request, simulate: simulate)

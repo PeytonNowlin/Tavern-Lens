@@ -17,6 +17,8 @@ import SimulatorRuntime
 /// its input, the pass and the seed. So the advice after the first N evaluations is the same on
 /// any machine, however fast: a bookmark records N and replays to the same advice.
 public struct AdvisorPlan: Codable, Hashable, Sendable {
+    /// Version 1 is retained only to reproduce archived bookmarks. Live uses the recruit planner.
+    public var version: Int = 1
     public var seed: UInt32
     /// Per candidate, in stages 0 and 1.
     public var simulations: Int
@@ -35,13 +37,14 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3, lobbySweepSimulations: 30
+        lobbyGroups: 3, lobbySweepSimulations: 30, version: 2
     )
 
     public init(
         seed: UInt32, simulations: Int, refineSimulations: Int, refinedGroups: Int, lobbySimulations: Int = 0,
-        lobbyGroups: Int = 3, lobbySweepSimulations: Int = 0, weights: AdvisorWeights = .standard
+        lobbyGroups: Int = 3, lobbySweepSimulations: Int = 0, weights: AdvisorWeights = .standard, version: Int = 1
     ) {
+        self.version = version
         self.seed = seed
         self.simulations = simulations
         self.refineSimulations = refineSimulations
@@ -54,12 +57,13 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case seed, simulations, refineSimulations, refinedGroups, lobbySimulations, lobbyGroups, lobbySweepSimulations
-        case weights
+        case weights, version
     }
 
     /// A plan saved before the lobby pass (or its sweep) existed had none.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 1
         seed = try c.decode(UInt32.self, forKey: .seed)
         simulations = try c.decode(Int.self, forKey: .simulations)
         refineSimulations = try c.decode(Int.self, forKey: .refineSimulations)
@@ -68,6 +72,19 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
         lobbyGroups = try c.decodeIfPresent(Int.self, forKey: .lobbyGroups) ?? 3
         lobbySweepSimulations = try c.decodeIfPresent(Int.self, forKey: .lobbySweepSimulations) ?? 0
         weights = try c.decodeIfPresent(AdvisorWeights.self, forKey: .weights) ?? .standard
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        if version != 1 { try c.encode(version, forKey: .version) }
+        try c.encode(seed, forKey: .seed)
+        try c.encode(simulations, forKey: .simulations)
+        try c.encode(refineSimulations, forKey: .refineSimulations)
+        try c.encode(refinedGroups, forKey: .refinedGroups)
+        try c.encode(lobbySimulations, forKey: .lobbySimulations)
+        try c.encode(lobbyGroups, forKey: .lobbyGroups)
+        try c.encode(lobbySweepSimulations, forKey: .lobbySweepSimulations)
+        try c.encode(weights, forKey: .weights)
     }
 
     /// The same plan scored with other weights.
@@ -111,6 +128,10 @@ public enum AdvisorEvaluation {
         shouldContinue: @Sendable () -> Bool = { true }, simulate: Simulate,
         isolation: isolated (any Actor)? = #isolation, report: (Progress) -> Void = { _ in }
     ) async throws -> Progress {
+        if plan.version >= 2 {
+            return try await RecruitEvaluation.run(request, plan: plan, limit: limit, shouldContinue: shouldContinue,
+                                                   simulate: simulate, report: report)
+        }
         guard let base = request.preview.input else {
             let done = Progress(advice: .noData, evaluations: 0, isComplete: true)
             report(done)
@@ -229,7 +250,7 @@ public struct AdviceView: Codable, Hashable, Sendable {
         requestID = request.id
         bgTurn = request.preview.bgTurn
         opponentPlayerID = request.preview.opponentPlayerID
-        fingerprint = Self.fingerprint(of: request)
+        fingerprint = Self.fingerprint(of: request, version: plan.version)
         self.advice = advice
         self.plan = plan
         self.evaluations = evaluations
@@ -242,7 +263,9 @@ public struct AdviceView: Codable, Hashable, Sendable {
     }
 
     /// FNV-1a (64-bit) of the request's sorted-keys JSON: stable across processes and runs.
-    public static func fingerprint(of request: AdvisorRequest) -> String {
+    public static func fingerprint(of request: AdvisorRequest, version: Int = 2) -> String {
+        var request = request
+        if version == 1 { request.recruit = nil }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let data = (try? encoder.encode(request)) ?? Data()

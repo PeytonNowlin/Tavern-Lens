@@ -13,6 +13,8 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     /// The combat the advisor scores against: nil input means there's nothing to score against
     /// (no opponent seen yet). Against `standIn`'s side when there is one.
     public var preview: OddsPreviewRequest
+    /// Recruit data and effect definitions captured with the request for deterministic planning.
+    public var recruit: RecruitContext?
     /// Gold left to spend now.
     public var gold: Int
     public var tier: Int
@@ -84,7 +86,7 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
 
     /// One per game, BG turn and next opponent (the preview's); the state within it changes.
     public var id: String { preview.id }
-    public var hasData: Bool { preview.hasData }
+    public var hasData: Bool { preview.hasData || recruit != nil }
 
     /// A card's base card (a golden's normal card), for build cards and pairs.
     public func baseCardID(_ cardID: String) -> String {

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 import TavernEngine
 
 /// Runs the engine's combat requests through the simulator and holds the odds of the latest one.
@@ -15,6 +16,13 @@ final class CombatOddsModel {
     private(set) var current: CombatOddsView?
     /// Why the simulator couldn't start, if it couldn't.
     private(set) var unavailableReason: String?
+    private(set) var diagnosticFailure: String?
+    @ObservationIgnored private var lastPreview: OddsPreviewView?
+    @ObservationIgnored private var lastAdvice: AdviceView?
+    @ObservationIgnored private var lastRequest: AdvisorRequest?
+    @ObservationIgnored private var diagnostic: AdvisorTurnDiagnostic?
+    @ObservationIgnored private var diagnosticWrite: Task<Void, Never>?
+    private static let log = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "advisor-diagnostics")
     /// The recruit-phase preview: the board now against the next opponent's last-seen board.
     private(set) var preview: OddsPreviewView?
     /// Runs the preview on the same simulator (debounced, latest board only). The advisor can
@@ -24,7 +32,10 @@ final class CombatOddsModel {
             guard let task = await self?.simulator else { throw CancellationError() }
             return try await task.value
         })
-        runner.onChange = { [weak self] view in self?.preview = view }
+        runner.onChange = { [weak self] view in
+            self?.preview = view
+            if let view { self?.lastPreview = view }
+        }
         return runner
     }()
 
@@ -37,7 +48,15 @@ final class CombatOddsModel {
             guard let task = await self?.simulator else { throw CancellationError() }
             return try await task.value
         })
-        runner.onChange = { [weak self] view in self?.advice = view }
+        runner.onChange = { [weak self] view in
+            guard let self else { return }
+            self.advice = view
+            if let view, let request = self.advisorRunner.currentRequest,
+               AdviceView.fingerprint(of: request) == view.fingerprint {
+                self.lastAdvice = view
+                self.lastRequest = request
+            }
+        }
         return runner
     }()
 
@@ -66,6 +85,12 @@ final class CombatOddsModel {
     func start(_ request: CombatSimulationRequest) {
         guard current?.requestID != request.id else { return }
         warmUp()
+        diagnostic = AdvisorTurnDiagnostic(combat: request, request: lastRequest, displayed: lastAdvice)
+        if let lastPreview, lastPreview.requestID == "\(request.gameSeed.map(String.init) ?? "-")/\(request.bgTurn)/P\(request.opponentPlayerID)" {
+            diagnostic?.preview = lastPreview
+        }
+        persistDiagnostic()
+        lastPreview = nil; lastAdvice = nil; lastRequest = nil
         // The combat's odds come first: the preview and the advisor share the simulator's one thread.
         previewRunner.cancel()
         advisorRunner.cancel()
@@ -105,14 +130,36 @@ final class CombatOddsModel {
         advisorRunner.update(request)
     }
 
+    private func persistDiagnostic() {
+        guard let record = diagnostic else { return }
+        let previous = diagnosticWrite
+        diagnosticWrite = Task { [weak self] in
+            await previous?.value
+            do {
+                try await AdvisorDiagnosticStore.standard.save(record)
+                self?.diagnosticFailure = nil
+            } catch {
+                let message = error.localizedDescription
+                self?.diagnosticFailure = message
+                Self.log.error("Could not save advisor evidence: \(message, privacy: .public)")
+            }
+        }
+    }
+
     private func update(_ id: String, odds: CombatOdds) {
         guard current?.requestID == id, current?.isFinal == false else { return }
         current?.odds = odds
+        if odds.isFinal {
+            diagnostic?.odds = current
+            persistDiagnostic()
+        }
     }
 
     private func fail(_ id: String, _ error: any Error) {
         guard current?.requestID == id else { return }
         current?.failure = "\(error)"
+        diagnostic?.failure = "\(error)"
+        persistDiagnostic()
     }
 }
 

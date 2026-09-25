@@ -5,6 +5,7 @@
 public enum AdvisorAction: Codable, Hashable, Sendable {
     /// The board as it is: the baseline every other action is compared with. Never suggested.
     case keep
+    case heroPower(cardID: String, cost: Int, target: Int?, targetCardID: String?)
     /// Buy a shop minion and play it at `place`.
     case buy(shop: Int, cardID: String, place: Int)
     /// Play a minion from hand at `place`.
@@ -29,6 +30,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// minion goes, which minion a spell targets); only a group's best one is ever suggested.
     public var group: String {
         switch self {
+        case .heroPower: "heroPower"
         case .keep: "keep"
         case .buy(let shop, _, _): "buy:s\(shop)"
         case .play(let hand, _, _): "play:h\(hand)"
@@ -45,6 +47,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// Unique among one request's candidates, and stable across runs.
     public var id: String {
         switch self {
+        case .heroPower(_, _, let target, _): "heroPower-b\(target ?? -1)"
         case .keep, .level, .roll, .freeze, .sell: group
         case .buy(_, _, let place), .play(_, _, let place): "\(group)@\(place)"
         case .swap(_, _, let sell, _): "\(group)-b\(sell)"
@@ -65,6 +68,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// with the suggestion's rank.
     public var targets: [AdvisorTarget] {
         switch self {
+        case .heroPower(_, _, let target, _): target.map { [.init(.board, $0)] } ?? []
         case .keep: []
         case .buy(let shop, _, _): [.init(.shop, shop)]
         case .play(let hand, _, _): [.init(.hand, hand)]
@@ -82,6 +86,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// A short imperative title, with card names from `name` (card ID → name; the ID when unknown).
     public func title(name: (String) -> String = { $0 }) -> String {
         switch self {
+        case .heroPower(let card, _, _, let target): target.map { "\(name(card)) on \(name($0))" } ?? "Use \(name(card))"
         case .keep: "Keep your board"
         case .buy(_, let card, _): "Buy \(name(card))"
         case .play(_, let card, _): "Play \(name(card))"

@@ -24,6 +24,14 @@ struct PreviewOdds: View {
                 Text("No data: not fought yet")
                     .font(.system(size: m.percentFontSize * s, weight: .medium))
                     .foregroundStyle(.secondary)
+            } else if let odds, let seenTurn = odds.opponentSeenTurn,
+                      odds.bgTurn - seenTurn >= AdvisorRequest.staleBoardTurns {
+                Text("Opponent board is \(odds.bgTurn - seenTurn) turns old")
+                    .font(.system(size: m.footnoteFontSize * s, weight: .medium))
+                    .foregroundStyle(.orange)
+                Text("Too stale for useful odds")
+                    .font(.system(size: m.percentFontSize * s, weight: .medium))
+                    .foregroundStyle(.secondary)
             } else if let failure = odds?.failure {
                 Text("Odds unavailable")
                     .font(.system(size: m.percentFontSize * s, weight: .medium))

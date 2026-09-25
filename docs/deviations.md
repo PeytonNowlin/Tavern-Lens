@@ -3,7 +3,10 @@
 Where Tavern Lens v1 does something narrower or different from what `docs/spec/tavern-lens-v1.md`
 asks for, and why. Each entry names the story or section it's about.
 
-## Against an unseen next opponent or an old board, the advisor scores against a stand-in (stories 48–52)
+## Archived advisor version 1: against an unseen next opponent or an old board, the advisor scores against a stand-in (stories 48–52)
+
+The live version-2 planner replaces this policy with strategic plans and multiple combat scenarios;
+see [scoring](advisor/scoring.md). This entry describes archived version-1 bookmark replay.
 
 The spec's advice is about the next combat against the next opponent's last-seen board. When the
 next opponent hasn't been fought yet, or their board is 3 or more turns old, the advisor scores the

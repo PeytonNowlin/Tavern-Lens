@@ -3,7 +3,7 @@ import SimulatorRuntime
 
 /// What the combat odds panel shows for one combat: the request, and the simulator's
 /// result so far. It starts without odds (simulating) and refines in place.
-public struct CombatOddsView: Hashable, Sendable {
+public struct CombatOddsView: Codable, Hashable, Sendable {
     /// `CombatSimulationRequest.id`: one per game and BG turn.
     public var requestID: String
     public var bgTurn: Int

@@ -69,13 +69,18 @@ JavaScript work runs on a serial background queue with bounded simulation batche
 
 ### Advice with inspectable tradeoffs
 
-The advisor combines simulated combat gains with lobby strength, build progress, and economy heuristics. A separate sanity layer can reject unaffordable actions, protect pairs and build cores, or deprioritize risky levelling. Confidence accounts for simulation noise and the age of an opponent's board.
+The advisor searches short legal recruit plans using your board, hand, shop, gold, scaling engine,
+and supported card effects. It compares the resulting positions and uses several recent opponent
+boards plus stronger stress scenarios as survival checks. It does not optimize purchases against
+only the last opponent. Unsupported effects and incomplete evaluations reduce confidence.
 
-This is a bounded candidate evaluator: economy looks one or two turns ahead through heuristics, and only the strongest few board changes receive the more expensive lobby simulations. The [scoring guide](docs/advisor/scoring.md) documents the weights, confidence rules, tradeoffs, and bookmark-based tuning workflow.
+The overlay shows the next action and its continuation. Search depth, effect coverage and future
+value estimates are bounded; the [scoring guide](docs/advisor/scoring.md) describes these limits,
+confidence rules and how saved decisions can be replayed.
 
 ### Playtesting feeds the test suite
 
-A feedback bookmark stores the game state, engine inputs, and the advisor request, plan, and evaluation progress. The debug window can replay bookmarks and export golden cases. That connects a problem seen during a real match to a reproducible input and an expected result.
+Automatic turn diagnostics retain displayed advice, its exact inputs, and combat odds without a hotkey. A feedback bookmark stores the game state, engine inputs, and the advisor request, plan, and evaluation progress. The debug window can replay bookmarks and export golden cases. That connects a problem seen during a real match to a reproducible input and an expected result.
 
 Layout is independently testable: window bounds map to overlay rectangles through pure geometry, including windowed, notched fullscreen, and ultrawide reference frames. Screen recognition is tested against an image fixture without requiring screen-capture permission.
 

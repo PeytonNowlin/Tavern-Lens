@@ -5,7 +5,7 @@ import SimulatorRuntime
 /// What the next-opponent preview shows about the coming combat during recruit: the odds of the
 /// local board as it is now against the next opponent's last-seen board, refined in place, or
 /// "no data" when that opponent hasn't been seen.
-public struct OddsPreviewView: Hashable, Sendable {
+public struct OddsPreviewView: Codable, Hashable, Sendable {
     /// `OddsPreviewRequest.id`: one per game, BG turn and opponent.
     public var requestID: String
     public var bgTurn: Int

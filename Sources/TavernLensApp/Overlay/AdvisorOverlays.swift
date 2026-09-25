@@ -160,6 +160,7 @@ struct AdvisorPanel: View {
                 }
                 if let note = advice.advice.note, advice.advice.status != .noData {
                     Text(note)
+                        .help(note)
                         .font(.system(size: m.reasonFontSize * s))
                         .foregroundStyle(.tertiary)
                         .lineLimit(m.noteLines)
@@ -225,7 +226,7 @@ struct AdvisorPanel: View {
                 .background(AdvisorStyle.color(rank: suggestion.rank), in: Circle())
             VStack(alignment: .leading, spacing: m.lineSpacing * s) {
                 HStack(spacing: 3 * s) {
-                    Text(suggestion.action.title(name: name))
+                    Text(suggestion.continuation?.first ?? suggestion.action.title(name: name))
                         .font(.system(size: m.titleFontSize * s, weight: .semibold))
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -237,7 +238,7 @@ struct AdvisorPanel: View {
                         .foregroundStyle(AdvisorStyle.color(suggestion.confidence))
                         .help("Confidence: \(suggestion.confidence.rawValue)")
                 }
-                Text(suggestion.reason)
+                Text(suggestion.continuation.map { $0.dropFirst().prefix(2).joined(separator: " → ") }.flatMap { $0.isEmpty ? nil : $0 } ?? suggestion.reason)
                     .font(.system(size: m.reasonFontSize * s))
                     .foregroundStyle(.secondary)
                     .lineLimit(m.reasonLines)
@@ -247,6 +248,6 @@ struct AdvisorPanel: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .monospacedDigit()
-        .help(suggestion.reason)
+        .help(([suggestion.reason] + (suggestion.continuation ?? []) + (suggestion.limitations ?? [])).joined(separator: "\n"))
     }
 }

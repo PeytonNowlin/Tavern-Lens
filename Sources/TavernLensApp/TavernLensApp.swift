@@ -171,6 +171,10 @@ struct MenuBarContent: View {
         OverlayMenuSection(overlay: overlay)
         ScreenReadingMenuSection(reader: screenReader)
         FeedbackMenuSection(feedback: feedback)
+        if let failure = live.combatOdds.diagnosticFailure {
+            Text("Advisor evidence could not be saved")
+                .help(failure)
+        }
         Divider()
         if debugReplay.isReplaying || debugReplay.result != nil {
             Text(debugReplay.menuStatus)

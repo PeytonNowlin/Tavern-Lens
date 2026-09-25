@@ -136,6 +136,7 @@ public struct TavernEngine: Sendable {
     /// The local player's hero-pick offer, and the stats it's joined with (none without stats).
     private var heroPick = BGHeroPickTracker()
     private var heroPickData: HeroPickData?
+    private var recruitCards: CardDB?
     /// Build detection, shop highlights and opponents' likely builds (nothing without a catalog).
     private var builds: BuildTracker
 
@@ -228,6 +229,7 @@ public struct TavernEngine: Sendable {
     /// of the view. `cards` maps skins to their base hero and names the heroes when the
     /// engine has no card data of its own.
     public mutating func useHeroStats(_ stats: HeroStatsSet?, cards: CardDB? = nil) {
+        recruitCards = cards
         heroPickData = stats.map { HeroPickData(stats: $0, cards: cards) }
         if !isCatchingUp, timeline.last != nil { publish() }
     }
@@ -516,6 +518,9 @@ public struct TavernEngine: Sendable {
             request.standIn = standIn
             lobby.removeAll { $0.playerID == standIn.playerID }
         }
+        request.recruit = BattleInputBuilder.recruitContext(
+            store: store, snapshot: snapshot, cards: recruitCards ?? cards, request: request
+        )
         guard request.hasData else { return request }
         request.lobby = lobby.sorted { $0.playerID < $1.playerID }
         if let catalog = builds.catalog, let detected = state.game?.builds?.detected, !detected.isEmpty {

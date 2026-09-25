@@ -24,7 +24,7 @@ public struct AdvisorCase: Codable, Hashable, Sendable {
     /// A bookmark's case, when it kept the advice and the state it was for.
     public init?(bookmark: FeedbackBookmark, name: String? = nil) {
         guard let request = bookmark.adviceRequest, let advice = bookmark.advice,
-              AdviceView.fingerprint(of: request) == advice.fingerprint
+              AdviceView.fingerprint(of: request, version: advice.plan.version) == advice.fingerprint
         else { return nil }
         self.init(name: name ?? BookmarkExport.defaultName(for: bookmark), note: bookmark.note, request: request, recorded: advice)
     }
@@ -32,7 +32,7 @@ public struct AdvisorCase: Codable, Hashable, Sendable {
     /// A committed golden bookmark case's, when it has advice and the state it was for.
     public init?(goldenCase: BookmarkGoldenCase) {
         guard let request = goldenCase.adviceRequest, let advice = goldenCase.expectedAdvice,
-              AdviceView.fingerprint(of: request) == advice.fingerprint
+              AdviceView.fingerprint(of: request, version: advice.plan.version) == advice.fingerprint
         else { return nil }
         self.init(name: goldenCase.name, note: goldenCase.note, request: request, recorded: advice)
     }
@@ -48,6 +48,18 @@ public struct AdvisorCase: Codable, Hashable, Sendable {
     /// `Application Support/TavernLens/Games`).
     public static func savedBookmarks(in directory: URL) -> [AdvisorCase] {
         GameRecordStore(directory: directory).allBookmarks().compactMap { AdvisorCase(bookmark: $0.bookmark) }
+    }
+
+    /// Automatic turn evidence can be replayed through the same interface as manual bookmarks.
+    public static func savedDiagnostics(in directory: URL) -> [AdvisorCase] {
+        jsonFiles(in: directory).compactMap { url in
+            guard let data = try? Data(contentsOf: url),
+                  let record = try? JSONDecoder().decode(AdvisorTurnDiagnostic.self, from: data),
+                  let request = record.request, let displayed = record.displayed,
+                  AdviceView.fingerprint(of: request, version: displayed.plan.version) == displayed.fingerprint else { return nil }
+            return AdvisorCase(name: "game-\(record.gameSeed)-turn-\(record.bgTurn)",
+                               note: "Automatically captured displayed advice", request: request, recorded: displayed)
+        }
     }
 
     /// The case files (`AdvisorCase` JSON) in `directory`.

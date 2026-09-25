@@ -1,4 +1,77 @@
-# Advisor scoring, sanity layer and weight tuning
+# Recruit planner and archived advisor scoring
+
+## Live planner (evaluation version 2)
+
+The live advisor plans recruit actions from the local board, hand, shop, gold, and the current
+patch's card definitions. It does not maximize wins against the last opponent. Old bookmarks
+without a version keep using version 1 below; this is a replay compatibility path, not live logic.
+
+`RecruitContext` captures definitions (including normal/golden mappings, token definitions and
+hero-power costs). `RecruitPlanner.applying` is the pure transition interface. It checks legal
+spaces and costs, moves cards between zones, resolves supported effects, combines triples, and
+preserves resources and stable entity identities. A held tavern spell does not pay its purchase
+price again. Generated cards respect the hand limit. Hero powers respect used/locked state.
+
+Supported effects use exact normalized current card text, not historical card-ID assumptions:
+plain stat buffs, stat setting, Taunt buffs, gold/coins, gems and gem improvements, Deity buffs,
+free refreshes, supported token battlecries/sales, simple buy/play/sell/spell triggers, and
+battlecry multipliers. Supported end-of-turn buffs resolve before a combat check. Random
+battlecries, complex tribal triggers, activation/discard choices, magnetic combinations, and
+unrecognised spells are not fully modelled. The affected actions are withheld and coverage gaps
+are reported. This is deliberately bounded effect coverage, not a general Hearthstone rules engine.
+
+Search is deterministic: at most five actions, 18 beam states and 1,800 expansions. It preserves
+first-action diversity and considers every sell rather than selecting the smallest body. Scores
+combine board strength, discounted future production, build coherence and resource options.
+Production estimates distinguish gem sources and multipliers, scaling, and economy; health
+shortens the future horizon. These are strategic heuristic units, **not win percentages** or
+calibrated placement predictions. Unknown refreshes and triple rewards end a branch; their option
+value never fabricates a particular shop or reward. The overlay shows the next action and its
+continuation; hover shows the full sequence, reason and limitations. Replan after each real action.
+
+Combat is a survival check for the baseline and up to eight shortlisted plans. It uses up to three
+recent living opponents (less than three turns old), plus explicitly hypothetical versions with
+25% larger stats. Those stronger boards are sensitivity tests, not a learned model of opponent
+growth. No next-opponent win percentages are attached to a purchase. Comparisons require matched
+baseline/candidate scenarios; increased lethal risk can reject a plan. Low health increases the
+cost of damage and lethal risk, and unchecked levelling at <=5 health is withheld. No fresh enemy
+evidence still permits strategic advice, with the missing combat evidence stated.
+
+Confidence is at most medium. Missing effect coverage, incomplete evaluation and unverified
+survival at low health make it low and prevent confident overlay highlights. The separate
+next-opponent odds panel suppresses percentages when its observed board is at least three turns old.
+
+Search runs off the main actor, observes cancellation, and has a fixed node budget. Simulation
+limits, seeds and evaluation counts are captured, so replaying an interrupted evaluation is
+repeatable. Exact search depth and effect coverage are practical limits; passing regression tests
+is not evidence that the advisor plays optimally.
+
+## Automatic match evidence
+
+At each live combat start, `AdvisorDiagnostics/game-<seed>-turn-<turn>.json` under
+`~/Library/Application Support/TavernLens/` receives the last displayed advice, its matching
+request, preview odds, and the actual combat input. Final combat odds or simulation failures update
+the same file. Incomplete/stale advice stays labelled; another turn/game's advice is never attached.
+Writes are atomic and serialized separately from game records; retention is capped at 300 turns
+and 64 MiB. A menu warning and system log entry report write failures.
+
+`AdvisorCase.savedDiagnostics(in:)` loads these cases for replay through the existing evaluation
+interface. Manual feedback bookmarks remain available for player judgement. The version-1 weight
+tuning script below does not tune the version-2 production heuristics.
+
+`RecruitPlannerTests` asserts acceptable/unacceptable decisions and resource transitions, rather
+than blessing whatever ranking happens to be produced. `AdvisorDiagnosticTests` checks persisted
+evidence and retention. An optional local match audit exercises production requests with exact
+patch data without committing private logs:
+
+```sh
+TAVERN_ADVISOR_AUDIT_LOG=/path/to/Power.log \
+TAVERN_ADVISOR_AUDIT_CARDS=/path/to/cards.json \
+  scripts/test.sh --filter RecruitMatchAuditTests
+```
+
+## Archived version 1
+
 
 The advisor (spec #1, tickets #19 and #20) ranks what the player could do this recruit phase. This
 note describes how a suggestion is scored, the hand-written rules that veto or move down clearly
