@@ -230,3 +230,25 @@ When a playtest bookmark shows bad advice: export it as a golden case (debug win
 Export Golden Case…), change the weights or add a sanity rule until the report shows the advice you
 wanted without breaking the other cases, then re-record the goldens
 (`TAVERN_RECORD_GOLDENS=1 scripts/test.sh`) and commit the new defaults with the case.
+
+### Seasonal mechanics and trinket choice coverage
+
+Recruit contexts include equipped trinkets and attached enchantment definitions. Supported Activate
+transitions use the observed `INTERACTABLE_OBJECT` (4089), `INTERACTABLE_OBJECT_COST` (4090), and a
+per-plan used set. Missing availability in older archives does not imply ready. Brain Rotter and
+Abyssal Envoy can discard a chosen card; Sludge casts twice, each Sludge Portrait adds one copy, and
+an Envoy random reward stops search. Portrait triggers precede the activator reward, including hand
+capacity. Efficiency-modified activations and other Activate effects remain explicit coverage gaps.
+
+Dark Gift play-card buffs, discard counters, Tavern-spell counters and battlecry counters update the
+candidate state and combat global counters; observed historical bonuses are not reapplied. Attached combat gifts contribute
+heuristic tempo and remain in simulator input. Aberration deaths toward the Deity, Deity deathrattle
+buffs and discard supply contribute production. Complex or timed recruit gifts remain limitations.
+Supported passive trinkets no longer disable combat checks. Gold Mallet and Ghastly Sticker have
+end-of-turn projection support. One unambiguous highest-health Tavern consume is projected; ties and
+further consumes needing unknown replacements are withheld. Multiple sales that shrink the board
+require a checked survival benefit; equivalent resulting plans occupy only one suggestion slot.
+
+Trinket choices have a separate panel with ranks, cost, fit reasons and fresh Firestone aggregate
+placement/sample counts. See [sources and limits](../research/trinket-rating-sources.md). These are
+low-confidence estimates, not population-adjusted predictions for the specific board.

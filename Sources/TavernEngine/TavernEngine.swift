@@ -51,6 +51,7 @@ public struct EngineSetup: Sendable {
     /// Firestone's hero stats, and the card data the hero pick joins them with.
     public var heroStats: HeroStatsSet?
     public var heroCards: CardDB?
+    public var trinketStats: TrinketStats?
 
     public init(
         cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil, heroStats: HeroStatsSet? = nil,
@@ -135,6 +136,8 @@ public struct TavernEngine: Sendable {
     private var tribes: TribeTracker
     /// The local player's hero-pick offer, and the stats it's joined with (none without stats).
     private var heroPick = BGHeroPickTracker()
+    private var trinketPick = TrinketPickTracker()
+    private var trinketStats: TrinketStats?
     private var heroPickData: HeroPickData?
     private var recruitCards: CardDB?
     /// Build detection, shop highlights and opponents' likely builds (nothing without a catalog).
@@ -182,6 +185,7 @@ public struct TavernEngine: Sendable {
     public init(setup: EngineSetup, session: LogSession? = nil, timeZone: TimeZone = .current) {
         self.init(cards: setup.cards, pool: setup.pool, builds: setup.builds, session: session, timeZone: timeZone)
         useHeroStats(setup.heroStats, cards: setup.heroCards)
+        useTrinketStats(setup.trinketStats)
     }
 
     public var games: [BGGameRecord] { history.games }
@@ -419,6 +423,7 @@ public struct TavernEngine: Sendable {
             history.observe(event, in: store)
             tribes.observe(event)
             heroPick.observe(event)
+            trinketPick.observe(event)
             if event == .taskListEnd {
                 tribes.taskListEnded(store, at: position)
                 if !isCatchingUp { publish() }
@@ -577,6 +582,11 @@ public struct TavernEngine: Sendable {
         history.clearChangedGames()
     }
 
+    public mutating func useTrinketStats(_ stats: TrinketStats?) {
+        trinketStats = stats
+        publish()
+    }
+
     private mutating func publish() {
         history.refresh(from: store)
         let snapshot = BGSnapshot.project(store)
@@ -592,6 +602,10 @@ public struct TavernEngine: Sendable {
             )
         }
         if var game = next.game {
+            if let definitions = recruitCards ?? cards {
+                game.trinketPick = trinketPick.project(store: store, cards: definitions, game: game,
+                    lastTaskListEnded: parser.lastTaskListEnded, stats: trinketStats, now: clock?.currentDate ?? Date())
+            }
             builds.apply(to: &game, gameIndex: history.currentIndex)
             next.game = game
         }

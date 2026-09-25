@@ -22,3 +22,17 @@ Acceptance: live advice works without a previously seen opponent, does not treat
 vanilla minions, can recommend a legal multi-action plan, explains strategic value, and can be
 audited after a match without a manual bookmark. Unknown mechanics must reduce coverage rather
 than silently inventing outcomes. Search and card-effect coverage remain explicitly bounded.
+
+## Seasonal mechanics and trinket picks
+
+Carry equipped trinket and attached enchantment definitions with every recruit request. Read
+Activate availability and cost from the live entities, rather than guessing from card text alone.
+Resolve supported discard actions, Sludge's double cast, both Portrait rewards, and Dark Gift
+play/counter triggers. Preserve unknown outcomes as replan boundaries. Include Aberration/Deity
+progress and attached combat effects in strategic estimates without applying combat buffs twice.
+
+Track GENERAL trinket offers through displayed-task and chosen events. Show all choices in their
+screen order, with separate ranks, explanations, observed costs and population sample counts.
+Use Firestone's public past-three-day aggregates as a modest baseline; current-board synergies
+can outweigh it. Reject stale/sparse/invalid data. Retain a last-good cache and clear the panel
+when the offer resolves. Verify the actual match, synthetic mechanic regressions, and rendered UI.

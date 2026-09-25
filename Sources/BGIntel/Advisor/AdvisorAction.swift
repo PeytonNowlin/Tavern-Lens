@@ -4,6 +4,7 @@
 /// `hand` in `hand`, `board` in `board`, and `place` the board position the minion ends up at.
 public enum AdvisorAction: Codable, Hashable, Sendable {
     /// The board as it is: the baseline every other action is compared with. Never suggested.
+    case activate(board: Int, cardID: String, cost: Int, discard: Int?, discardedCardID: String?)
     case keep
     case heroPower(cardID: String, cost: Int, target: Int?, targetCardID: String?)
     /// Buy a shop minion and play it at `place`.
@@ -30,6 +31,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// minion goes, which minion a spell targets); only a group's best one is ever suggested.
     public var group: String {
         switch self {
+        case .activate(let board, _, _, _, _): "activate:b\(board)"
         case .heroPower: "heroPower"
         case .keep: "keep"
         case .buy(let shop, _, _): "buy:s\(shop)"
@@ -47,6 +49,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// Unique among one request's candidates, and stable across runs.
     public var id: String {
         switch self {
+        case .activate(_, _, _, let hand, _): "\(group)-h\(hand ?? -1)"
         case .heroPower(_, _, let target, _): "heroPower-b\(target ?? -1)"
         case .keep, .level, .roll, .freeze, .sell: group
         case .buy(_, _, let place), .play(_, _, let place): "\(group)@\(place)"
@@ -68,6 +71,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// with the suggestion's rank.
     public var targets: [AdvisorTarget] {
         switch self {
+        case .activate(let board, _, _, let hand, _): [.init(.board, board)] + (hand.map { [.init(.hand, $0)] } ?? [])
         case .heroPower(_, _, let target, _): target.map { [.init(.board, $0)] } ?? []
         case .keep: []
         case .buy(let shop, _, _): [.init(.shop, shop)]
@@ -86,6 +90,7 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
     /// A short imperative title, with card names from `name` (card ID → name; the ID when unknown).
     public func title(name: (String) -> String = { $0 }) -> String {
         switch self {
+        case .activate(_, let card, _, _, let discarded): discarded.map { "Activate \(name(card)): discard \(name($0))" } ?? "Activate \(name(card))"
         case .heroPower(let card, _, _, let target): target.map { "\(name(card)) on \(name($0))" } ?? "Use \(name(card))"
         case .keep: "Keep your board"
         case .buy(_, let card, _): "Buy \(name(card))"

@@ -279,4 +279,144 @@ struct RecruitPlannerTests {
         #expect(result.board[1].entity.attack == 6 && result.board[1].entity.health == 8)
     }
 
+    @Test("A passive trinket does not disable combat projection")
+    func passiveTrinket() throws {
+        var r = try Self.request(board: [S.boardMinion(1, "body", attack: 2, health: 2)])
+        let json = #"{"cardId":"BG30_MagicItem_888","entityId":347,"scriptDataNum1":3,"scriptDataNum2":0,"scriptDataNum6":1}"#
+        r.recruit!.input.playerBoard.player.trinkets = [try JSONDecoder().decode(BattleTrinket.self, from: Data(json.utf8))]
+        var d = Card(id: "BG30_MagicItem_888", dbfId: 100, name: "Souvenir Stand")
+        d.text = "When you buy a Greater Trinket, this transforms into a copy of it."
+        r.recruit!.definitions[d.id] = d
+        #expect(RecruitPlanner.search(r, context: r.recruit!).baseline.projection.limitations.isEmpty)
+    }
+
+    @Test("Sharpened Sword on a minion triggers when a card is played")
+    func darkGiftPlay() throws {
+        var body = S.boardMinion(1, "body", attack: 2, health: 2)
+        let json = #"{"cardId":"BG36_MidGameEffect_000t74e","originEntityId":90,"timing":0}"#
+        body.entity.enchantments = [try JSONDecoder().decode(BattleEnchantment.self, from: Data(json.utf8))]
+        var r = try Self.request(board: [body], hand: [S.spell(2, "BG28_810", cost: 0)])
+        var d = Card(id: "BG36_MidGameEffect_000t74e", dbfId: 100, name: "Sharpened Sword")
+        d.text = "Whenever you play a card, gain +3 Attack."
+        r.recruit!.definitions[d.id] = d
+        let c = r.recruit!, state = RecruitState(request: r, context: c)
+        let after = try #require(RecruitPlanner.applying(Self.action(.spell, state, c), to: state, context: c))
+        #expect(after.board[0].entity.attack == 5)
+    }
+
+    @Test("A Deity deathrattle contributes production beyond the minion body")
+    func aberrationProduction() throws {
+        let body = S.boardMinion(1, "sacrifice", attack: 2, health: 2)
+        var r = try Self.request(board: [body], texts: ["sacrifice": "Reborn Deathrattle: Give your Deity +2/+1."])
+        let json = #"{"entityId":20,"cardId":"BG_OldGod","scriptDataNum1":2,"scriptDataNum2":4,"scriptDataNum3":5,"scriptDataNum6":0,"tags":{"4914":4,"4915":5}}"#
+        r.recruit!.input.playerBoard.player.secrets = [try JSONDecoder().decode(BattleSecret.self, from: Data(json.utf8))]
+        let c = r.recruit!, state = RecruitState(request: r, context: c)
+        #expect(RecruitPlanner.production(body, state: state, context: c) > 0)
+    }
+
+    @Test("Discarding Sludge uses both Portraits without playing it or inventing the random reward")
+    func doublePortraitDiscard() throws {
+        let envoy = S.boardMinion(1, "envoy", attack: 2, health: 2)
+        var r = try Self.request(board: [envoy], hand: [S.spell(2, "BG36_301t", cost: 1)], gold: 0,
+            texts: ["envoy": "Activate (0): Discard a card to get a random Tavern spell.",
+                    "BG36_301t": "Give your minions +1/+1. If you discard this, cast it twice."])
+        let json = #"{"cardId":"portrait","entityId":347,"scriptDataNum1":1,"scriptDataNum2":1,"scriptDataNum6":1}"#
+        let portrait = try JSONDecoder().decode(BattleTrinket.self, from: Data(json.utf8))
+        r.recruit!.input.playerBoard.player.trinkets = [portrait, portrait]
+        var d = Card(id: "portrait", dbfId: 100, name: "Sludge Portrait")
+        d.text = "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion."
+        r.recruit!.definitions[d.id] = d
+        r.recruit!.activations = [1: .init(ready: true, cost: 0)]
+        let c = r.recruit!, state = RecruitState(request: r, context: c)
+        let step = try Self.action(.activate, state, c)
+        let after = try #require(RecruitPlanner.applying(step, to: state, context: c))
+        #expect(after.board[0].entity.attack == 4 && after.board[0].entity.health == 4)
+        #expect(after.hand.count == 2 && after.hand.allSatisfy { $0.cardID == "BG36_301t" })
+        #expect(after.unknownRewards == 1 && after.terminal)
+        #expect(after.combatInput.playerBoard.player.globalInfo["CardsDiscardedThisGame"] == 1)
+        #expect(after.combatInput.playerBoard.player.globalInfo["TavernSpellsCastThisGame"] == 2)
+        #expect(after.usedActivations.contains(1))
+        #expect(RecruitPlanner.applying(step, to: after, context: c) == nil)
+        #expect(RecruitPlanner.value(after, request: r, context: c).total > RecruitPlanner.value(state, request: r, context: c).total)
+        var unavailable = c; unavailable.activations = [1: .init(ready: false, cost: 0)]
+        #expect(!RecruitPlanner.actions(state, context: unavailable).contains { $0.kind == .activate })
+        unavailable.activations = nil
+        #expect(!RecruitPlanner.actions(state, context: unavailable).contains { $0.kind == .activate })
+    }
+
+    @Test("Combat Dark Gifts change valuation without applying their stats before combat")
+    func darkGiftCombatValue() throws {
+        var body = S.boardMinion(1, "body", attack: 20, health: 20)
+        var r = try Self.request(board: [body])
+        let c = r.recruit!, plain = RecruitState(request: r, context: c)
+        let json = #"{"cardId":"BG36_MidGameEffect_000t81e","originEntityId":90,"timing":0}"#
+        body.entity.enchantments = [try JSONDecoder().decode(BattleEnchantment.self, from: Data(json.utf8))]
+        var d = Card(id: "BG36_MidGameEffect_000t81e", dbfId: 100, name: "Transcendence")
+        d.text = "Start of Combat: Triple this minion's stats."
+        r.recruit!.definitions[d.id] = d; r.board = [body]
+        let state = RecruitState(request: r, context: r.recruit!)
+        #expect(RecruitPlanner.value(state, request: r, context: r.recruit!).tempo > RecruitPlanner.value(plain, request: r, context: c).tempo)
+        let projected = RecruitEffects.combatProjection(state, context: r.recruit!)
+        #expect(projected.board[0].entity.attack == 20)
+        #expect(projected.combatInput.playerBoard.board[0].enchantments.count == 1)
+    }
+
+    @Test("Flaming Enforcer projects the observed highest-health Tavern minion")
+    func consumeProjection() throws {
+        let r = try Self.request(board: [S.boardMinion(1, "enforcer", attack: 71, health: 71)],
+            shop: [S.shopMinion(2, attack: 67, health: 68, cardID: "food"), S.shopMinion(3, attack: 80, health: 5, cardID: "other")],
+            texts: ["enforcer": "At the end of your turn, consume the highest-Health minion in the Tavern to gain its stats."])
+        let c = r.recruit!, state = RecruitState(request: r, context: c)
+        let after = RecruitEffects.combatProjection(state, context: c)
+        #expect(after.board[0].entity.attack == 138 && after.board[0].entity.health == 139)
+        #expect(after.limitations.isEmpty)
+    }
+
+    @Test("Discard Portrait rewards fill the hand before the random activator reward")
+    func discardHandLimit() throws {
+        var r = try Self.request(board: [S.boardMinion(1, "envoy", attack: 2, health: 2)],
+            hand: (2...11).map { S.spell($0, "BG36_301t", cost: 1) }, gold: 0,
+            texts: ["envoy": "Activate (0): Discard a card to get a random Tavern spell.",
+                    "BG36_301t": "Give your minions +1/+1. If you discard this, cast it twice."])
+        let json = #"{"cardId":"portrait","entityId":347,"scriptDataNum1":1,"scriptDataNum2":1,"scriptDataNum6":1}"#
+        let portrait = try JSONDecoder().decode(BattleTrinket.self, from: Data(json.utf8))
+        r.recruit!.input.playerBoard.player.trinkets = [portrait, portrait]
+        var d = Card(id: "portrait", dbfId: 100, name: "Sludge Portrait")
+        d.text = "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion."
+        r.recruit!.definitions[d.id] = d
+        r.recruit!.activations = [1: .init(ready: true, cost: 0)]
+        let c = r.recruit!, state = RecruitState(request: r, context: c)
+        let after = try #require(RecruitPlanner.applying(Self.action(.activate, state, c), to: state, context: c))
+        #expect(after.hand.count == 10 && after.unknownRewards == 0)
+        #expect(after.board[0].entity.attack == 4)
+    }
+
+    @Test("The advisor does not sell three bodies for a Venomous minion without a survival benefit")
+    func noDestructiveSporePlan() async throws {
+        var spore = S.shopMinion(20, attack: 1, health: 1, cardID: "spore")
+        spore.entity.venomous = true
+        var r = try Self.request(board: (1...4).map { S.boardMinion($0, "body\($0)", attack: 2, health: 2) },
+                                 shop: [spore], gold: 0)
+        r.preview.input = nil
+        let result = try await AdvisorEvaluation.run(r, plan: .live, simulate: S.simulate(.init(baseline: 0)))
+        #expect(result.advice.suggestions.allSatisfy {
+            ($0.continuation ?? []).filter { $0.hasPrefix("Sell ") }.count <= 1
+        })
+    }
+
+    @Test("Spell Siphon adds only the new cast counter, alongside Sharpened Sword's play trigger")
+    func giftCounters() throws {
+        var body = S.boardMinion(1, "body", attack: 20, health: 20)
+        let json = #"[{"cardId":"BG36_MidGameEffect_000t30e","originEntityId":90,"timing":0},{"cardId":"BG36_MidGameEffect_000t74e","originEntityId":91,"timing":0}]"#
+        body.entity.enchantments = try JSONDecoder().decode([BattleEnchantment].self, from: Data(json.utf8))
+        var r = try Self.request(board: [body], hand: [S.spell(2, "buff", cost: 1)], texts: ["buff": "Give your minions +1/+1."])
+        for (id, text) in ["BG36_MidGameEffect_000t30e": "Has +3/+3 for each Tavern spell you've cast this game. (0)",
+                           "BG36_MidGameEffect_000t74e": "Whenever you play a card, gain +3 Attack."] {
+            var d = Card(id: id, dbfId: 100, name: id); d.text = text; r.recruit!.definitions[id] = d
+        }
+        let c = r.recruit!, state = RecruitState(request: r, context: c)
+        let after = try #require(RecruitPlanner.applying(Self.action(.spell, state, c), to: state, context: c))
+        #expect(after.board[0].entity.attack == 27 && after.board[0].entity.health == 24)
+    }
+
 }

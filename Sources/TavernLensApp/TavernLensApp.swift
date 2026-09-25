@@ -56,6 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--render-trinket-preview") {
+            Self.renderTrinketPreview(CommandLine.arguments)
+            return
+        }
         if CommandLine.arguments.contains("--simulator-benchmark") {
             Self.runSimulatorBenchmark()
             return
@@ -71,6 +75,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Firestone's hero stats (fetched at launch and every 6 h) feed the hero-pick plates.
         HeroStatsModel.shared.onChanged = { [live] stats, cards in live.heroStats = (stats, cards) }
         HeroStatsModel.shared.start()
+        TrinketStatsModel.shared.onChanged = { [live] stats in live.trinketStats = stats }
+        TrinketStatsModel.shared.start()
         // Build data (Firestone comps + our override file, filtered by the pool) feeds build detection.
         BuildDataModel.shared.onCatalogChanged = { [live] catalog in live.builds = catalog }
         BuildDataModel.shared.start()

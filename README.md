@@ -10,6 +10,8 @@ I built this for my own solo Battlegrounds games on a Mac. The engineering goal 
 
 [Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Testing](#testing) · [Engineering notes](#engineering-notes)
 
+The recruit advisor also rates offered trinkets using current-board fit and fresh Firestone population statistics, with costs, sample counts and explicit coverage limits. It models supported discard/Sludge interactions and Dark Gift triggers; unknown effects remain labeled. See [trinket rating sources](docs/research/trinket-rating-sources.md).
+
 ## Features
 
 | During a game | What Tavern Lens shows |

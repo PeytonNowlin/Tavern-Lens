@@ -16,18 +16,37 @@ struct RecruitMatchAuditTests {
         let db = try CardDB(build: nil, json: Data(contentsOf: URL(filePath: Self.cards!)))
         var engine = TavernEngine(cards: db)
         var selected: [Int: AdvisorRequest] = [:]
-        let turns: Set<Int> = [1, 8, 10, 12]
+        let turns: Set<Int> = [1, 6, 8, 10, 12]
+        var trinketChoices: Set<Int> = []
+        var sawGiftDefinition = false
+        var sawReadyActivate = false
         var published = 0
         try LogFileReader.forEachLine(in: URL(filePath: Self.log!)) { line in
             engine.ingest(line)
             guard engine.timeline.count != published else { return }
             published = engine.timeline.count
+            if let pick = engine.state.game?.trinketPick {
+                trinketChoices.insert(pick.choiceID)
+                #expect(pick.offers.count == 4)
+                #expect(pick.offers.contains { $0.rank == 1 })
+            }
+            if let context = engine.advisorRequest?.recruit {
+                if context.definitions["BG36_MidGameEffect_000t74e"] != nil { sawGiftDefinition = true }
+                if context.activations?.values.contains(where: \.ready) == true { sawReadyActivate = true }
+                for t in context.input.playerBoard.player.trinkets {
+                    #expect(context.definitions[t.cardId] != nil)
+                }
+            }
             guard let game = engine.state.game, game.phase == .recruit, turns.contains(game.bgTurn),
                   let request = engine.advisorRequest, !request.shop.isEmpty,
                   request.gold > (selected[game.bgTurn]?.gold ?? -1) else { return }
             selected[game.bgTurn] = request
         }
         #expect(!selected.isEmpty)
+        if Self.log?.contains("2026_09_24_20_17_09") == true {
+            #expect(trinketChoices.count == 2)
+            #expect(sawGiftDefinition && sawReadyActivate)
+        }
         let simulator = try CombatGoldens.makeSimulator()
         let simulate = AdvisorEvaluation.simulate(on: { simulator })
         for turn in selected.keys.sorted() {

@@ -70,6 +70,18 @@ public enum RecruitPlanner {
             actions.append(RecruitStep(kind: .sell, entityID: card.entity.entityId,
                 action: .sell(board: i, cardID: card.cardID), title: "Sell \(name(card, context))"))
         }
+        for (i, card) in state.board.enumerated() {
+            guard let availability = context.activations?[card.entity.entityId], availability.ready,
+                  availability.cost <= state.gold, !state.usedActivations.contains(card.entity.entityId),
+                  RecruitMechanics.activationSupported(card, context) else { continue }
+            for (h, discarded) in state.hand.enumerated() where !discarded.entity.locked {
+                let action = AdvisorAction.activate(board: i, cardID: card.cardID, cost: availability.cost,
+                    discard: h, discardedCardID: discarded.cardID)
+                actions.append(RecruitStep(kind: .activate, entityID: card.entity.entityId,
+                    targetID: discarded.entity.entityId, action: action,
+                    title: action.title { context.definitions[$0]?.name ?? $0 }))
+            }
+        }
         for power in state.input.playerBoard.player.heroPowers where !power.used && power.locked == 0 {
             guard let cost = context.powerCosts[power.cardId], cost <= state.gold else { continue }
             let effect = RecruitEffects.effect(context.text(power.cardId))
@@ -146,6 +158,9 @@ public enum RecruitPlanner {
             s.board.append(card)
             for _ in 0..<RecruitEffects.battlecryRepeats(original, context: context) {
                 guard RecruitEffects.apply(RecruitEffects.battlecry(card, context: context), target: step.targetID, state: &s, context: context) else { return nil }
+                if context.text(card.cardID).contains("Battlecry") {
+                    RecruitMechanics.counterBuffs("Battlecry you've triggered", state: &s, context: context)
+                }
             }
             if card.golden, s.pendingDiscover > 0 {
                 s.pendingDiscover -= 1; s.terminal = true
@@ -175,7 +190,13 @@ public enum RecruitPlanner {
             }
             for _ in 0..<repeats {
                 guard RecruitEffects.apply(effect, target: step.targetID, state: &s, context: context) else { return nil }
+                s.input.playerBoard.player.globalInfo["SpellsCastThisGame", default: 0] += 1
+                if card.cardID != "BG20_GEM" {
+                    RecruitMechanics.counterBuffs("Tavern spell you've cast", state: &s, context: context)
+                }
             }
+        case .activate:
+            guard RecruitMechanics.activate(step, state: &s, context: context) else { return nil }
         case .power:
             guard let i = s.input.playerBoard.player.heroPowers.firstIndex(where: { $0.entityId == step.entityID }) else { return nil }
             let p = s.input.playerBoard.player.heroPowers[i]
@@ -199,6 +220,9 @@ public enum RecruitPlanner {
             let card = s.board.remove(at: i); s.board.insert(card, at: to); s.terminal = true
         }
         guard RecruitEffects.triggerEffects(step.kind, before: original, state: &s, context: context) else { return nil }
+        if step.kind == .play || step.kind == .spell {
+            RecruitMechanics.playedCard(before: original, state: &s, context: context)
+        }
         // Generated copies can themselves complete a triple.
         guard RecruitEffects.triples(state: &s, context: context) else { return nil }
         s.steps.append(step)
@@ -215,6 +239,7 @@ public enum RecruitPlanner {
             let stats = sqrt(Double(max(0, e.attack)) * Double(max(1, e.health)))
             v.tempo += stats * (e.divineShield ? 1.55 : 1) * (e.windfury ? 1.12 : 1)
                 + (e.reborn ? 3 : 0) + (e.venomous || e.poisonous ? 8 : 0)
+            v.tempo += RecruitMechanics.combatValue(card, state: s, context: context)
             v.scaling += production(card, state: s, context: context) * horizon
         }
         for deity in s.input.playerBoard.player.secrets where deity.cardId == "BG_OldGod" {
@@ -248,12 +273,18 @@ public enum RecruitPlanner {
             // Small option value, never a fabricated new board or guaranteed desired card.
             v.economy += s.gold >= 3 ? 1.5 : 0
         }
+        v.economy += Double(s.unknownRewards) * 0.8
         return v
     }
 
     /// Production estimates describe a card's role and its inputs. They are deliberately separate
     /// from exact recruit effects and never used to fabricate a combat board.
     public static func production(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double {
+        RecruitMechanics.production(card, state: state, context: context)
+            + baseProduction(card, state: state, context: context)
+    }
+
+    private static func baseProduction(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double {
         let text = context.text(card.cardID).lowercased()
         // Battlecries have already been resolved by the transition. Counting their rewards
         // again every future turn would incorrectly protect disposable cycle minions.
@@ -290,7 +321,7 @@ public enum RecruitPlanner {
         }
         let baseline = plan(initial)
         var beam = [initial], all: [RecruitPlan] = [], expanded = 0
-        var limitations = Set(baseline.projection.limitations)
+        var limitations = Set(baseline.projection.limitations + RecruitMechanics.limitations(initial, context: context))
         for card in request.board + request.hand + request.shop {
             if context.definitions[card.cardID] == nil { limitations.insert("Missing card definitions") }
             if card.isMinion, !request.board.contains(where: { $0.entity.entityId == card.entity.entityId }),

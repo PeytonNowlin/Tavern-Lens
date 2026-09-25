@@ -54,6 +54,7 @@ public struct GameView: Codable, Hashable, Sendable {
     public var tribes: TribesView?
     /// The offered heroes with their stats, during the hero pick; nil without hero stats.
     public var heroPick: HeroPickView?
+    public var trinketPick: TrinketPickView?
     /// The builds the player is leaning into and the shop cards that fit them; nil without build data.
     public var builds: BuildsView?
 

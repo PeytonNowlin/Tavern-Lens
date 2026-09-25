@@ -149,7 +149,15 @@ final class LivePipeline: @unchecked Sendable {
         updateEngine { $0.engine.ingestScreenTribes(reading) }
     }
 
-    /// Uses new hero stats (and card data) from now on, including for a hero pick on screen.
+    /// Updates population priors for an active or future trinket offer.
+    func useTrinketStats(_ stats: TrinketStats?) {
+        updateEngine {
+            $0.setup.trinketStats = stats
+            $0.engine.useTrinketStats(stats)
+        }
+    }
+
+    /// Uses new hero stats (and card data), including for a hero pick on screen.
     func useHeroStats(_ stats: HeroStatsSet?, cards: CardDB?) {
         updateEngine {
             $0.setup.heroStats = stats

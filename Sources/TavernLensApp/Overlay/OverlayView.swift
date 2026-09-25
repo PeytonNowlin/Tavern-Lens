@@ -139,11 +139,18 @@ struct OverlayRootView: View {
                         builds: builds, shopCount: game.shop.cards.count, layout: layout, cards: CardDataModel.shared.cards
                     )
                 }
-                if let advice = model.shownAdvice, let game = model.game {
+                if let advice = model.shownAdvice, let game = model.game, game.trinketPick == nil {
                     AdvisorOverlays(
                         advice: advice, game: game, layout: layout, collapsed: model.advisorCollapsed,
                         cards: CardDataModel.shared.cards, toggle: model.toggleAdvisor
                     )
+                }
+                if let pick = model.game?.trinketPick, model.view.status == .inGame {
+                    TrinketPickPanel(pick: pick, scale: layout.panelScale)
+                        .frame(width: max(layout.advisorPanel.width, 360 * layout.panelScale))
+                        .offset(x: max(0, layout.advisorPanel.maxX - max(layout.advisorPanel.width, 360 * layout.panelScale)),
+                                y: max(0, layout.advisorPanel.minY - 130 * layout.panelScale))
+                        .allowsHitTesting(false)
                 }
                 if let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)

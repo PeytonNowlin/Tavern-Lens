@@ -121,6 +121,8 @@ public enum RecruitEvaluation {
                 combat /= Double(scenarios.count); reduction /= Double(scenarios.count)
                 if worst < -10 { continue }
             }
+            let sells = candidate.state.steps.filter { $0.kind == .sell }.count
+            if sells > 1, candidate.state.board.count < request.board.count, !checked || reduction < 5 { continue }
             let strategy = candidate.value.total - baseline.value.total
             // Reject naked sales that do not finance a useful continuation.
             if candidate.state.steps.last?.kind == .sell { continue }
@@ -137,11 +139,16 @@ public enum RecruitEvaluation {
             return $0.gain == $1.gain ? $0.plan.id < $1.plan.id : $0.gain > $1.gain
         }
         var suggestions: [AdvisorSuggestion] = []
-        for item in ranked.prefix(3) {
+        var outcomes: Set<RecruitState> = []
+        for item in ranked {
+            var outcome = item.plan.state
+            outcome.steps = []
+            guard outcomes.insert(outcome).inserted else { continue }
             guard let first = item.plan.state.steps.first else { continue }
             let delta = item.plan.value.scaling - baseline.value.scaling
             var reason: String
             if item.riskReduction >= 5 { reason = "Safer across the tested combat scenarios" }
+            else if first.kind == .activate { reason = "Uses your discard engine and its attached rewards" }
             else if first.kind == .roll { reason = "Keep enough gold to buy; reassess after the refresh" }
             else if first.kind == .freeze { reason = "Preserves an unaffordable engine card for next turn" }
             else if delta > 1 { reason = "Improves your scaling engine and its resource supply" }
@@ -159,9 +166,10 @@ public enum RecruitEvaluation {
             suggestion.continuation = item.plan.state.steps.map(\.title)
             suggestion.limitations = limitations.isEmpty ? nil : limitations
             suggestions.append(suggestion)
+            if suggestions.count == 3 { break }
         }
         var notes = ["Plans use your board, scaling and gold"]
-        notes.append(scenarios.isEmpty ? "No recent combat evidence" : "Combat checks use recent boards + stronger stress scenarios")
+        notes.append(scenarios.isEmpty ? "No recent combat evidence" : results.isEmpty ? "Combat checks unavailable for unresolved effects" : "Combat checks use recent boards + stronger stress scenarios")
         if !complete { notes.append("Evaluation incomplete") }
         if !search.limitations.isEmpty { notes.append("Unmodelled effects; no confident recommendation") }
         if suggestions.isEmpty { notes.append("No supported plan clearly improves the position") }

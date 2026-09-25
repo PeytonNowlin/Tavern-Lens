@@ -10,6 +10,13 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     public var definitions: [String: Card]
     public var powerCosts: [String: Int]
     public var build: Int?
+    /// Observed interaction state. Absent in older archives: never assume an activation is ready.
+    public var activations: [Int: Activation]?
+    public struct Activation: Codable, Hashable, Sendable {
+        public var ready: Bool
+        public var cost: Int
+        public init(ready: Bool, cost: Int) { self.ready = ready; self.cost = cost }
+    }
 
     public init(input: BattleInput, definitions: [String: Card], powerCosts: [String: Int] = [:], build: Int? = nil) {
         self.input = input
@@ -51,9 +58,14 @@ extension BattleInputBuilder {
             Set($0.compactMap { HS.Race(rawValue: $0) })
         })
         var definitions: [String: Card] = [:]
-        let tokens = ["BG20_GEM", "BG28_810", "BGS_115t", "BGS_115t_G", "BG_CFM_315t", "TB_BaconUps_093t"]
-        let ids = (request.board + request.hand + request.shop).map(\.cardID)
-            + local.player.heroPowers.map(\.cardId) + tokens
+        let tokens = ["BG20_GEM", "BG28_810", "BGS_115t", "BGS_115t_G", "BG_CFM_315t", "TB_BaconUps_093t", "BG36_301t"]
+        let observed = request.board + request.hand + request.shop
+        var ids = observed.map(\.cardID)
+        ids += local.player.heroPowers.map(\.cardId)
+        ids += local.player.trinkets.map(\.cardId)
+        ids += local.player.secrets.map(\.cardId)
+        ids += observed.flatMap { $0.entity.enchantments.map(\.cardId) }
+        ids += tokens
         for id in ids {
             guard let card = cards[id] else { continue }
             definitions[id] = card
@@ -65,13 +77,22 @@ extension BattleInputBuilder {
         for power in local.player.heroPowers {
             if let cost = store[power.entityId]?.int(GameTag.id(48)) { costs[power.cardId] = cost }
         }
-        return RecruitContext(input: base, definitions: definitions, powerCosts: costs, build: cards.build)
+        var context = RecruitContext(input: base, definitions: definitions, powerCosts: costs, build: cards.build)
+        context.activations = [:]
+        for card in request.board + request.hand + request.shop where context.text(card.cardID).contains("Activate (") {
+            guard let entity = store[card.entity.entityId] else { continue }
+            let parsed = RecruitEffects.captures(".*Activate \\(([0-9]+)\\):.*", context.text(card.cardID))
+            context.activations?[card.entity.entityId] = .init(
+                ready: entity.int(GameTag.id(4089)) == 1,
+                cost: entity.int(GameTag.id(4090)) ?? parsed.flatMap { Int($0[0]) } ?? 0)
+        }
+        return context
     }
 }
 
 /// Stable entity identities are used inside a plan; UI indices are resolved at each step.
 public struct RecruitStep: Codable, Hashable, Sendable {
-    public enum Kind: String, Codable, Sendable { case buy, play, sell, spell, power, level, roll, freeze, move }
+    public enum Kind: String, Codable, Sendable { case buy, play, sell, spell, power, activate, level, roll, freeze, move }
     public var kind: Kind
     public var entityID: Int
     public var targetID: Int?
@@ -103,6 +124,9 @@ public struct RecruitState: Hashable, Sendable {
     public var freeRolls = 0
     public var pendingDiscover = 0
     public var nextEntityID = -1
+    public var usedActivations: Set<Int> = []
+    /// Random rewards have option value but cannot be played before the log reveals them.
+    public var unknownRewards = 0
 
     public init(request: AdvisorRequest, context: RecruitContext) {
         board = request.board; hand = request.hand; shop = request.shop; gold = request.gold; tier = request.tier

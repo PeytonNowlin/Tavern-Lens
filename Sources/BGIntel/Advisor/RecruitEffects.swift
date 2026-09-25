@@ -193,7 +193,10 @@ public enum RecruitEffects {
     }
 
     static func endOfTurnRepeats(_ state: RecruitState, context: RecruitContext) -> Int {
-        state.board.reduce(1) { repeats, card in
+        let extra = state.input.playerBoard.player.trinkets.filter {
+            context.text($0.cardId) == "Your end of turn effects trigger an extra time."
+        }.count
+        return extra + state.board.reduce(1) { repeats, card in
             switch context.text(card.cardID) {
             case "Your end of turn effects trigger twice.": return max(repeats, 2)
             case "Your end of turn effects trigger three times.": return max(repeats, 3)
@@ -206,7 +209,7 @@ public enum RecruitEffects {
     /// discovering is a terminal information boundary, not a fabricated reward.
     static func triples(state: inout RecruitState, context: RecruitContext) -> Bool {
         let all = state.board + state.hand
-        let groups = Dictionary(grouping: all.filter { !$0.golden }, by: \.cardID)
+        let groups = Dictionary(grouping: all.filter { $0.isMinion && !$0.golden }, by: \.cardID)
         for id in groups.keys.sorted() {
             guard let copies = groups[id], copies.count >= 3 else { continue }
             guard let normal = context.definitions[id], let golden = context.golden(id) else { return false }
@@ -237,12 +240,32 @@ public enum RecruitEffects {
     /// effects are recorded and exclude this board from exact combat claims.
     public static func combatProjection(_ state: RecruitState, context: RecruitContext) -> RecruitState {
         var result = state
+        var consumedFromShop = false
         for card in state.board {
             let text = context.text(card.cardID)
             if text.hasPrefix("At the end of your turn, ") {
                 for _ in 0..<endOfTurnRepeats(state, context: context) {
                     let body = String(text.dropFirst("At the end of your turn, ".count))
                     var effect = effect(body.prefix(1).uppercased() + body.dropFirst())
+                    if body == "consume the highest-Health minion in the Tavern to gain its stats."
+                        || body == "consume the highest-Health minion in the Tavern to gain double its stats." {
+                        if consumedFromShop {
+                            result.limitations.append("Multiple Tavern consumes need unknown shop replacements")
+                            continue
+                        }
+                        let shop = result.shop.filter(\.isMinion)
+                        let high = shop.map { $0.entity.health }.max()
+                        let targets = shop.filter { $0.entity.health == high }
+                        if targets.isEmpty { effect = .none }
+                        else if targets.count == 1, let target = targets.first,
+                                let i = result.board.firstIndex(where: { $0.entity.entityId == card.entity.entityId }) {
+                            let repeats = body.contains("double") ? 2 : 1
+                            buff(&result.board[i], attack: target.entity.attack * repeats, health: target.entity.health * repeats)
+                            // The consumed shop replacement is random. A second consume needs a new observation.
+                            consumedFromShop = true
+                            effect = .none
+                        }
+                    }
                     if let c = captures("give your other minions \\+([0-9]+)/\\+([0-9]+)\\.", body) {
                         for i in result.board.indices where result.board[i].entity.entityId != card.entity.entityId {
                             buff(&result.board[i], attack: Int(c[0])!, health: Int(c[1])!)
@@ -255,9 +278,20 @@ public enum RecruitEffects {
                 }
             }
         }
-        if !state.input.playerBoard.player.trinkets.isEmpty || !state.input.playerBoard.player.questEntities.isEmpty
+        for trinket in state.input.playerBoard.player.trinkets {
+            let text = context.text(trinket.cardId)
+            if trinket.cardId == "BG36_MagicItem_302" || trinket.cardId == "BG36_MagicItem_302t",
+               text.hasPrefix("At the end of your turn, give your minions +") {
+                for _ in 0..<endOfTurnRepeats(state, context: context) {
+                    _ = apply(.buff(trinket.scriptDataNum1, trinket.scriptDataNum2, all: true),
+                              target: nil, state: &result, context: context)
+                }
+            }
+        }
+        result.limitations += RecruitMechanics.limitations(state, context: context, projectionOnly: true)
+        if !state.input.playerBoard.player.questEntities.isEmpty
             || !state.input.playerBoard.player.questRewards.isEmpty {
-            result.limitations.append("Recruit effects of quests/trinkets are not resolved")
+            result.limitations.append("Recruit effects of quests are not resolved")
         }
         return result
     }

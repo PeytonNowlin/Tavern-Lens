@@ -38,6 +38,13 @@ final class LiveTrackingModel {
         }
     }
 
+    @ObservationIgnored var trinketStats: TrinketStats? {
+        didSet {
+            Self.engineSetup.trinketStats = trinketStats
+            pipeline?.useTrinketStats(trinketStats)
+        }
+    }
+
     /// Firestone's hero stats and the card data the hero pick joins them with.
     @ObservationIgnored var heroStats: (stats: HeroStatsSet?, cards: CardDB?) = (nil, nil) {
         didSet {
@@ -189,6 +196,7 @@ final class LiveTrackingModel {
         pipeline.usePool(pool)
         pipeline.useHeroStats(heroStats.stats, cards: heroStats.cards)
         pipeline.useBuilds(builds)
+        pipeline.useTrinketStats(trinketStats)
         pipeline.start(logsDirectory: Self.locations(for: client).logsDirectory, launchDate: client.launchDate)
     }
 
