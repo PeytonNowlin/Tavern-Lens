@@ -130,4 +130,37 @@ struct StrategicAdvisorTests {
         #expect(result.advice.strategy?.search?.affordableRefreshes == 2)
         #expect(result.advice.strategy?.search?.minimumPurchaseGold == 3)
     }
+    @Test("Search reserves gold for all pending purchases, including an offered piece")
+    func allPurchaseReserves() async throws {
+        var request = try RecruitPlannerTests.request(shop: [AdvisorSynthetic.shopMinion(1, attack: 3, health: 3, cardID: "engine")], gold: 7)
+        request.rollCost = 1
+        var build = AdvisorBuild(id: "growth", name: "Growth", share: 1, core: ["engine", "payoff"], addons: [])
+        build.requirements = [BuildRequirement(role: "engine", anyOf: ["engine"]), BuildRequirement(role: "payoff", anyOf: ["payoff"])]
+        request.strategyCatalog = [build]
+        let result = try await AdvisorEvaluation.run(request, plan: .live, simulate: AdvisorSynthetic.simulate(.init(baseline: 0)))
+        #expect(result.advice.strategy?.search?.minimumPurchaseGold == 6)
+        #expect(result.advice.strategy?.search?.affordableRefreshes == 1)
+    }
+
+    @Test("An obtainable alternative is a route even when another replacement needs a higher tier")
+    func obtainableAlternative() async throws {
+        var request = try RecruitPlannerTests.request(board: [AdvisorSynthetic.boardMinion(1, "engine", attack: 3, health: 3)])
+        request.tier = 3
+        var build = AdvisorBuild(id: "growth", name: "Growth", share: 1,
+            core: ["engine", "early", "late"], addons: [], coreTiers: ["engine": 2, "early": 3, "late": 6])
+        build.requirements = [BuildRequirement(role: "payoff", anyOf: ["early", "late"])]
+        request.strategyCatalog = [build]
+        let result = try await AdvisorEvaluation.run(request, plan: .live, simulate: AdvisorSynthetic.simulate(.init(baseline: 0)))
+        #expect(result.advice.strategy?.acquisition.contains("do not roll") == false)
+    }
+
+    @Test("An incidental core card with distant requirements leaves the advisor in tempo")
+    func tempoAbstention() async throws {
+        var request = try RecruitPlannerTests.request(board: [AdvisorSynthetic.boardMinion(1, "utility", attack: 3, health: 3)])
+        request.tier = 2
+        request.strategyCatalog = [AdvisorBuild(id: "distant", name: "Distant", share: 1,
+            core: ["utility", "a", "b", "c", "d"], addons: [], coreTiers: ["a": 6, "b": 6, "c": 6, "d": 6])]
+        let result = try await AdvisorEvaluation.run(request, plan: .live, simulate: AdvisorSynthetic.simulate(.init(baseline: 0)))
+        #expect(result.advice.strategy == nil)
+    }
 }

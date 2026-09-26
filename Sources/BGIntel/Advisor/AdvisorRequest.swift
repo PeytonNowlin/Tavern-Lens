@@ -169,6 +169,7 @@ public struct AdvisorBuild: Codable, Hashable, Sendable {
     public var placementEvidence: BuildEvidence?
     public var averagePlacement: Double?
     public var editorialTier: Int?
+    public var editorialTierIsFresh: Bool?
     public var evidenceIsStale: Bool?
     public var requirements: [BuildRequirement]?
     public var commitment: String?

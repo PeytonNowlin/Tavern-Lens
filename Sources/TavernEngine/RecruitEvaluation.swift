@@ -48,7 +48,7 @@ public enum RecruitEvaluation {
         let direction = plan.version >= 3 ? AdvisorStrategy.select(request) : nil
         var prepared = request
         if plan.version >= 3 { prepared.recruit?.strategicEvaluation = true }
-        if let direction { prepared.builds = [direction.build] }
+        if plan.version >= 3 { prepared.builds = direction.map { [$0.build] } ?? [] }
         let request = prepared
         guard let context = request.recruit else {
             let done = AdvisorEvaluation.Progress(advice: Advice(status: .noData,

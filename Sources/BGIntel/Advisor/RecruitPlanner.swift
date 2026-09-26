@@ -412,13 +412,15 @@ public enum RecruitPlanner {
             }
             // Score once per state, not twice per sort comparison. Value is pure; this
             // preserves ordering and archived results while avoiding repeated effect parsing.
-            let ordered = next.map { state in
-                (state: state, score: value(state, request: request, context: context).total,
-                 id: state.steps.map(\.id).joined())
-            }.sorted { a, b in a.score == b.score ? a.id < b.id : a.score > b.score }
+            var ordered: [(state: RecruitState, score: Double, id: String)] = []
+            for state in next {
+                let score = value(state, request: request, context: context).total
+                ordered.append((state, score, state.steps.map(\.id).joined()))
+            }
+            ordered.sort { a, b in a.score == b.score ? a.id < b.id : a.score > b.score }
             // Preserve first-action diversity so a good cycle can survive its temporary weak board.
             var perFirst: [String: Int] = [:]
-            beam = ordered.map(\.state).filter { s in
+            beam = ordered.map { $0.state }.filter { s in
                 guard !s.terminal, let first = s.steps.first else { return false }
                 perFirst[first.id, default: 0] += 1
                 return perFirst[first.id]! <= 3

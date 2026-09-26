@@ -11,3 +11,13 @@ Approved seams: engine replay/request → advisor result; provider/cache contrac
 5. Validate archived replay compatibility and decision cases, run the full suite, review against the starting commit and commit on the current branch.
 
 Measured match improvement requires prospective games; test success alone does not establish a win-rate gain.
+
+## Verification
+
+The standards review found two issues (purchase reserves and import validation), and the spec review found three (tier freshness, alternative requirements and tempo fallback). All five were fixed and rechecked by their respective reviewers.
+
+The final focused run passed 22 tests, including archived-version compatibility and the opt-in last-match replay. In the debug audit, turn 8 took 2.12 seconds and turn 10 took 4.97 seconds for the combined search/evaluation checks; turn 10 performed four combat evaluations. Earlier audited states still had unsupported-effect limitations. These timings are diagnostic, not a live latency guarantee.
+
+A release app was built and its advisor panel rendered offscreen successfully. The local signing identity was unavailable, so the verification bundle uses ad-hoc signing. The installed app was not replaced.
+
+Final full verification: `scripts/test.sh` passed 494 tests across 81 suites, including the locally available captured-game fixtures. Existing archived goldens were preserved.

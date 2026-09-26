@@ -70,6 +70,10 @@ struct AdvisorFixtureTests {
         request.standIn = nil
         request.lobby = (request.lobby ?? []).filter { $0.playerID != request.preview.opponentPlayerID } + [standIn]
         request.lobby?.sort { $0.playerID < $1.playerID }
+        // This archived request predates strategic planning; verify its original contract.
+        request.strategyCatalog = nil
+        request.choice = nil
+        request.poolTiers = nil
         try AdvisorFixture.verify(request, golden: "\(AdvisorSimulatorTests.turn11).request")
     }
 

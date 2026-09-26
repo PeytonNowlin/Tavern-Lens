@@ -554,6 +554,7 @@ public struct TavernEngine: Sendable {
                 result.evidence = build.sourceEvidence
                 result.placementEvidence = build.placementEvidence
                 result.averagePlacement = build.averagePlacement
+                result.editorialTierIsFresh = build.sourceEvidence?.tierIsCurrent(at: Date()) ?? false
                 result.editorialTier = build.powerLevel.flatMap { $0.hasPrefix("Tier ") ? Int($0.dropFirst(5)) : nil }
                 result.evidenceIsStale = catalog.provenance.statsIsStale
                 result.requirements = build.requirements

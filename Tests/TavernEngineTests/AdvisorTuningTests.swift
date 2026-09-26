@@ -27,7 +27,7 @@ struct AdvisorTuningTests {
         let golden = try AdvisorFixture.load([String: AdviceView].self, golden: "full-game-advice")
         return (8...12).compactMap { turn in
             guard let request = replay.mostGold[turn] else { return nil }
-            let recorded = golden["turn-\(turn)"].flatMap { $0.fingerprint == AdviceView.fingerprint(of: request) ? $0 : nil }
+            let recorded = golden["turn-\(turn)"].flatMap { $0.fingerprint == AdviceView.fingerprint(of: request, version: $0.plan.version) ? $0 : nil }
             return AdvisorCase(name: "full-game-turn-\(turn)", note: "Fixture: turn \(turn) as the shop opened",
                                request: request, recorded: recorded)
         }

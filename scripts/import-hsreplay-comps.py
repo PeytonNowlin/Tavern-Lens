@@ -8,6 +8,7 @@ An incomplete collection or unresolved shape fails before replacing the last goo
 import argparse
 import datetime
 import json
+import re
 from pathlib import Path
 
 FIELDS = (
@@ -29,6 +30,21 @@ def main():
     for path in sorted((args.capture / 'detail').glob('*/raw/react_context.json')):
         raw = json.loads(path.read_text())
         row = {key: raw.get(key) for key in FIELDS}
+        if type(row['comp_id']) is not int or row['comp_id'] <= 0:
+            raise ValueError(f"Invalid comp ID: {path}")
+        for key in ('comp_name', 'comp_slug'):
+            if not isinstance(row[key], str) or not row[key].strip():
+                raise ValueError(f"Invalid string: {path} {key}")
+        if not re.fullmatch(r'[a-z0-9-]+', row['comp_slug']):
+            raise ValueError(f"Invalid comp slug: {path}")
+        for key in ('comp_tier', 'comp_difficulty'):
+            if row[key] is not None and (type(row[key]) is not int or row[key] not in range(1, 5)):
+                raise ValueError(f"Invalid enum: {path} {key}")
+        for key in ('comp_last_updated', 'comp_tier_last_updated'):
+            if row[key] is not None:
+                if not isinstance(row[key], str):
+                    raise ValueError(f"Invalid timestamp: {path} {key}")
+                datetime.datetime.fromisoformat(row[key].replace('Z', '+00:00'))
         if row['comp_id'] in rows:
             raise ValueError(f"Duplicate guide: {row['comp_id']}")
         for key in ('comp_core_cards', 'comp_addon_cards'):

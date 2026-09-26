@@ -15,6 +15,12 @@ public struct BuildEvidence: Codable, Hashable, Sendable {
     public var mmr: String?
     public var access: String
 
+    /// Editorial tier updates are independent from guide edits and capture time.
+    public func tierIsCurrent(at now: Date) -> Bool {
+        guard let stamp = tierUpdated, let date = FirestoneDate.parse(stamp) else { return false }
+        return date <= now && now.timeIntervalSince(date) <= 14 * 86400
+    }
+
     public init(provider: String, url: String, capturedAt: String? = nil, sourceUpdated: String? = nil,
                 tierUpdated: String? = nil, mode: String = "solo", metric: String = "curated guide",
                 sampleSize: Int? = nil, sampledBoards: Int? = nil, window: String? = nil,

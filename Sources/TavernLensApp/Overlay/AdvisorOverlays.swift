@@ -160,7 +160,7 @@ struct AdvisorPanel: View {
                     Text("\(strategy.committed ? "Building" : "Considering"): \(strategy.name)")
                         .font(.system(size: m.reasonFontSize * s, weight: .semibold))
                         .lineLimit(1)
-                    Text(strategy.reason.hasPrefix("Survive") || strategy.missing.isEmpty ? strategy.reason : "Look for: " + strategy.missing.prefix(3).map(name).joined(separator: ", "))
+                    Text(strategy.reason.hasPrefix("Survive") || strategy.missing.isEmpty ? strategy.reason : "Look for: " + nextPieces(strategy))
                         .font(.system(size: m.reasonFontSize * s))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
@@ -198,6 +198,15 @@ struct AdvisorPanel: View {
         .opacity(advice.isUpdating ? 0.6 : 1)
         .animation(.easeOut(duration: 0.15), value: advice.isUpdating)
         .frame(maxHeight: .infinity, alignment: .bottom)
+    }
+
+    private func nextPieces(_ strategy: AdvisorStrategy) -> String {
+        guard let requirements = strategy.missingRequirements else {
+            return strategy.missing.prefix(3).map(name).joined(separator: ", ")
+        }
+        return requirements.prefix(2).map { role in
+            role.anyOf.isEmpty ? role.role : role.anyOf.map(name).joined(separator: " or ")
+        }.joined(separator: "; ")
     }
 
     private var header: some View {

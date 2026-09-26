@@ -1,4 +1,5 @@
 import Foundation
+import HSData
 
 /// A direction is an opportunity, not a promise that future shops will supply its cards.
 public struct AdvisorStrategy: Codable, Hashable, Sendable {
@@ -6,6 +7,7 @@ public struct AdvisorStrategy: Codable, Hashable, Sendable {
     public var name: String
     public var committed: Bool
     public var missing: [String]
+    public var missingRequirements: [BuildRequirement]?
     public var alternatives: [String]
     public var unverifiedRequirements: [String]
     public var acquisition: String
@@ -58,10 +60,11 @@ public struct AdvisorStrategy: Codable, Hashable, Sendable {
             // Reuse the planner's supported resource/seasonal estimates so direction and
             // action evaluation see the same hero, trinket, gift and Deity context.
             let contextual = min(4, build.core.reduce(0.0) { $0 + (production[$1] ?? 0) } * 0.25)
-            let editorial = build.editorialTier.map { max(0, min(0.5, Double(3 - $0) * 0.25)) } ?? 0
+            let editorial = (build.editorialTierIsFresh == true ? build.editorialTier : nil).map { max(0, min(0.5, Double(3 - $0) * 0.25)) } ?? 0
             return (build, prior + editorial + contextual + Double(owned * 4 + available * 2 + (owned > 0 ? support : 0) - distant * 2) + rarity)
         }.sorted { $0.1 == $1.1 ? $0.0.id < $1.0.id : $0.1 > $1.1 }
-        guard var build = ranked.first?.0 else { return nil }
+        guard let best = ranked.first, best.1 > 0 else { return nil }
+        var build = best.0
         let owned = held.intersection(build.core).count
         let requirements = build.requirements ?? []
         let ready = !requirements.isEmpty && requirements.allSatisfy { !held.intersection($0.anyOf).isEmpty }
@@ -69,25 +72,35 @@ public struct AdvisorStrategy: Codable, Hashable, Sendable {
         build.share = health <= 5 ? 0.15 : committed ? 1 : 0.5
         let missing = requirements.isEmpty ? build.core.filter { !held.contains($0) && !offered.contains($0) }
             : requirements.filter { held.union(offered).intersection($0.anyOf).isEmpty }.flatMap(\.anyOf)
+        let missingRoles = requirements.isEmpty ? missing.map { BuildRequirement(role: "Core", anyOf: [$0]) }
+            : requirements.filter { held.union(offered).intersection($0.anyOf).isEmpty }
+        let pendingRoles = requirements.isEmpty ? build.core.filter { !held.contains($0) }.map { BuildRequirement(role: "Core", anyOf: [$0]) }
+            : requirements.filter { held.intersection($0.anyOf).isEmpty }
+        let reserve = pendingRoles.filter { !$0.anyOf.isEmpty }.reduce(0) { total, role in
+            let prices = request.shop.filter { role.anyOf.contains(base($0.cardID)) }.map { $0.cost ?? 3 }
+            return total + (prices.min() ?? AdvisorRequest.defaultMinionCost)
+        }
+        let tierBlocked = missingRoles.contains { !$0.anyOf.isEmpty && $0.anyOf.allSatisfy {
+            (request.poolTiers?[$0] ?? build.coreTiers[$0] ?? 0) > request.tier
+        } }
         return Selection(build: build, guidance: AdvisorStrategy(
-            buildID: build.id, name: build.name, committed: committed, missing: missing,
+            buildID: build.id, name: build.name, committed: committed, missing: missing, missingRequirements: missingRoles,
             alternatives: ranked.dropFirst().prefix(2).map { $0.0.name },
             unverifiedRequirements: requirements.filter { $0.anyOf.isEmpty }.map(\.role),
-            acquisition: missing.contains { (build.coreTiers[$0] ?? 0) > request.tier }
+            acquisition: tierBlocked
                 ? "Some targets need a higher tier; do not roll for them yet"
                 : "Reserve purchase gold before rolling; shop odds and contested copies are unknown",
             search: Acquisition(
                 eligibleTargets: missing.filter { (request.poolTiers?[$0] ?? build.coreTiers[$0] ?? Int.max) <= request.tier },
                 poolTypes: request.poolTiers.map { $0.values.filter { $0 <= request.tier }.count },
-                minimumPurchaseGold: (requirements.isEmpty ? missing.count : requirements.filter {
-                    held.union(offered).intersection($0.anyOf).isEmpty && !$0.anyOf.isEmpty
-                }.count) * AdvisorRequest.defaultMinionCost,
-                affordableRefreshes: request.rollCost.map { $0 > 0 ? max(0, request.gold - 3) / $0 : 0 } ?? 0),
+                minimumPurchaseGold: reserve,
+                affordableRefreshes: request.rollCost.map { $0 > 0 ? max(0, request.gold - max(3, reserve)) / $0 : 0 } ?? 0),
             reason: health <= 5 ? "Survive this combat before investing in a build" : committed
                 ? "The required engine pieces are already held" : owned > 0
                     ? "Some pieces are held; the engine is not yet verified" : "An affordable core piece is offered; keep this direction open",
             commitment: build.commitment, guidance: build.guidance,
             fallback: "Buy immediate strength if the missing pieces do not appear; reassess after each shop",
-            source: build.source, sourceUpdated: build.sourceUpdated))
+            source: build.source, sourceUpdated: [build.sourceUpdated, build.evidence?.tierUpdated.map { "Tier updated: " + $0 },
+                build.editorialTierIsFresh == false ? "Editorial tier stale/unknown; excluded from ranking" : nil].compactMap { $0 }.joined(separator: " · ")))
     }
 }

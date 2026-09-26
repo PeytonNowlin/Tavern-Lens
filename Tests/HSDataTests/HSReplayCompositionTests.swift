@@ -27,4 +27,11 @@ struct HSReplayCompositionTests {
         #expect(catalog.build("hsreplay_87")?.requirements?.isEmpty == false)
         #expect(catalog.build("hsreplay_87")?.placementEvidence?.provider == "Firestone")
     }
+    @Test("A newly captured guide does not refresh an old editorial tier")
+    func independentTierFreshness() throws {
+        let now = try #require(ISO8601DateFormatter().date(from: "2026-09-26T00:00:00Z"))
+        let evidence = BuildEvidence(provider: "HSReplay", url: "https://hsreplay.net/battlegrounds/comps/",
+            capturedAt: "2026-09-26", sourceUpdated: "2026-09-25T00:00:00Z", tierUpdated: "2025-12-03T00:00:00Z")
+        #expect(!evidence.tierIsCurrent(at: now))
+    }
 }
