@@ -1,0 +1,335 @@
+{
+  "capturedAt": "2026-09-26",
+  "comps": [
+    {
+      "comp_id": 3,
+      "comp_name": "Undead - APM Undead",
+      "comp_slug": "undead-apm-undead",
+      "comp_tier": 2,
+      "comp_difficulty": 1,
+      "comp_core_cards": [
+        95265,
+        122516,
+        122520,
+        126733,
+        133083
+      ],
+      "comp_addon_cards": [
+        132762,
+        96786
+      ],
+      "comp_last_updated": "2026-09-21T00:50:02.519Z",
+      "comp_tier_last_updated": "2026-09-05T08:11:56.671Z"
+    },
+    {
+      "comp_id": 8,
+      "comp_name": "Murlocs - Venom Scam",
+      "comp_slug": "murlocs-venom-scam",
+      "comp_tier": 2,
+      "comp_difficulty": 3,
+      "comp_core_cards": [
+        90425,
+        122219,
+        126637
+      ],
+      "comp_addon_cards": [
+        108922,
+        126966,
+        132957,
+        65031
+      ],
+      "comp_last_updated": "2026-08-14T02:39:34.384Z",
+      "comp_tier_last_updated": "2025-12-03T09:03:26.375Z"
+    },
+    {
+      "comp_id": 12,
+      "comp_name": "Beasts - Summons",
+      "comp_slug": "beasts-summons",
+      "comp_tier": 2,
+      "comp_difficulty": 2,
+      "comp_core_cards": [
+        97408,
+        98824,
+        130996,
+        132800,
+        132808,
+        59955
+      ],
+      "comp_addon_cards": [
+        132794
+      ],
+      "comp_last_updated": "2026-09-16T14:47:11.771Z",
+      "comp_tier_last_updated": "2025-12-04T18:09:30.472Z"
+    },
+    {
+      "comp_id": 13,
+      "comp_name": "Demons - Self Damage",
+      "comp_slug": "demons-self-damage",
+      "comp_tier": 1,
+      "comp_difficulty": 1,
+      "comp_core_cards": [
+        121687,
+        130298,
+        133028,
+        132901,
+        96786
+      ],
+      "comp_addon_cards": [
+        99228,
+        99199,
+        59670
+      ],
+      "comp_last_updated": "2026-09-16T23:12:53.621Z",
+      "comp_tier_last_updated": "2026-09-16T23:12:53.621Z"
+    },
+    {
+      "comp_id": 14,
+      "comp_name": "Undead - Attack Scaling",
+      "comp_slug": "undead-attack-scaling",
+      "comp_tier": 1,
+      "comp_difficulty": 1,
+      "comp_core_cards": [
+        95265,
+        108992,
+        120104,
+        132322,
+        133083
+      ],
+      "comp_addon_cards": [
+        95263,
+        97408,
+        115610,
+        120219,
+        133081
+      ],
+      "comp_last_updated": "2026-09-22T21:15:50.114Z",
+      "comp_tier_last_updated": "2026-09-05T08:17:41.865Z"
+    },
+    {
+      "comp_id": 15,
+      "comp_name": "Dragons - Battlecries",
+      "comp_slug": "dragons-battlecries",
+      "comp_tier": 3,
+      "comp_difficulty": 2,
+      "comp_core_cards": [
+        92413,
+        108463,
+        96786,
+        60630
+      ],
+      "comp_addon_cards": [
+        95006,
+        108116,
+        120301,
+        132955
+      ],
+      "comp_last_updated": "2026-08-26T16:05:37.723Z",
+      "comp_tier_last_updated": "2026-04-21T04:00:11.173Z"
+    },
+    {
+      "comp_id": 38,
+      "comp_name": "Beasts - Beetles",
+      "comp_slug": "beasts-beetles",
+      "comp_tier": 1,
+      "comp_difficulty": 3,
+      "comp_core_cards": [
+        98824,
+        119255,
+        132800,
+        132949
+      ],
+      "comp_addon_cards": [
+        115577,
+        116240,
+        130711,
+        130996
+      ],
+      "comp_last_updated": "2026-09-16T14:47:35.082Z",
+      "comp_tier_last_updated": "2026-09-05T08:06:14.331Z"
+    },
+    {
+      "comp_id": 41,
+      "comp_name": "Demons - Shop Buff",
+      "comp_slug": "demons-shop-buff",
+      "comp_tier": 2,
+      "comp_difficulty": 2,
+      "comp_core_cards": [
+        110664,
+        130298,
+        132899,
+        132901
+      ],
+      "comp_addon_cards": [
+        72060,
+        100949,
+        121687,
+        130662,
+        96786
+      ],
+      "comp_last_updated": "2026-09-16T23:12:41.745Z",
+      "comp_tier_last_updated": "2026-08-19T10:32:43.579Z"
+    },
+    {
+      "comp_id": 67,
+      "comp_name": "Murlocs - Tidecaller",
+      "comp_slug": "murlocs-tidecaller",
+      "comp_tier": 2,
+      "comp_difficulty": 2,
+      "comp_core_cards": [
+        98948,
+        108922,
+        122277,
+        130298,
+        133026,
+        96786
+      ],
+      "comp_addon_cards": [
+        122219
+      ],
+      "comp_last_updated": "2026-09-20T03:32:57.629Z",
+      "comp_tier_last_updated": "2026-08-05T18:04:40.822Z"
+    },
+    {
+      "comp_id": 76,
+      "comp_name": "Demons - APM Shop Buff",
+      "comp_slug": "demons-apm-shop-buff",
+      "comp_tier": 2,
+      "comp_difficulty": 1,
+      "comp_core_cards": [
+        110664,
+        122516,
+        122520,
+        130298,
+        132762,
+        132901
+      ],
+      "comp_addon_cards": [
+        130662,
+        96786
+      ],
+      "comp_last_updated": "2026-08-27T17:32:14.336Z",
+      "comp_tier_last_updated": "2026-02-04T18:07:02.303Z"
+    },
+    {
+      "comp_id": 83,
+      "comp_name": "Beasts - Leviathan",
+      "comp_slug": "beasts-leviathan",
+      "comp_tier": 2,
+      "comp_difficulty": 3,
+      "comp_core_cards": [
+        98824,
+        130711,
+        130996,
+        132800
+      ],
+      "comp_addon_cards": [
+        80746,
+        132949
+      ],
+      "comp_last_updated": "2026-09-08T10:16:23.026Z",
+      "comp_tier_last_updated": "2026-09-08T10:16:23.026Z"
+    },
+    {
+      "comp_id": 87,
+      "comp_name": "Beasts - Tasty Lobstah",
+      "comp_slug": "beasts-tasty-lobstah",
+      "comp_tier": 2,
+      "comp_difficulty": 3,
+      "comp_core_cards": [
+        97408,
+        132796,
+        132800,
+        132808
+      ],
+      "comp_addon_cards": [
+        95286,
+        132794,
+        133039
+      ],
+      "comp_last_updated": "2026-08-27T16:46:47.337Z",
+      "comp_tier_last_updated": "2026-08-23T05:19:25.500Z"
+    },
+    {
+      "comp_id": 88,
+      "comp_name": "Quilboar - Choose One",
+      "comp_slug": "quilboar-choose-one",
+      "comp_tier": 3,
+      "comp_difficulty": 3,
+      "comp_core_cards": [
+        116195,
+        116434,
+        122566,
+        126671
+      ],
+      "comp_addon_cards": [
+        80755,
+        101314,
+        116190,
+        132632,
+        132320
+      ],
+      "comp_last_updated": "2026-08-22T01:19:49.489Z",
+      "comp_tier_last_updated": "2026-08-22T01:19:49.489Z"
+    },
+    {
+      "comp_id": 89,
+      "comp_name": "Pirates - APM Golden",
+      "comp_slug": "pirates-apm-golden",
+      "comp_tier": 2,
+      "comp_difficulty": 1,
+      "comp_core_cards": [
+        122516,
+        132925,
+        132762
+      ],
+      "comp_addon_cards": [
+        99035,
+        122520,
+        96786
+      ],
+      "comp_last_updated": "2026-08-27T17:27:27.985Z",
+      "comp_tier_last_updated": "2026-08-19T10:32:08.440Z"
+    },
+    {
+      "comp_id": 91,
+      "comp_name": "Mechs - Magnetics/Spells",
+      "comp_slug": "mechs-magnetics-spells",
+      "comp_tier": 2,
+      "comp_difficulty": 3,
+      "comp_core_cards": [
+        98588,
+        130298,
+        132893
+      ],
+      "comp_addon_cards": [
+        101314,
+        132312,
+        133075,
+        132895
+      ],
+      "comp_last_updated": "2026-08-27T04:37:14.523Z",
+      "comp_tier_last_updated": "2026-08-26T16:02:47.243Z"
+    },
+    {
+      "comp_id": 92,
+      "comp_name": "Elementals - Unbound Tempest",
+      "comp_slug": "elementals-unbound-tempest",
+      "comp_tier": 1,
+      "comp_difficulty": 1,
+      "comp_core_cards": [
+        132983,
+        132883,
+        96786,
+        63626,
+        64077
+      ],
+      "comp_addon_cards": [
+        120674,
+        126924,
+        126173
+      ],
+      "comp_last_updated": "2026-08-26T16:14:33.282Z",
+      "comp_tier_last_updated": "2026-08-26T16:14:33.282Z"
+    }
+  ]
+}

@@ -52,13 +52,22 @@ public struct AdvisorCase: Codable, Hashable, Sendable {
 
     /// Automatic turn evidence can be replayed through the same interface as manual bookmarks.
     public static func savedDiagnostics(in directory: URL) -> [AdvisorCase] {
-        jsonFiles(in: directory).compactMap { url in
+        jsonFiles(in: directory).flatMap { url -> [AdvisorCase] in
             guard let data = try? Data(contentsOf: url),
-                  let record = try? JSONDecoder().decode(AdvisorTurnDiagnostic.self, from: data),
-                  let request = record.request, let displayed = record.displayed,
-                  AdviceView.fingerprint(of: request, version: displayed.plan.version) == displayed.fingerprint else { return nil }
-            return AdvisorCase(name: "game-\(record.gameSeed)-turn-\(record.bgTurn)",
-                               note: "Automatically captured displayed advice", request: request, recorded: displayed)
+                  let record = try? JSONDecoder().decode(AdvisorTurnDiagnostic.self, from: data) else { return [] }
+            var decisions = record.decisions ?? []
+            if let request = record.request, let displayed = record.displayed {
+                decisions.append(AdvisorDecision(request: request, displayed: displayed))
+            }
+            var seen: Set<String> = []
+            return decisions.enumerated().compactMap { index, decision in
+                let request = decision.request, displayed = decision.displayed
+                guard request.preview.gameSeed == record.combat.gameSeed, request.preview.bgTurn == record.bgTurn,
+                      AdviceView.fingerprint(of: request, version: displayed.plan.version) == displayed.fingerprint,
+                      seen.insert(displayed.fingerprint).inserted else { return nil }
+                return AdvisorCase(name: "game-\(record.gameSeed)-turn-\(record.bgTurn)-decision-\(index)",
+                    note: "Automatically captured displayed advice", request: request, recorded: displayed)
+            }
         }
     }
 

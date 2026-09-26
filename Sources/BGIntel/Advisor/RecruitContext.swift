@@ -13,6 +13,8 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     public var darkDiscovery: DarkDiscovery?
     /// No recruit actions are available until an outstanding discover/choice resolves.
     public var pendingChoice: Bool?
+    /// Evaluation policy is versioned independently of observed game state.
+    public var strategicEvaluation: Bool?
     /// Hand minions linked by observed discard enchantment source and batch.
     public var linkedDiscards: [Int: [Int]]?
     public struct DarkDiscovery: Codable, Hashable, Sendable {
@@ -43,9 +45,7 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     }
 
     public static func plain(_ text: String) -> String {
-        text.replacingOccurrences(of: "<[^>]+>|\\[x\\]", with: "", options: .regularExpression)
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        RecruitTextCache.shared.plain(text)
     }
 
     public func golden(_ id: String) -> Card? {

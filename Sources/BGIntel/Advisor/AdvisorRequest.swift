@@ -43,6 +43,10 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     /// The builds the player is leaning into (0-2, the strongest first), for the build term; nil
     /// without build data.
     public var builds: [AdvisorBuild]?
+    /// Complete lobby-eligible catalog captured for version 3 strategic planning.
+    public var strategyCatalog: [AdvisorBuild]?
+    public var choice: AdvisorChoice?
+    public var poolTiers: [String: Int]?
     /// The base card of every golden card in the request (`…_G` or `TB_BaconUps_*` → the normal
     /// card), when it isn't simply the ID without `_G`; for matching build cards and pairs.
     public var baseCardIDs: [String: String]?
@@ -161,6 +165,16 @@ public struct AdvisorBuild: Codable, Hashable, Sendable {
     public var addons: [String]
     /// The tavern tier of each core card, where known (levelling toward a missing one is progress).
     public var coreTiers: [String: Int]
+    public var evidence: BuildEvidence?
+    public var placementEvidence: BuildEvidence?
+    public var averagePlacement: Double?
+    public var editorialTier: Int?
+    public var evidenceIsStale: Bool?
+    public var requirements: [BuildRequirement]?
+    public var commitment: String?
+    public var guidance: String?
+    public var source: String?
+    public var sourceUpdated: String?
 
     public init(id: String, name: String, share: Double, core: [String], addons: [String], coreTiers: [String: Int] = [:]) {
         self.id = id

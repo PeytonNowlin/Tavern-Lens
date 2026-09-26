@@ -1,0 +1,327 @@
+{
+  "14": {
+    "requirements": [
+      {
+        "role": "Permanent attack",
+        "dbfIDs": [
+          120104
+        ]
+      },
+      {
+        "role": "Repeatable summons",
+        "dbfIDs": [
+          95265,
+          95263
+        ]
+      },
+      {
+        "role": "Reborn support",
+        "dbfIDs": [
+          108992
+        ]
+      }
+    ],
+    "guidance": "Grow permanent Undead attack and spend remaining slots on repeatable summons. Protect the scaling source until attack is established."
+  },
+  "92": {
+    "requirements": [
+      {
+        "role": "Battlecry multiplier",
+        "dbfIDs": [
+          96786
+        ]
+      },
+      {
+        "role": "Shop scaling",
+        "dbfIDs": [
+          63626
+        ]
+      },
+      {
+        "role": "Elemental payoff",
+        "dbfIDs": [
+          132983
+        ]
+      }
+    ],
+    "guidance": "Develop shop scaling before investing heavily in the payoff. Battlecry economy supports the transition; a weak shop makes the payoff premature."
+  },
+  "38": {
+    "requirements": [
+      {
+        "role": "Early Beetle scaling",
+        "dbfIDs": [
+          132949,
+          119255
+        ]
+      }
+    ],
+    "guidance": "Start scaling Beetles early, then improve summon count and Deathrattle repetition. Keep immediate strength while the permanent counter grows."
+  },
+  "13": {
+    "requirements": [
+      {
+        "role": "Damage protection",
+        "dbfIDs": [
+          121687
+        ]
+      },
+      {
+        "role": "Self-damage source",
+        "dbfIDs": [
+          59670,
+          99199
+        ]
+      },
+      {
+        "role": "Damage payoff",
+        "dbfIDs": [
+          99228,
+          133028
+        ]
+      }
+    ],
+    "guidance": "Connect self-damage, protection and a payoff before cycling aggressively. Health is a constraint until the protection is active."
+  },
+  "76": {
+    "requirements": [
+      {
+        "role": "Gold generator",
+        "dbfIDs": [
+          122516
+        ]
+      },
+      {
+        "role": "Economy multiplier",
+        "dbfIDs": [
+          122520
+        ]
+      },
+      {
+        "role": "Shop consumption",
+        "dbfIDs": [
+          110664
+        ]
+      },
+      {
+        "role": "Sustainable gold loop",
+        "dbfIDs": []
+      }
+    ],
+    "guidance": "Establish repeatable economy before cycling shop buffs and consumption. This advisor does not certify an infinite-gold loop from card membership alone."
+  },
+  "83": {
+    "requirements": [
+      {
+        "role": "Scaling payoff",
+        "dbfIDs": [
+          130711
+        ]
+      },
+      {
+        "role": "Beast summons",
+        "dbfIDs": [
+          130996
+        ]
+      }
+    ],
+    "guidance": "Pair the payoff with repeated Beast summons early enough to scale. Upgrade summon quality while preserving immediate combat strength."
+  },
+  "41": {
+    "requirements": [
+      {
+        "role": "Shop scaling",
+        "dbfIDs": [
+          132901
+        ]
+      },
+      {
+        "role": "Shop consumption",
+        "dbfIDs": [
+          130662,
+          110664
+        ]
+      }
+    ],
+    "guidance": "Build shop stats before committing board slots to consumption. Compare the consumed stats with the immediate strength available in the shop."
+  },
+  "91": {
+    "requirements": [
+      {
+        "role": "Magnetic engine",
+        "dbfIDs": [
+          132893
+        ]
+      },
+      {
+        "role": "Targeted spell multiplier",
+        "dbfIDs": [
+          130298
+        ]
+      },
+      {
+        "role": "Targeted spell supply",
+        "dbfIDs": []
+      }
+    ],
+    "guidance": "Pair the magnetic trigger with targeted spells and a spell multiplier. Keep board and hand space to use the supply; the cards alone do not guarantee repeatable resources."
+  },
+  "87": {
+    "requirements": [
+      {
+        "role": "Deathrattle trigger",
+        "dbfIDs": [
+          132800
+        ]
+      },
+      {
+        "role": "Deathrattle repetition",
+        "dbfIDs": [
+          132808
+        ]
+      },
+      {
+        "role": "Stats payoff",
+        "dbfIDs": [
+          132796
+        ]
+      }
+    ],
+    "guidance": "Assemble repeated Deathrattle triggers and their payoff. Preserve the necessary support pieces while upgrading temporary bodies."
+  },
+  "8": {
+    "requirements": [
+      {
+        "role": "Venom replacement",
+        "dbfIDs": [
+          90425,
+          122219,
+          126637
+        ]
+      }
+    ],
+    "guidance": "Use venom and defensive utility as a survival pivot when ordinary scaling cannot catch up. Positioning and the opponent composition still matter."
+  },
+  "3": {
+    "requirements": [
+      {
+        "role": "Bounty generation",
+        "dbfIDs": [
+          122516
+        ]
+      },
+      {
+        "role": "Economy support",
+        "dbfIDs": [
+          122520
+        ]
+      },
+      {
+        "role": "Undead payoff",
+        "dbfIDs": [
+          126733
+        ]
+      }
+    ],
+    "guidance": "Use bounty economy to feed the Undead payoff. Keep enough space and time to execute the sequence; unsupported loops remain uncertain."
+  },
+  "67": {
+    "requirements": [
+      {
+        "role": "Battlecry multiplier",
+        "dbfIDs": [
+          96786
+        ]
+      },
+      {
+        "role": "Murloc payoff",
+        "dbfIDs": [
+          133026
+        ]
+      },
+      {
+        "role": "Sustained economy",
+        "dbfIDs": []
+      }
+    ],
+    "guidance": "A Battlecry multiplier and the payoff need a continuing resource supply. Do not treat two expensive cards as a complete engine."
+  },
+  "89": {
+    "requirements": [
+      {
+        "role": "Golden payoff",
+        "dbfIDs": [
+          132762
+        ]
+      },
+      {
+        "role": "Repeatable economy",
+        "dbfIDs": [
+          122516
+        ]
+      },
+      {
+        "role": "Sustainable gold loop",
+        "dbfIDs": []
+      }
+    ],
+    "guidance": "Develop the economy that feeds the golden payoff before committing. A high-action loop also requires enough recruit time to execute it."
+  },
+  "12": {
+    "requirements": [
+      {
+        "role": "Deathrattle trigger",
+        "dbfIDs": [
+          132800
+        ]
+      },
+      {
+        "role": "Deathrattle repetition",
+        "dbfIDs": [
+          132808
+        ]
+      },
+      {
+        "role": "Summon payoff",
+        "dbfIDs": [
+          59955
+        ]
+      }
+    ],
+    "guidance": "Assemble summon buffs with Deathrattle triggers and repetition. Keep a playable board during the transition rather than buying every final-board piece."
+  },
+  "88": {
+    "requirements": [
+      {
+        "role": "Choose One engine",
+        "dbfIDs": [
+          116434
+        ]
+      },
+      {
+        "role": "Choose One payoff",
+        "dbfIDs": [
+          116195
+        ]
+      }
+    ],
+    "guidance": "Connect the Choose One engine and payoff, then scale the resources they consume. Replace temporary bodies only when the engine can sustain them."
+  },
+  "15": {
+    "requirements": [
+      {
+        "role": "Dragon scaling",
+        "dbfIDs": [
+          60630
+        ]
+      },
+      {
+        "role": "Battlecry multiplier",
+        "dbfIDs": [
+          96786
+        ]
+      }
+    ],
+    "guidance": "Pair Dragon scaling with the Battlecry multiplier and a supply of Battlecries. Keep board space for cycling and enough health to survive the transition."
+  }
+}

@@ -16,7 +16,7 @@ struct AdvisorOverlays: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             if showsHighlights {
-                AdvisorHighlights(suggestions: advice.advice.suggestions, game: game, layout: layout)
+                AdvisorHighlights(suggestions: Array(advice.advice.suggestions.prefix(advice.advice.strategy == nil ? 3 : 2)), game: game, layout: layout)
             }
             let rect = collapsed ? layout.advisorHeader : layout.advisorPanel
             AdvisorPanel(
@@ -149,13 +149,27 @@ struct AdvisorPanel: View {
     let name: (String) -> String
     let scale: CGFloat
     var metrics = AdvisorMetrics()
+    var offscreen = false
     let toggle: () -> Void
 
     var body: some View {
         let m = metrics, s = scale
         VStack(alignment: .leading, spacing: m.rowSpacing * s) {
             if !collapsed {
-                ForEach(advice.advice.suggestions, id: \.rank) { suggestion in
+                if let strategy = advice.advice.strategy {
+                    Text("\(strategy.committed ? "Building" : "Considering"): \(strategy.name)")
+                        .font(.system(size: m.reasonFontSize * s, weight: .semibold))
+                        .lineLimit(1)
+                    Text(strategy.reason.hasPrefix("Survive") || strategy.missing.isEmpty ? strategy.reason : "Look for: " + strategy.missing.prefix(3).map(name).joined(separator: ", "))
+                        .font(.system(size: m.reasonFontSize * s))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .help([strategy.reason, strategy.commitment, strategy.guidance, strategy.fallback,
+                               strategy.acquisition, strategy.unverifiedRequirements.isEmpty ? nil : "Unverified: " + strategy.unverifiedRequirements.joined(separator: ", "),
+                               strategy.alternatives.isEmpty ? nil : "Alternatives: " + strategy.alternatives.joined(separator: ", "),
+                               strategy.source, strategy.sourceUpdated].compactMap { $0 }.joined(separator: "\n\n"))
+                }
+                ForEach(Array(advice.advice.suggestions.prefix(advice.advice.strategy == nil ? 3 : 2)), id: \.rank) { suggestion in
                     row(suggestion)
                 }
                 if let note = advice.advice.note, advice.advice.status != .noData {
@@ -163,7 +177,7 @@ struct AdvisorPanel: View {
                         .help(note)
                         .font(.system(size: m.reasonFontSize * s))
                         .foregroundStyle(.tertiary)
-                        .lineLimit(m.noteLines)
+                        .lineLimit(advice.advice.strategy == nil ? m.noteLines : 1)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Divider().opacity(0.5)
@@ -173,7 +187,10 @@ struct AdvisorPanel: View {
         .padding(.horizontal, m.padding.width * s)
         .padding(.vertical, m.padding.height * s)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * s))
+        .background {
+            if offscreen { RoundedRectangle(cornerRadius: m.cornerRadius * s).fill(Color(white: 0.12)) }
+            else { HUDMaterial(cornerRadius: m.cornerRadius * s) }
+        }
         .overlay(
             RoundedRectangle(cornerRadius: m.cornerRadius * s, style: .continuous)
                 .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
@@ -205,6 +222,7 @@ struct AdvisorPanel: View {
 
     private var headerText: String {
         if advice.failure != nil { return "Advisor unavailable" }
+        if let choice = advice.advice.choice { return "Consider \(choice.name)" }
         switch advice.advice.status {
         case .thinking: return "Advisor: thinking…"
         case .noData: return "Advisor: no data yet"

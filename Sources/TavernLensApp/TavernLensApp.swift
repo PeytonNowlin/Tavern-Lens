@@ -56,6 +56,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--render-advisor-preview") {
+            Self.renderAdvisorPreview(CommandLine.arguments)
+            return
+        }
         if CommandLine.arguments.contains("--render-trinket-preview") {
             Self.renderTrinketPreview(CommandLine.arguments)
             return

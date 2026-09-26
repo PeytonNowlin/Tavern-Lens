@@ -8,6 +8,7 @@ public struct BuildDefinition: Codable, Hashable, Sendable {
         case firestone
         /// Our override file.
         case overrides
+        case hsreplay
     }
 
     /// Firestone's archetype ID or ours (`beast_lobster`, `aberration_discard_deity`).
@@ -38,6 +39,9 @@ public struct BuildDefinition: Codable, Hashable, Sendable {
     public var requiresDeityDbfID: Int?
     /// How our override builds are known (`card-text`, `community`, …); empty for source builds.
     public var evidence: [String]
+    public var requirements: [BuildRequirement]?
+    public var sourceEvidence: BuildEvidence?
+    public var placementEvidence: BuildEvidence?
     public var source: Source
 
     public init(
@@ -148,7 +152,7 @@ public struct BuildCatalog: Hashable, Sendable {
     /// - The override file's builds are added for tribes no remaining source build is for.
     public static func compose(
         stats: FirestoneCompStats?, strategies: FirestoneStrategies?, overrides: BuildOverrides?, pool: MinionPool,
-        provenance: Provenance? = nil
+        provenance: Provenance? = nil, compositions: HSReplayCompositions? = nil
     ) -> BuildCatalog {
         let resolver = CardResolver(pool: pool)
         var dropped: [Dropped] = []
@@ -164,10 +168,10 @@ public struct BuildCatalog: Hashable, Sendable {
                 dropped.append(Dropped(id: id, reason: "disabled in the override file"))
                 continue
             }
-            let comp = statsByID[id].flatMap { $0.sampledBoards >= minimumSampledBoards ? $0 : nil }
+            let comp = statsByID[id].flatMap { $0.dataPoints >= 50 ? $0 : nil }
             let curated = strategies?.comp(id)
             var shares: [String: Double] = [:]
-            if let comp, comp.sampledBoards > 0 {
+            if let comp, comp.sampledBoards >= minimumSampledBoards {
                 var folded: [String: Int] = [:]
                 for (card, count) in comp.boardsWithCard { folded[resolver.base(card), default: 0] += count }
                 shares = folded.mapValues { min(1, Double($0) / Double(comp.sampledBoards)) }
@@ -183,7 +187,7 @@ public struct BuildCatalog: Hashable, Sendable {
             let addons = unique(curatedAddons + byShare.filter { $0.value >= addonShare && $0.value < coreShare }.map(\.key))
                 .filter { !core.contains($0) }
             let tip = curated?.tips.first { !($0.tip ?? "").isEmpty || !($0.whenToCommit ?? "").isEmpty }
-            let build = BuildDefinition(
+            var build = BuildDefinition(
                 id: id, name: (curated?.name).flatMap { $0.isEmpty ? nil : $0 } ?? displayName(archetype: id),
                 tribes: tribes(archetype: id), core: core, addons: addons,
                 whenToCommit: tip?.whenToCommit.flatMap { $0.isEmpty ? nil : $0 },
@@ -195,6 +199,12 @@ public struct BuildCatalog: Hashable, Sendable {
                 },
                 source: .firestone
             )
+            if let comp {
+                build.placementEvidence = BuildEvidence(provider: "Firestone",
+                    url: FirestoneBuildDataSource(timePeriod: stats?.timePeriod ?? "last-patch").url(.compStats).absoluteString,
+                    sourceUpdated: stats?.lastUpdateDate, metric: "average final placement; lower is better; observational",
+                    sampleSize: comp.dataPoints, sampledBoards: comp.sampledBoards, window: stats?.timePeriod, mmr: "all players")
+            }
             switch filtered(build, curatedCore: Set(curatedCore), resolver: resolver) {
             case .success(let kept): builds.append(kept)
             case .failure(let reason): dropped.append(Dropped(id: id, reason: reason.text))
@@ -222,6 +232,27 @@ public struct BuildCatalog: Hashable, Sendable {
             case .failure(let reason):
                 dropped.append(Dropped(id: extra.id, reason: reason.text))
             }
+        }
+
+        if let compositions {
+            let guides = compositions.catalog(pool: pool)
+            // Explicitly reviewed identity joins, never name similarity or shared-card overlap.
+            let aliases = [14: "undead_butcher", 38: "beast_beetle", 13: "demon_self_damage",
+                           83: "beast_leviathan", 41: "demon_boost_shop", 91: "mech_magnet",
+                           87: "beast_lobster", 67: "murloc_handbuff", 89: "pirate_discover",
+                           88: "quilboar_choose_one", 15: "dragon_kalecgos"]
+            for var guide in guides.builds {
+                if let number = Int(guide.id.replacingOccurrences(of: "hsreplay_", with: "")),
+                   let alias = aliases[number], let prior = builds.first(where: { $0.id == alias }) {
+                    guide.averagePlacement = prior.averagePlacement
+                    guide.averagePlacementTop10 = prior.averagePlacementTop10
+                    guide.popularity = prior.popularity
+                    guide.placementEvidence = prior.placementEvidence
+                    builds.removeAll { $0.id == alias }
+                }
+                builds.append(guide)
+            }
+            dropped += guides.dropped
         }
 
         builds.sort { ($0.averagePlacement ?? .infinity, $0.id) < ($1.averagePlacement ?? .infinity, $1.id) }

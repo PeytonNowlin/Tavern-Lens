@@ -85,7 +85,8 @@ final class BuildDataModel {
         Task {
             let catalog = await Task.detached(priority: .userInitiated) {
                 BuildCatalog.compose(
-                    stats: data.stats, strategies: data.strategies, overrides: overrides, pool: pool, provenance: provenance
+                    stats: data.stats, strategies: data.strategies, overrides: overrides, pool: pool, provenance: provenance,
+                    compositions: HSReplayCompositions.bundled()
                 )
             }.value
             guard generation == composeGeneration else { return }

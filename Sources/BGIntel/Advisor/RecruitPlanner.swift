@@ -281,7 +281,14 @@ public enum RecruitPlanner {
             let core = Set(held.map { context.base($0.cardID) }).intersection(build.core).count
             let support = Set(held.map { context.base($0.cardID) }).intersection(build.addons).count
             // Supporting cards have value when there is an engine; catalog membership alone is weak.
-            v.synergy += build.share * Double(core * 3 + (core > 0 ? support * 2 : 0)) * horizon
+            if let requirements = build.requirements, !requirements.isEmpty {
+                let heldIDs = Set(held.map { context.base($0.cardID) })
+                let supplied = requirements.filter { !heldIDs.intersection($0.anyOf).isEmpty }.count
+                let complete = supplied == requirements.count
+                v.synergy += build.share * Double(supplied * 4 + core + (complete ? support * 2 + 4 : 0)) * horizon
+            } else {
+                v.synergy += build.share * Double(core * 3 + (core > 0 ? support * 2 : 0)) * horizon
+            }
         }
         if s.frozen, !request.shopFrozen {
             // Only pay for preserving a known, unaffordable engine card, not for the freeze itself.
@@ -289,7 +296,17 @@ public enum RecruitPlanner {
         }
         if s.steps.last?.kind == .roll {
             // Small option value, never a fabricated new board or guaranteed desired card.
-            v.economy += s.gold >= 3 ? 1.5 : 0
+            if context.strategicEvaluation == true, let pool = request.poolTiers {
+                let heldIDs = Set(held.map { context.base($0.cardID) })
+                let targets = Set((request.builds ?? []).flatMap(\.core)).subtracting(heldIDs)
+                let eligible = targets.filter { (pool[$0] ?? Int.max) <= s.tier }.count
+                let breadth = pool.values.filter { $0 <= s.tier }.count
+                // A bounded search-breadth heuristic, not shop odds: remaining shared copies
+                // and tier weighting are unknown. Never fund a roll by spending the buy reserve.
+                v.economy += s.gold >= 3 && breadth > 0 ? min(1.5, Double(eligible) / Double(breadth) * 10) : 0
+            } else {
+                v.economy += s.gold >= 3 ? 1.5 : 0
+            }
         }
         if s.steps.last?.kind == .darkDiscovery, let discovery = context.darkDiscovery {
             // A bounded option value, not a fictional minion or promised combat improvement.
@@ -393,14 +410,15 @@ public enum RecruitPlanner {
                 }
                 if expanded >= budget.expansions || !shouldContinue() { break }
             }
-            next.sort {
-                let a = value($0, request: request, context: context).total
-                let b = value($1, request: request, context: context).total
-                return a == b ? $0.steps.map(\.id).joined() < $1.steps.map(\.id).joined() : a > b
-            }
+            // Score once per state, not twice per sort comparison. Value is pure; this
+            // preserves ordering and archived results while avoiding repeated effect parsing.
+            let ordered = next.map { state in
+                (state: state, score: value(state, request: request, context: context).total,
+                 id: state.steps.map(\.id).joined())
+            }.sorted { a, b in a.score == b.score ? a.id < b.id : a.score > b.score }
             // Preserve first-action diversity so a good cycle can survive its temporary weak board.
             var perFirst: [String: Int] = [:]
-            beam = next.filter { s in
+            beam = ordered.map(\.state).filter { s in
                 guard !s.terminal, let first = s.steps.first else { return false }
                 perFirst[first.id, default: 0] += 1
                 return perFirst[first.id]! <= 3

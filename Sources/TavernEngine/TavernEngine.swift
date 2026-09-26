@@ -527,9 +527,42 @@ public struct TavernEngine: Sendable {
             store: store, snapshot: snapshot, cards: recruitCards ?? cards, request: request
         )
         request.recruit?.pendingChoice = trinketPick.choice != nil
+        if let offer = state.game?.trinketPick?.offers.first(where: { $0.rank == 1 && $0.affordable }) {
+            request.choice = AdvisorChoice(entityID: offer.entityID, cardID: offer.cardID, name: offer.name,
+                cost: offer.cost, reason: offer.reason, confidence: .low)
+        }
         if trinketPick.choice != nil { request.recruit?.darkDiscovery?.ready = false }
-        guard request.hasData else { return request }
         request.lobby = lobby.sorted { $0.playerID < $1.playerID }
+        if let catalog = builds.catalog {
+            let game = state.game
+            let absent = Set((game?.tribes?.tribes ?? []).filter { $0.confidence == .absent }.compactMap { HS.Race(name: $0.tribe) })
+            if let pool = tribes.basePool {
+                request.poolTiers = Dictionary(uniqueKeysWithValues: pool.minions.values.filter {
+                    !$0.isOutOfRotation && !$0.isDuosOnly && ($0.lobbyGate.isEmpty || !$0.lobbyGate.allSatisfy(absent.contains))
+                }.map { ($0.cardID, $0.tier) })
+            }
+            request.strategyCatalog = catalog.builds.filter { build in
+                (build.tribes.isEmpty || !build.tribes.allSatisfy(absent.contains))
+                    && (build.requiresDeityDbfID == nil || build.requiresDeityDbfID == game?.mechanics?.deityDbfID)
+            }.map { build in
+                let tiers = Dictionary(uniqueKeysWithValues: build.core.compactMap { card -> (String, Int)? in
+                    guard let tier = tribes.basePool?.minion(card)?.tier ?? cards?[card]?.techLevel else { return nil }
+                    return (card, tier)
+                })
+                var result = AdvisorBuild(id: build.id, name: build.name, share: 1,
+                                          core: build.core, addons: build.addons, coreTiers: tiers)
+                result.evidence = build.sourceEvidence
+                result.placementEvidence = build.placementEvidence
+                result.averagePlacement = build.averagePlacement
+                result.editorialTier = build.powerLevel.flatMap { $0.hasPrefix("Tier ") ? Int($0.dropFirst(5)) : nil }
+                result.evidenceIsStale = catalog.provenance.statsIsStale
+                result.requirements = build.requirements
+                result.commitment = build.whenToCommit; result.guidance = build.tip
+                result.source = build.sourceEvidence?.url ?? build.source.rawValue
+                result.sourceUpdated = build.sourceEvidence?.sourceUpdated ?? catalog.provenance.statsUpdated
+                return result
+            }
+        }
         if let catalog = builds.catalog, let detected = state.game?.builds?.detected, !detected.isEmpty {
             let pool = tribes.basePool
             request.builds = detected.enumerated().compactMap { index, view in

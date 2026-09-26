@@ -57,6 +57,13 @@ final class BuildDataStoreTests {
         ])
     }
 
+    @Test("Downloading an old source does not make its statistics current")
+    func oldSourceDate() async {
+        let loaded = await store(ok()).load(now: now.addingTimeInterval(14 * 86400), bundledStats: nil, bundledStrategies: nil)
+        #expect(loaded.statsOrigin == .downloaded)
+        #expect(loaded.provenance(overridesPatch: "36.6.1").statsIsStale)
+    }
+
     @Test("Fetched and cached (comp stats reduced), then served from the cache for 6 hours")
     func downloadThenCache() async throws {
         let source = ok()

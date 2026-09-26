@@ -14,6 +14,24 @@ struct AdvisorDiagnosticTests {
         return AdvisorTurnDiagnostic(combat: combat, request: request, displayed: displayed)
     }
 
+    @Test("Decision history retains distinct pre-action states within a bounded turn")
+    func decisionHistory() throws {
+        var trace = AdvisorDecisionTrace(limit: 3)
+        var request = try RecruitPlannerTests.request(gold: 10)
+        for gold in stride(from: 10, through: 4, by: -1) {
+            request.gold = gold
+            let view = AdviceView(request: request, plan: .live, advice: Advice(status: .noStrongRecommendation), isComplete: true)
+            trace.record(request: request, displayed: view)
+        }
+        #expect(trace.decisions.count == 3)
+        #expect(trace.decisions.first?.request.gold == 10)
+        #expect(trace.decisions.last?.request.gold == 4)
+        request.preview.bgTurn += 1
+        trace.record(request: request, displayed: AdviceView(request: request, plan: .live,
+            advice: Advice(status: .noStrongRecommendation), isComplete: true))
+        #expect(trace.decisions.count == 1)
+    }
+
     @Test("Atomic archive preserves the exact request, incomplete advice, and version")
     func roundTrip() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
@@ -24,9 +42,24 @@ struct AdvisorDiagnosticTests {
         try await store.save(evidence)
         let loaded = try await store.load(gameSeed: 1, turn: 11)
         #expect(loaded == evidence)
-        #expect(loaded.displayed?.plan.version == 2)
+        #expect(loaded.displayed?.plan.version == 3)
         #expect(loaded.displayed?.isComplete == false)
         #expect(AdvisorCase.savedDiagnostics(in: dir).first?.request == loaded.request)
+    }
+
+    @Test("Decision snapshots become replay cases without losing the combat-start case")
+    func decisionCases() async throws {
+        let dir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var evidence = try record()
+        var earlier = try #require(evidence.request)
+        earlier.gold += 1
+        evidence.decisions = [AdvisorDecision(request: earlier,
+            displayed: AdviceView(request: earlier, plan: .live, advice: .noData, isComplete: true))]
+        try await AdvisorDiagnosticStore(directory: dir).save(evidence)
+        let cases = AdvisorCase.savedDiagnostics(in: dir)
+        #expect(cases.count == 2)
+        #expect(cases.contains { $0.request.gold == earlier.gold })
     }
 
     @Test("An unrelated game's advice is not attributed to this combat")

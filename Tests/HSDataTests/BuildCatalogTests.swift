@@ -19,6 +19,17 @@ struct BuildCatalogTests {
         BuildCatalog.compose(stats: stats, strategies: strategies, overrides: overrides, pool: pool)
     }
 
+    @Test("Placement samples remain usable when final-board samples are sparse")
+    func independentSamples() throws {
+        var stats = Self.stats
+        let index = try #require(stats.comps.firstIndex { $0.archetype == "beast_lobster" })
+        stats.comps[index].sampledBoards = 3
+        stats.comps[index].boardsWithCard = ["BG36_110": 3]
+        let build = try #require(Self.catalog(stats: stats).build("beast_lobster"))
+        #expect(build.averagePlacement == stats.comps[index].averagePlacement)
+        #expect(!build.core.contains("BG36_110"))
+    }
+
     @Test("The shipped comp stats, strategies and override file decode")
     func bundledData() {
         #expect(Self.stats.timePeriod == "last-patch")

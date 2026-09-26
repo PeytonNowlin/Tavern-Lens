@@ -21,6 +21,7 @@ final class CombatOddsModel {
     @ObservationIgnored private var lastAdvice: AdviceView?
     @ObservationIgnored private var lastRequest: AdvisorRequest?
     @ObservationIgnored private var diagnostic: AdvisorTurnDiagnostic?
+    @ObservationIgnored private var decisionTrace = AdvisorDecisionTrace()
     @ObservationIgnored private var diagnosticWrite: Task<Void, Never>?
     private static let log = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "advisor-diagnostics")
     /// The recruit-phase preview: the board now against the next opponent's last-seen board.
@@ -55,6 +56,7 @@ final class CombatOddsModel {
                AdviceView.fingerprint(of: request) == view.fingerprint {
                 self.lastAdvice = view
                 self.lastRequest = request
+                self.decisionTrace.record(request: request, displayed: view)
             }
         }
         return runner
@@ -86,6 +88,10 @@ final class CombatOddsModel {
         guard current?.requestID != request.id else { return }
         warmUp()
         diagnostic = AdvisorTurnDiagnostic(combat: request, request: lastRequest, displayed: lastAdvice)
+        diagnostic?.decisions = decisionTrace.decisions.filter {
+            $0.request.preview.gameSeed == request.gameSeed && $0.request.preview.bgTurn == request.bgTurn
+        }
+        decisionTrace = AdvisorDecisionTrace()
         if let lastPreview, lastPreview.requestID == "\(request.gameSeed.map(String.init) ?? "-")/\(request.bgTurn)/P\(request.opponentPlayerID)" {
             diagnostic?.preview = lastPreview
         }

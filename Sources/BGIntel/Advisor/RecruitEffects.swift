@@ -11,7 +11,7 @@ public enum RecruitEffects {
     }
 
     static func captures(_ pattern: String, _ text: String) -> [String]? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+        guard let regex = RecruitTextCache.shared.expression(pattern),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               match.range.length == (text as NSString).length else { return nil }
         return (1..<match.numberOfRanges).map { (text as NSString).substring(with: match.range(at: $0)) }
@@ -289,8 +289,12 @@ public enum RecruitEffects {
             }
         }
         result.limitations += RecruitMechanics.limitations(state, context: context, projectionOnly: true)
-        if !state.input.playerBoard.player.questEntities.isEmpty
-            || !state.input.playerBoard.player.questRewards.isEmpty {
+        // Untold Riches grants a pouch and raises the gold cap once. Both are already
+        // observed in hand/resources; it has no pending end-of-turn combat projection.
+        let unresolvedRewards = state.input.playerBoard.player.questRewards.filter {
+            context.strategicEvaluation != true || $0 != "BG33_Reward_012"
+        }
+        if !state.input.playerBoard.player.questEntities.isEmpty || !unresolvedRewards.isEmpty {
             result.limitations.append("Recruit effects of quests are not resolved")
         }
         return result

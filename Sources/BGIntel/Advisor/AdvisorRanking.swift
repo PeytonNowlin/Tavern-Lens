@@ -323,6 +323,8 @@ public struct Advice: Codable, Hashable, Sendable {
     /// The sanity rules that took out or moved down a suggestion the score would have listed
     /// (nil when none did).
     public var sanity: [AdvisorSanityNote]?
+    public var strategy: AdvisorStrategy?
+    public var choice: AdvisorChoice?
 
     public init(
         status: Status, note: String? = nil, baseline: AdvisorOdds? = nil, suggestions: [AdvisorSuggestion] = [],

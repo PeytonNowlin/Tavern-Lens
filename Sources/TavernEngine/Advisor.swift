@@ -37,7 +37,7 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3, lobbySweepSimulations: 30, version: 2
+        lobbyGroups: 3, lobbySweepSimulations: 30, version: 3
     )
 
     public init(
@@ -263,9 +263,10 @@ public struct AdviceView: Codable, Hashable, Sendable {
     }
 
     /// FNV-1a (64-bit) of the request's sorted-keys JSON: stable across processes and runs.
-    public static func fingerprint(of request: AdvisorRequest, version: Int = 2) -> String {
+    public static func fingerprint(of request: AdvisorRequest, version: Int = 3) -> String {
         var request = request
         if version == 1 { request.recruit = nil }
+        if version < 3 { request.strategyCatalog = nil; request.choice = nil; request.poolTiers = nil }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let data = (try? encoder.encode(request)) ?? Data()
@@ -368,7 +369,7 @@ public final class AdvisorRunner {
             return
         }
         var replacing = false
-        if var view = current, view.requestID == request.id {
+        if plan.version < 3, var view = current, view.requestID == request.id {
             view.isUpdating = true
             current = view
             replacing = true

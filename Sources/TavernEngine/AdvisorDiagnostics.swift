@@ -4,7 +4,7 @@ import BGIntel
 /// One turn's actual displayed advice and combat result, separate from manual bookmarks. The
 /// request is the one the displayed advice evaluated, even if it had become stale before combat.
 public struct AdvisorTurnDiagnostic: Codable, Hashable, Sendable {
-    public var format = 1
+    public var format = 2
     public var capturedAt: Date
     public var gameSeed: Int
     public var bgTurn: Int
@@ -14,6 +14,7 @@ public struct AdvisorTurnDiagnostic: Codable, Hashable, Sendable {
     public var odds: CombatOddsView?
     public var preview: OddsPreviewView?
     public var failure: String?
+    public var decisions: [AdvisorDecision]?
 
     public init(combat: CombatSimulationRequest, request: AdvisorRequest?, displayed: AdviceView?,
                 capturedAt: Date = Date()) {
@@ -67,4 +68,32 @@ public actor AdvisorDiagnosticStore {
     }
 
     enum DiagnosticError: Error { case recordTooLarge }
+}
+
+public struct AdvisorDecision: Codable, Hashable, Sendable {
+    public var request: AdvisorRequest
+    public var displayed: AdviceView
+    public init(request: AdvisorRequest, displayed: AdviceView) {
+        self.request = request; self.displayed = displayed
+    }
+}
+
+/// Keeps the opening decision and the latest distinct decisions, never another turn's state.
+public struct AdvisorDecisionTrace: Sendable {
+    public private(set) var decisions: [AdvisorDecision] = []
+    public let limit: Int
+    public init(limit: Int = 12) { self.limit = max(2, limit) }
+
+    public mutating func record(request: AdvisorRequest, displayed: AdviceView) {
+        guard displayed.advice.status != .thinking,
+              displayed.fingerprint == AdviceView.fingerprint(of: request, version: displayed.plan.version) else { return }
+        if let first = decisions.first,
+           first.request.preview.gameSeed != request.preview.gameSeed || first.request.preview.bgTurn != request.preview.bgTurn {
+            decisions = []
+        }
+        let decision = AdvisorDecision(request: request, displayed: displayed)
+        if decisions.last?.displayed.fingerprint == displayed.fingerprint { decisions[decisions.count - 1] = decision }
+        else { decisions.append(decision) }
+        if decisions.count > limit { decisions.remove(at: 1) }
+    }
 }

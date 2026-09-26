@@ -141,12 +141,16 @@ public struct LoadedBuildData: Hashable, Sendable {
     public var statsOrigin: Origin?
     public var strategies: FirestoneStrategies?
     public var strategiesOrigin: Origin?
+    public var checkedAt: Date? = nil
 
     /// For `BuildCatalog.compose`.
     public func provenance(overridesPatch: String?) -> BuildCatalog.Provenance {
         BuildCatalog.Provenance(
             statsUpdated: stats?.lastUpdateDate, statsTimePeriod: stats?.timePeriod,
-            statsIsStale: statsOrigin?.isStale ?? true, strategiesIsStale: strategiesOrigin?.isStale ?? true,
+            statsIsStale: (statsOrigin?.isStale ?? true) || stats.map { stats in
+                guard let updated = stats.updatedAt, let checkedAt else { return true }
+                return checkedAt.timeIntervalSince(updated) > 24 * 3600 || updated > checkedAt
+            } ?? true, strategiesIsStale: strategiesOrigin?.isStale ?? true,
             overridesPatch: overridesPatch
         )
     }
@@ -195,7 +199,7 @@ public struct BuildDataStore: Sendable {
         )
         return LoadedBuildData(
             stats: stats?.value, statsOrigin: stats?.origin, strategies: strategies?.value,
-            strategiesOrigin: strategies?.origin
+            strategiesOrigin: strategies?.origin, checkedAt: now
         )
     }
 

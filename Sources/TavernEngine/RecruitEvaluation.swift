@@ -45,12 +45,24 @@ public enum RecruitEvaluation {
         simulate: AdvisorEvaluation.Simulate, isolation: isolated (any Actor)? = #isolation,
         report: (AdvisorEvaluation.Progress) -> Void
     ) async throws -> AdvisorEvaluation.Progress {
+        let direction = plan.version >= 3 ? AdvisorStrategy.select(request) : nil
+        var prepared = request
+        if plan.version >= 3 { prepared.recruit?.strategicEvaluation = true }
+        if let direction { prepared.builds = [direction.build] }
+        let request = prepared
         guard let context = request.recruit else {
             let done = AdvisorEvaluation.Progress(advice: Advice(status: .noData,
                 note: "Recruit card data unavailable; advice withheld"), evaluations: 0, isComplete: true)
             report(done); return done
         }
         if context.pendingChoice == true {
+            if plan.version >= 3, let choice = request.choice {
+                var advice = Advice(status: .noStrongRecommendation, note: "Consider \(choice.name): \(choice.reason). Reassess after choosing.")
+                advice.choice = choice
+                advice.strategy = direction?.guidance
+                let done = AdvisorEvaluation.Progress(advice: advice, evaluations: 0, isComplete: true)
+                report(done); return done
+            }
             let done = AdvisorEvaluation.Progress(advice: Advice(status: .noData,
                 note: "Finish the current choice; recruit advice resumes afterward"), evaluations: 0, isComplete: true)
             report(done); return done
@@ -71,8 +83,9 @@ public enum RecruitEvaluation {
         var results: [String: [Int: CombatTally]] = [:]
         var evaluations = 0
         func progress(_ complete: Bool) -> AdvisorEvaluation.Progress {
-            AdvisorEvaluation.Progress(advice: rank(request, search: search, scenarios: scenarios,
-                results: results, complete: complete), evaluations: evaluations, isComplete: complete)
+            var advice = rank(request, search: search, scenarios: scenarios, results: results, complete: complete)
+            advice.strategy = direction?.guidance
+            return AdvisorEvaluation.Progress(advice: advice, evaluations: evaluations, isComplete: complete)
         }
         report(progress(false))
         // A full round covers baseline + candidate over exactly the same scenarios. Partial
