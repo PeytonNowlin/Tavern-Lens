@@ -1,14 +1,53 @@
 import HSLog
+import OverlayLayout
 import SwiftUI
 import TavernEngine
 
-/// Disk-use limits: Hearthstone's log sessions, saved replays, the Power.log size
-/// hint and the art cache. Changes are saved at once and apply to the next cleanup.
+/// Overlay presentation and disk-use limits. Overlay changes apply immediately;
+/// storage changes apply to the next cleanup.
 struct SettingsWindow: View {
     @Bindable var model: RetentionSettingsModel
     let housekeeping: HousekeepingModel
+    @Bindable var overlayPreferences: OverlayPreferences
 
     var body: some View {
+        TabView {
+            overlaySettings
+                .tabItem { Label("Overlay", systemImage: "rectangle.on.rectangle") }
+            storageSettings
+                .tabItem { Label("Storage", systemImage: "internaldrive") }
+        }
+        .frame(minWidth: 460, idealWidth: 500, minHeight: 480)
+    }
+
+    private var overlaySettings: some View {
+        Form {
+            Section("Advisor density") {
+                Picker("Layout", selection: $overlayPreferences.density) {
+                    Text("Compact").tag(OverlayDensity.compact)
+                    Text("Comfortable").tag(OverlayDensity.comfortable)
+                }
+                .pickerStyle(.segmented)
+                Text("Choose a tighter layout or more spacious advice.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Visible panels") {
+                Toggle("Advisor", isOn: $overlayPreferences.showsAdvisor)
+                Toggle("Build guidance", isOn: $overlayPreferences.showsBuildGuidance)
+                Toggle("Opponent scouting", isOn: $overlayPreferences.showsOpponentScouting)
+                Text("Changes apply immediately while playing.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section {
+                Button("Restore Overlay Defaults") { overlayPreferences.resetToDefaults() }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var storageSettings: some View {
         Form {
             Section("Hearthstone logs") {
                 Stepper(value: $model.settings.maxSessions, in: 1...200) {
@@ -50,12 +89,11 @@ struct SettingsWindow: View {
                     Spacer()
                     Button("Clean Up Now") { housekeeping.run() }
                         .disabled(housekeeping.isRunning)
-                    Button("Restore Defaults") { model.resetToDefaults() }
+                    Button("Restore Storage Defaults") { model.resetToDefaults() }
                 }
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 460, idealWidth: 500, minHeight: 440)
     }
 
     private func gigabytes(_ keyPath: WritableKeyPath<RetentionSettings, Int64>) -> Binding<Double> {

@@ -47,7 +47,7 @@ final class OverlayController {
     }
 
     @ObservationIgnored private let live: LiveTrackingModel
-    @ObservationIgnored private let model = OverlayModel()
+    @ObservationIgnored private let model: OverlayModel
     @ObservationIgnored private var panel: OverlayPanel?
     @ObservationIgnored private var hotKey: GlobalHotKey?
     @ObservationIgnored private var pollTimer: Timer?
@@ -56,8 +56,9 @@ final class OverlayController {
     @ObservationIgnored private var isShown = false
     @ObservationIgnored private var needsReshow = false
 
-    init(live: LiveTrackingModel) {
+    init(live: LiveTrackingModel, preferences: OverlayPreferences) {
         self.live = live
+        model = OverlayModel(preferences: preferences)
         isHiddenByUser = UserDefaults.standard.bool(forKey: Self.hiddenDefaultsKey)
         model.showsLayoutGuides = UserDefaults.standard.bool(forKey: Self.guidesDefaultsKey)
         model.advisorCollapsed = UserDefaults.standard.bool(forKey: Self.advisorCollapsedDefaultsKey)
@@ -68,7 +69,14 @@ final class OverlayController {
         model.toggleAdvisor = { [weak self] in
             guard let self else { return }
             model.advisorCollapsed.toggle()
+            model.advisorDetailsExpanded = false
             UserDefaults.standard.set(model.advisorCollapsed, forKey: Self.advisorCollapsedDefaultsKey)
+            updatePointer()
+        }
+        model.toggleAdvisorDetails = { [weak self] in
+            guard let self else { return }
+            model.advisorDetailsExpanded.toggle()
+            updatePointer()
         }
         // Card names for the opponent panels; the live engine runs without card data.
         CardDataModel.shared.loadIfNeeded()
@@ -144,7 +152,7 @@ final class OverlayController {
         var panels: [String] = []
         if isShown, let game = model.game {
             panels.append("hud")
-            if model.leaderboardGame != nil {
+            if model.preferences.showsOpponentScouting, model.leaderboardGame != nil {
                 if model.nextOpponentSlot != nil { panels.append("nextOpponentRing") }
                 if game.phase == .recruit, let next = game.nextOpponent, !next.isLocal { panels.append("nextOpponentPreview") }
                 if model.shownOddsPreview?.odds != nil { panels.append("oddsPreview") }
@@ -155,7 +163,10 @@ final class OverlayController {
             if model.shownCombatOdds != nil { panels.append("combatOdds") }
             if let advice = model.shownAdvice {
                 panels.append(model.advisorCollapsed ? "advisorHeader" : "advisor")
-                if advice.advice.status == .recommendation, !advice.isUpdating { panels.append("advisorHighlights") }
+                if model.showsAdvisorDetails { panels.append("advisorDetails") }
+                if advice.advice.status == .recommendation, !advice.isUpdating, advice.failure == nil {
+                    panels.append("advisorHighlights")
+                }
             }
         }
         return BookmarkOverlay(
@@ -189,6 +200,10 @@ final class OverlayController {
             _ = live.combatOdds.current
             _ = live.combatOdds.preview
             _ = live.combatOdds.advice
+            _ = model.preferences.density
+            _ = model.preferences.showsAdvisor
+            _ = model.preferences.showsBuildGuidance
+            _ = model.preferences.showsOpponentScouting
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -212,7 +227,13 @@ final class OverlayController {
         if model.view != live.update.state { model.view = live.update.state }
         if model.combatOdds != live.combatOdds.current { model.combatOdds = live.combatOdds.current }
         if model.oddsPreview != live.combatOdds.preview { model.oddsPreview = live.combatOdds.preview }
+        if model.advice?.fingerprint != live.combatOdds.advice?.fingerprint {
+            model.advisorDetailsExpanded = false
+        }
         if model.advice != live.combatOdds.advice { model.advice = live.combatOdds.advice }
+        let request = live.combatOdds.advisorRunner.currentRequest
+        if model.adviceRequest != request { model.adviceRequest = request }
+        if model.shownAdvice == nil { model.advisorDetailsExpanded = false }
         let wanted = !isHiddenByUser && hearthstoneOrUsFrontmost
         let located = wanted ? hearthstonePID.flatMap(HearthstoneWindowTracker.locate) : nil
         if !wanted || located == nil {

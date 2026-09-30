@@ -5,3 +5,4 @@ fixtures/private-logs/
 .swiftpm/
 build/
 .claude/worktrees/
+HSreplayresearch/

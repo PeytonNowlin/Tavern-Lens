@@ -20,7 +20,7 @@ The recruit advisor also rates offered trinkets using current-board fit and fres
 | Opponent scouting | Last-seen boards, tavern tiers, triples, and likely builds when hovering leaderboard portraits, plus a next-opponent preview. |
 | Recruiting | Detected builds, matching shop cards, build tips, and combat estimates against the next opponent's last-seen board. |
 | Combat | Win, tie, and loss probabilities, expected damage, damage ranges, and lethal risk. Results refine as simulations run. |
-| Action advice | Ranked suggestions with reasons, confidence, and highlights on the relevant cards or controls. Close or uncertain choices can produce “no strong recommendation.” |
+| Action advice | One next action with its reason, confidence and evidence caveat, plus a “Next” marker on its target. “Why & plan” opens the sequence, limitations and alternatives. Close or uncertain choices show “no strong recommendation.” |
 | Debugging | Log replay, an inspectable state timeline, saved game records, and feedback bookmarks that capture what the app knew and recommended. |
 
 The app lives in the menu bar. Its overlay follows Hearthstone in windowed and native fullscreen modes, hides when neither Hearthstone nor Tavern Lens is frontmost, and passes clicks through except over its own interactive controls.
@@ -121,7 +121,15 @@ For stable permission grants across rebuilds, the script looks for a local code-
 | **⌃⌥F** — Control–Option–F | Bookmark the current moment and add a note. |
 | **Open Debug Window… → Open Log…** | Replay a `Power.log` or compressed log and inspect its timeline. |
 | **Show Layout Guides** | Check overlay placement against the game window. |
-| **Settings…** | Configure log, replay, card-data, and art-cache retention. |
+| **Settings… → Overlay** | Choose Compact or Comfortable advice and show or hide advisor, build guidance, and opponent scouting panels. |
+| **Settings… → Storage** | Configure log, replay, card-data, and art-cache retention. |
+
+The advisor's **Why & plan** control opens explanations in the build-tips area;
+collapse it with the minus button. Details close when the position being evaluated
+changes. “Current fit” describes held pieces, while “Suggested direction” can
+include an attainable transition. Owned and affordable shop pieces are identified
+only from the request that produced the displayed advice. Updating matchup odds
+withhold the previous board's percentages until the new result is ready.
 
 ### Local data and game interaction
 

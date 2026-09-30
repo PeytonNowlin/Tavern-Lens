@@ -25,7 +25,10 @@ struct TavernLensApp: App {
         .defaultSize(width: 980, height: 640)
 
         Window("Tavern Lens Settings", id: WindowID.settings) {
-            SettingsWindow(model: appDelegate.retention, housekeeping: appDelegate.housekeeping)
+            SettingsWindow(
+                model: appDelegate.retention, housekeeping: appDelegate.housekeeping,
+                overlayPreferences: appDelegate.overlayPreferences
+            )
         }
         .defaultLaunchBehavior(.suppressed)
         .windowResizability(.contentSize)
@@ -41,6 +44,7 @@ enum WindowID {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let live: LiveTrackingModel
     let overlay: OverlayController
+    let overlayPreferences = OverlayPreferences()
     let retention = RetentionSettingsModel()
     let housekeeping: HousekeepingModel
     let feedback: FeedbackController
@@ -48,7 +52,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     override init() {
         live = LiveTrackingModel()
-        overlay = OverlayController(live: live)
+        overlay = OverlayController(live: live, preferences: overlayPreferences)
         housekeeping = HousekeepingModel(settings: retention, live: live)
         feedback = FeedbackController(live: live, overlay: overlay)
         screenReader = HeroPickScreenReader(live: live, overlay: overlay)
@@ -56,8 +60,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if CommandLine.arguments.contains("--render-advisor-preview") {
+        if CommandLine.arguments.contains("--render-advisor-preview") || CommandLine.arguments.contains("--show-advisor-preview") {
             Self.renderAdvisorPreview(CommandLine.arguments)
+            return
+        }
+        if CommandLine.arguments.contains("--show-settings-preview") {
+            // Exercise the real settings and persistence without starting tracking or cleanup.
+            NSApp.setActivationPolicy(.regular)
+            let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 500, height: 480),
+                                  styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.title = "Tavern Lens Settings"
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: SettingsWindow(
+                model: retention, housekeeping: housekeeping, overlayPreferences: overlayPreferences))
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate()
             return
         }
         if CommandLine.arguments.contains("--render-trinket-preview") {

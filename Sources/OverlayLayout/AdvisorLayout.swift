@@ -1,5 +1,32 @@
 import CoreGraphics
 
+/// Both presets use the same reserved overlay space. Compact shows less secondary content;
+/// it does not reduce the minimum readable font size.
+public enum OverlayDensity: String, CaseIterable, Codable, Sendable {
+    case compact, comfortable
+}
+
+/// The advisor's new typography, resolved to actual points rather than reference points.
+/// Views must not multiply these sizes by `panelScale` again.
+public struct AdvisorTypography: Hashable, Sendable {
+    public let titleFontSize: CGFloat
+    public let bodyFontSize: CGFloat
+    public let labelFontSize: CGFloat
+    public let headerFontSize: CGFloat
+    public let reasonLines: Int
+    public let contextLines: Int
+
+    public init(density: OverlayDensity, panelScale: CGFloat) {
+        let comfortable = density == .comfortable
+        titleFontSize = max(16, (comfortable ? 18 : 16) * panelScale)
+        bodyFontSize = max(12, (comfortable ? 13 : 12) * panelScale)
+        labelFontSize = max(12, 12 * panelScale)
+        headerFontSize = max(12, 12 * panelScale)
+        reasonLines = comfortable ? 2 : 1
+        contextLines = comfortable ? 2 : 1
+    }
+}
+
 /// Sizes for the advisor: its ranked list and the rank badges it puts on Hearthstone's cards and buttons.
 public struct AdvisorMetrics: Hashable, Sendable {
     // The panel, in reference points (multiplied by `panelScale`): a header strip at the bottom
@@ -67,12 +94,42 @@ extension OverlayLayout {
         return CGRect(x: hud.maxX - width, y: bottom - constants.panelGap * s - height, width: width, height: height)
     }
 
-    /// The panel's header strip: always shown while there's advice, and the one part of the panel
-    /// that takes clicks (it collapses and expands the list).
+    /// The panel's stable bottom strip: a Details control and a separate collapse control.
     public var advisorHeader: CGRect {
         let panel = advisorPanel
         let height = constants.advisor.headerHeight * panelScale
         return CGRect(x: panel.minX, y: panel.maxY - height, width: panel.width, height: height)
+    }
+
+    /// The trailing square of the expanded panel's bottom strip. When collapsed, the whole header expands it.
+    public var advisorCollapseButton: CGRect {
+        let header = advisorHeader
+        return CGRect(x: header.maxX - header.height, y: header.minY,
+                      width: header.height, height: header.height)
+    }
+
+    /// The rest of the bottom strip opens or closes details, without also collapsing the advisor.
+    public var advisorDetailsButton: CGRect {
+        let header = advisorHeader
+        return CGRect(x: header.minX, y: header.minY,
+                      width: header.width - advisorCollapseButton.width, height: header.height)
+    }
+
+    /// Detailed strategy and alternatives replace the build tips in their existing reserved space.
+    /// Keeping this width avoids reaching into the seven-minion board or shop.
+    public var advisorDetailsPanel: CGRect { buildTipsPanel }
+
+    /// Only visible controls and the expanded details scroll surface receive pointer events.
+    /// The recommendation card itself remains click-through, including while details are open.
+    public func advisorInteractiveRegions(collapsed: Bool, detailsExpanded: Bool) -> [CGRect] {
+        guard !collapsed else { return [advisorHeader] }
+        var regions = [advisorDetailsButton, advisorCollapseButton]
+        if detailsExpanded { regions.append(advisorDetailsPanel) }
+        return regions
+    }
+
+    public func advisorTypography(density: OverlayDensity) -> AdvisorTypography {
+        AdvisorTypography(density: density, panelScale: panelScale)
     }
 
     /// The Hearthstone element a suggestion highlights.
@@ -99,6 +156,25 @@ extension OverlayLayout {
         let ring = advisorRing(element)
         let d = constants.advisor.badgeDiameter * height
         return CGRect(x: ring.maxX - d, y: ring.minY, width: d, height: d)
+    }
+
+    /// A readable "Next" pill for the current action. It grows left from the existing badge
+    /// anchor, stays inside its target, and keeps a 22-point minimum height for 12-point text.
+    public func advisorNextBadge(_ element: AdvisorElement) -> CGRect {
+        let ring = advisorRing(element)
+        let d = constants.advisor.badgeDiameter * height
+        let width = min(ring.width, max(38, d * 1.6))
+        let height = min(ring.height, max(22, d))
+        let top: CGFloat
+        if case .shop = element {
+            // The opponent hero power's lower edge reaches into the shop's top strip.
+            // Keep every shop pill at the same height and clear of that reserved region,
+            // including while the game transitions between recruit and combat.
+            top = min(ring.maxY - height, max(ring.minY, rect(.opponentHeroPower).maxY + 2 * panelScale))
+        } else {
+            top = ring.minY
+        }
+        return CGRect(x: ring.maxX - width, y: top, width: width, height: height)
     }
 
     /// Card `index` of `count` in the local player's hand, unrotated: the trackers' fan (research

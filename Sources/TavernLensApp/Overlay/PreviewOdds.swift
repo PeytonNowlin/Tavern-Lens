@@ -4,8 +4,8 @@ import TavernEngine
 
 /// The next-opponent preview's odds section: win / tie / loss of the board as it is now against
 /// their last-seen board, a bar, and a footnote (the likelier damage, a lethal warning, the
-/// simulations so far). While a changed board is being simulated the previous odds stay,
-/// dimmed. "No data" when the opponent hasn't been seen. Sizes from `OddsPreviewMetrics`.
+/// simulations so far). A changed board replaces the previous odds with an explicit updating
+/// state. "No data" when the opponent hasn't been seen. Sizes from `OddsPreviewMetrics`.
 struct PreviewOdds: View {
     let odds: OddsPreviewView?
     /// Whether the opponent's board has been seen (the preview knows before the first request).
@@ -37,6 +37,12 @@ struct PreviewOdds: View {
                     .font(.system(size: m.percentFontSize * s, weight: .medium))
                     .foregroundStyle(.orange)
                     .help(failure)
+            } else if odds?.isUpdating == true || odds?.odds == nil {
+                Text("Updating…")
+                    .font(.system(size: m.percentFontSize * s, weight: .semibold))
+                Text(odds?.isUpdating == true ? "Board changed" : "Calculating matchup")
+                    .font(.system(size: m.footnoteFontSize * s))
+                    .foregroundStyle(.secondary)
             } else {
                 let result = odds?.odds
                 HStack(spacing: m.columnSpacing * s) {
@@ -55,8 +61,6 @@ struct PreviewOdds: View {
                 .font(.system(size: m.footnoteFontSize * s))
             }
         }
-        .opacity(odds?.isUpdating == true ? 0.55 : 1)
-        .animation(.easeOut(duration: 0.15), value: odds?.isUpdating)
         .help(helpText)
     }
 
@@ -88,8 +92,10 @@ struct PreviewOdds: View {
     }
 
     private var helpText: String {
-        guard let odds, odds.hasData else { return "You haven't fought this opponent yet" }
+        guard seen, odds?.hasData != false else { return "You haven't fought this opponent yet" }
+        guard let odds else { return "Calculating your current board against their last-seen board" }
         let seen = odds.opponentSeenTurn.map { "their board from turn \($0)" } ?? "their last-seen board"
+        if odds.isUpdating { return "Your board changed. Calculating new odds against \(seen)" }
         return "Your board now against \(seen)"
     }
 }

@@ -8,6 +8,7 @@ import TavernEngine
 @MainActor
 @Observable
 final class OverlayModel {
+    let preferences: OverlayPreferences
     var layout: OverlayLayout?
     var view: ViewState = .noGame
     var showsLayoutGuides = false
@@ -19,15 +20,27 @@ final class OverlayModel {
     var oddsPreview: OddsPreviewView?
     /// The advisor's suggestions, from `CombatOddsModel`.
     var advice: AdviceView?
+    var adviceRequest: AdvisorRequest?
     /// The player collapsed the advisor's list to its header. Remembered across launches.
     var advisorCollapsed = false
+    var advisorDetailsExpanded = false
     @ObservationIgnored var hide: () -> Void = {}
     @ObservationIgnored var toggleAdvisor: () -> Void = {}
+    @ObservationIgnored var toggleAdvisorDetails: () -> Void = {}
+
+    init(preferences: OverlayPreferences = OverlayPreferences()) {
+        self.preferences = preferences
+    }
 
     /// The advisor shows during the recruit phase it was scored for.
     var shownAdvice: AdviceView? {
-        guard view.status == .inGame, let game = view.game, let advice, advice.isFor(game) else { return nil }
+        guard preferences.showsAdvisor, view.status == .inGame, let game = view.game,
+              game.trinketPick == nil, let advice, advice.isFor(game) else { return nil }
         return advice
+    }
+
+    var showsAdvisorDetails: Bool {
+        shownAdvice != nil && !advisorCollapsed && advisorDetailsExpanded
     }
 
     /// The preview's odds show in the next opponent preview during the recruit phase they're for.
@@ -54,8 +67,9 @@ final class OverlayModel {
     /// Where the cursor makes the panel take clicks, in content-local top-left points.
     var interactiveRegions: [CGRect] {
         guard let layout, game != nil else { return [] }
-        // The advisor's header collapses and expands its list.
-        return [layout.hud] + (shownAdvice == nil ? [] : [layout.advisorHeader])
+        return [layout.hud] + (shownAdvice == nil ? [] : layout.advisorInteractiveRegions(
+            collapsed: advisorCollapsed, detailsExpanded: showsAdvisorDetails
+        ))
     }
 
     /// The leaderboard slot under the cursor, set by `OverlayController` from mouse moves.
@@ -134,15 +148,20 @@ struct OverlayRootView: View {
                         .offset(x: layout.combatOddsPanel.minX, y: layout.combatOddsPanel.minY)
                         .allowsHitTesting(false)
                 }
-                if let game = model.game, model.view.status == .inGame, game.phase == .recruit, let builds = game.builds {
+                if model.preferences.showsBuildGuidance, let game = model.game,
+                   model.view.status == .inGame, game.phase == .recruit, let builds = game.builds {
                     BuildOverlays(
-                        builds: builds, shopCount: game.shop.cards.count, layout: layout, cards: CardDataModel.shared.cards
+                        builds: builds, shopCount: game.shop.cards.count, layout: layout,
+                        cards: CardDataModel.shared.cards, showsTips: !model.showsAdvisorDetails,
+                        density: model.preferences.density
                     )
                 }
-                if let advice = model.shownAdvice, let game = model.game, game.trinketPick == nil {
+                if let advice = model.shownAdvice, let game = model.game {
                     AdvisorOverlays(
                         advice: advice, game: game, layout: layout, collapsed: model.advisorCollapsed,
-                        cards: CardDataModel.shared.cards, toggle: model.toggleAdvisor
+                        detailsExpanded: model.showsAdvisorDetails, request: model.adviceRequest,
+                        density: model.preferences.density, cards: CardDataModel.shared.cards,
+                        toggle: model.toggleAdvisor, toggleDetails: model.toggleAdvisorDetails
                     )
                 }
                 if let pick = model.game?.trinketPick, model.view.status == .inGame {
@@ -152,7 +171,7 @@ struct OverlayRootView: View {
                                 y: max(0, layout.advisorPanel.minY - 130 * layout.panelScale))
                         .allowsHitTesting(false)
                 }
-                if let game = model.leaderboardGame {
+                if model.preferences.showsOpponentScouting, let game = model.leaderboardGame {
                     OpponentOverlays(model: model, game: game, layout: layout, cards: CardDataModel.shared.cards)
                 }
                 if let pick = model.heroPick {
