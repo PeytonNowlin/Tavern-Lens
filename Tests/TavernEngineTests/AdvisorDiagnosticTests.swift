@@ -42,7 +42,7 @@ struct AdvisorDiagnosticTests {
         try await store.save(evidence)
         let loaded = try await store.load(gameSeed: 1, turn: 11)
         #expect(loaded == evidence)
-        #expect(loaded.displayed?.plan.version == 3)
+        #expect(loaded.displayed?.plan.version == AdvisorPlan.live.version)
         #expect(loaded.displayed?.isComplete == false)
         #expect(AdvisorCase.savedDiagnostics(in: dir).first?.request == loaded.request)
     }

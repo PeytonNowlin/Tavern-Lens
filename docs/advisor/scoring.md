@@ -1,6 +1,31 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 2)
+## Live planner (evaluation version 5)
+
+Version 5 retains the version-3 strategic search and adds fixes from recorded games.
+Exact Faerie Dragon Scale and greater Beetle Band effects remain owned by the pinned
+combat simulator. Rockin' Music Box's next random reward is not invented before the
+next turn. Steady Growth projects only its observed pending increment, with supported
+end-of-turn repeats; historical growth is already included in observed stats.
+
+At 15 health or less, every continuation containing leveling needs complete matched
+baseline/candidate combat checks and must not increase lethal risk in any tested
+scenario. Chosen-plan limitations stay distinct from unmodelled alternatives. A
+fully checked supported plan can have medium confidence with a visible caveat that
+the ranking covers supported plans, even while other plans are still being evaluated;
+unfinished candidate checks retain low confidence. Missing alternative coverage without combat
+evidence, missing chosen-card definitions and unresolved chosen effects remain uncertain.
+Recorded versions 1–3 retain their original policies and fingerprints. Version 4 is
+reserved for the separate, uncommitted advisor-quality worktree.
+
+Replay the captured development cases locally without committing private data:
+
+```sh
+TAVERN_LOG_AUDIT_DIAGNOSTICS="$HOME/Library/Application Support/TavernLens/AdvisorDiagnostics" \
+  scripts/test.sh --filter AdvisorLogRegressionTests
+```
+
+### Recruit search foundation (versions 2 and 3)
 
 The live advisor plans recruit actions from the local board, hand, shop, gold, and the current
 patch's card definitions. It does not maximize wins against the last opponent. Old bookmarks

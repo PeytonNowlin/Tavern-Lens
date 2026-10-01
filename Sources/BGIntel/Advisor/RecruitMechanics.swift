@@ -136,6 +136,7 @@ enum RecruitMechanics {
     }
 
     static func trinketSupported(_ id: String, context: RecruitContext) -> Bool {
+        if let supported = RecruitLogEffects.supportsTrinket(id, context: context) { return supported }
         let text = context.text(id)
         if (id == "BG36_MagicItem_302" || id == "BG36_MagicItem_302t") && text.hasPrefix("At the end of your turn, give your minions +") { return true }
         if text == "Your end of turn effects trigger an extra time." { return true }
@@ -154,6 +155,10 @@ enum RecruitMechanics {
         }
         for card in state.board {
             for enchantment in card.entity.enchantments where enchantment.cardId.hasPrefix("BG36_MidGameEffect_") {
+                if let supported = RecruitLogEffects.supportsGift(enchantment, context: context) {
+                    if !supported { result.append("Unmodelled Dark Gift: \(context.definitions[enchantment.cardId]?.name ?? enchantment.cardId)") }
+                    continue
+                }
                 let text = context.text(enchantment.cardId)
                 // Combat-only/stat attachments are already in the simulator input. Recruit effects
                 // require an explicit handler; unsupported ones must affect confidence.

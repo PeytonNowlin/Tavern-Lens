@@ -15,6 +15,8 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     public var pendingChoice: Bool?
     /// Evaluation policy is versioned independently of observed game state.
     public var strategicEvaluation: Bool?
+    /// Keeps captured evaluation policies reproducible when recruit effect coverage changes.
+    public var evaluationVersion: Int?
     /// Hand minions linked by observed discard enchantment source and batch.
     public var linkedDiscards: [Int: [Int]]?
     public struct DarkDiscovery: Codable, Hashable, Sendable {

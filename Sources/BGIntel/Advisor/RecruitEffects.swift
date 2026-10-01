@@ -278,6 +278,7 @@ public enum RecruitEffects {
                 }
             }
         }
+        for card in state.board { RecruitLogEffects.projectEndOfTurn(card, state: &result, context: context) }
         for trinket in state.input.playerBoard.player.trinkets {
             let text = context.text(trinket.cardId)
             if trinket.cardId == "BG36_MagicItem_302" || trinket.cardId == "BG36_MagicItem_302t",

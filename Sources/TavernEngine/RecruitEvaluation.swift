@@ -48,6 +48,7 @@ public enum RecruitEvaluation {
         let direction = plan.version >= 3 ? AdvisorStrategy.select(request) : nil
         var prepared = request
         if plan.version >= 3 { prepared.recruit?.strategicEvaluation = true }
+        prepared.recruit?.evaluationVersion = plan.version >= 5 ? plan.version : nil
         if plan.version >= 3 { prepared.builds = direction.map { [$0.build] } ?? [] }
         let request = prepared
         guard let context = request.recruit else {
@@ -112,6 +113,7 @@ public enum RecruitEvaluation {
     static func rank(_ request: AdvisorRequest, search: RecruitSearch, scenarios: [Scenario],
                      results: [String: [Int: CombatTally]], complete: Bool) -> Advice {
         let health = request.recruit?.input.playerBoard.player.hpLeft ?? 30
+        let usesLogPolicy = (request.recruit?.evaluationVersion ?? 0) >= 5
         let baseline = search.baseline
         let baseResults = results[baseline.id] ?? [:]
         struct Ranked {
@@ -138,6 +140,8 @@ public enum RecruitEvaluation {
                 }
                 combat /= Double(scenarios.count); reduction /= Double(scenarios.count)
                 if worst < -10 { continue }
+                if usesLogPolicy, health <= 15,
+                   candidate.state.steps.contains(where: { $0.kind == .level }), worst < 0 { continue }
             }
             let sells = candidate.state.steps.filter { $0.kind == .sell }.count
             if sells > 1, candidate.state.board.count < request.board.count, !checked || reduction < 5 { continue }
@@ -145,8 +149,12 @@ public enum RecruitEvaluation {
             // Reject naked sales that do not finance a useful continuation.
             if candidate.state.steps.last?.kind == .sell { continue }
             if candidate.state.steps.last?.kind == .buy, candidate.state.pendingDiscover == 0 { continue }
-            if health <= 5, candidate.state.steps.first?.kind == .level,
+            if !usesLogPolicy, health <= 5, candidate.state.steps.first?.kind == .level,
                !checked || reduction < 5 { continue }
+            // At one capped hit from death, an economy plan cannot spend leveling gold
+            // without checking the entire continuation against the baseline scenarios.
+            if usesLogPolicy, health <= 15,
+               candidate.state.steps.contains(where: { $0.kind == .level }), !checked { continue }
             // An unresolved effect must never acquire a precise combat benefit from a partial model.
             let score = strategy + combat - Double(candidate.state.steps.count) * 0.05
             guard score > 0.75 else { continue }
@@ -182,8 +190,14 @@ public enum RecruitEvaluation {
             else if item.plan.state.tier > request.tier { reason = "Opens a higher tier while preserving the board" }
             else if item.plan.state.steps.contains(where: { $0.kind == .sell }) { reason = "Funds the follow-up without giving up more board value" }
             else { reason = "Improves the board with the gold available this turn" }
-            let limitations = Array(Set(search.limitations + item.plan.projection.limitations)).sorted()
-            let confidence: AdvisorConfidence = complete && limitations.isEmpty && (health > 5 || item.checked) ? .medium : .low
+            var planLimitations = item.plan.state.limitations + item.plan.projection.limitations
+            if usesLogPolicy, (item.plan.state.board + item.plan.state.hand).contains(where: { request.recruit?.definitions[$0.cardID] == nil }) {
+                planLimitations.append("Missing card definitions")
+            }
+            let limitations = Array(Set((usesLogPolicy ? planLimitations : search.limitations) + item.plan.projection.limitations)).sorted()
+            let alternativesChecked = search.limitations.isEmpty || (usesLogPolicy && item.checked)
+            let planChecked = complete || (usesLogPolicy && item.checked)
+            let confidence: AdvisorConfidence = planChecked && limitations.isEmpty && alternativesChecked && (health > 5 || item.checked) ? .medium : .low
             if !limitations.isEmpty { reason += " · some effects unmodelled" }
             var suggestion = AdvisorSuggestion(rank: suggestions.count + 1, action: first.action, targets: first.action.targets,
                 reason: reason, confidence: confidence, odds: nil, gain: item.gain,
@@ -197,8 +211,11 @@ public enum RecruitEvaluation {
         }
         var notes = ["Plans use your board, scaling and gold"]
         notes.append(scenarios.isEmpty ? "No recent combat evidence" : results.isEmpty ? "Combat checks unavailable for unresolved effects" : "Combat checks use recent boards + stronger stress scenarios")
-        if !complete { notes.append("Evaluation incomplete") }
-        if !search.limitations.isEmpty { notes.append("Unmodelled effects; no confident recommendation") }
+        if !complete { notes.append(usesLogPolicy ? "Evaluation incomplete; further plans may change the ranking" : "Evaluation incomplete") }
+        if !search.limitations.isEmpty {
+            notes.append(usesLogPolicy ? "Some alternative actions are unmodelled; ranking covers supported plans"
+                : "Unmodelled effects; no confident recommendation")
+        }
         if suggestions.isEmpty { notes.append("No supported plan clearly improves the position") }
         return Advice(status: suggestions.first?.confidence == .medium ? .recommendation : .noStrongRecommendation,
                       note: notes.joined(separator: " · "), suggestions: suggestions,
