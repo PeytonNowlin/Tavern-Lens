@@ -18,11 +18,25 @@ public enum SimulatorResources {
         public var esbuild: String
     }
 
-    public static var scriptURL: URL { url("bgs-simulator", "js") }
-    public static var cardsURL: URL { url("simulator-cards.json", "gz") }
+    /// The resources can't be found, so the simulator can't run.
+    public enum ResourceError: Error, Equatable, CustomStringConvertible {
+        /// The app's copied resource bundle is missing from `Contents/Resources`.
+        case bundleMissing(URL)
+
+        public var description: String {
+            switch self {
+            case .bundleMissing(let url): "Simulator resource bundle is missing: \(url.path(percentEncoded: false))"
+            }
+        }
+    }
+
+    static let bundleName = "TavernLens_SimulatorRuntime.bundle"
+
+    public static var scriptURL: URL { get throws { try url("bgs-simulator", "js") } }
+    public static var cardsURL: URL { get throws { try url("simulator-cards.json", "gz") } }
 
     public static var pin: Pin? {
-        (try? Data(contentsOf: url("bgs-simulator.pin", "json"))).flatMap { try? JSONDecoder().decode(Pin.self, from: $0) }
+        (try? url("bgs-simulator.pin", "json")).flatMap { try? Data(contentsOf: $0) }.flatMap { try? JSONDecoder().decode(Pin.self, from: $0) }
     }
 
     /// The bundled script's source.
@@ -38,16 +52,26 @@ public enum SimulatorResources {
     /// In the app, the SwiftPM resource bundle is copied into `Contents/Resources` by
     /// `scripts/bundle-app.sh` (SwiftPM's own accessor looks at the bundle root, which code
     /// signing rejects); from `swift build` and `swift test`, `Bundle.module` finds it.
-    private static let bundle: Bundle = {
-        if let resources = Bundle.main.resourceURL,
-           let appBundle = Bundle(url: resources.appending(path: "TavernLens_SimulatorRuntime.bundle")) {
+    /// In the app, never fall back to `Bundle.module`: it traps when its bundle is missing.
+    /// `moduleBundle` is evaluated only outside an app, and is injectable for tests.
+    static func resolveBundle(
+        mainResourceURL: URL? = Bundle.main.resourceURL,
+        isApp: Bool = Bundle.main.bundleURL.pathExtension == "app",
+        moduleBundle: () -> Bundle = { Bundle.module }
+    ) throws -> Bundle {
+        let expected = (mainResourceURL ?? Bundle.main.bundleURL).appending(path: bundleName)
+        if let mainResourceURL, let appBundle = Bundle(url: mainResourceURL.appending(path: bundleName)) {
             return appBundle
         }
-        return Bundle.module
-    }()
+        if isApp { throw ResourceError.bundleMissing(expected) }
+        return moduleBundle()
+    }
 
-    private static func url(_ name: String, _ ext: String) -> URL {
-        bundle.url(forResource: name, withExtension: ext, subdirectory: "Resources")
+    private static let bundle = Result { try resolveBundle() }
+
+    private static func url(_ name: String, _ ext: String) throws -> URL {
+        let bundle = try bundle.get()
+        return bundle.url(forResource: name, withExtension: ext, subdirectory: "Resources")
             ?? bundle.bundleURL.appending(path: "Resources/\(name).\(ext)")
     }
 }
