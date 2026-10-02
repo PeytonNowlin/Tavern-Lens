@@ -4,7 +4,7 @@ enum RecruitArcaneAbsorption: RecruitCardEffect {
     static let id = "BG35_911"
     static let text = "Give a friendly Elemental half the stats of the highest-Health minion in the Tavern."
     static let cardIDs: Set<String> = [id]
-    static let since = 11
+    static let since = AdvisorPolicy.Feature.arcaneAbsorption.introduced
 
     static func supported(_ context: RecruitContext) -> Bool {
         context.definitions[id]?.type == "BATTLEGROUND_SPELL" && context.text(id) == text
@@ -41,7 +41,7 @@ enum RecruitArcaneAbsorption: RecruitCardEffect {
 
 enum RecruitFortify: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG28_503"]
-    static let since = 11
+    static let since = AdvisorPolicy.Feature.arcaneAbsorption.introduced
 
     /// Shared with Arcane Absorption: a board aura changes what a Tavern spell gives.
     static func hasTavernSpellModifier(_ state: RecruitState, context: RecruitContext) -> Bool {
@@ -62,7 +62,7 @@ enum RecruitFortify: RecruitCardEffect {
 
 enum RecruitLeylineSurfacer: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG35_881", "BG35_881_G"]
-    static let since = 11
+    static let since = AdvisorPolicy.Feature.arcaneAbsorption.introduced
     static let generated = [RecruitArcaneAbsorption.id]
 
     static func battlecry(_ card: AdvisorCard, context: RecruitContext) -> RecruitEffects.Effect? {

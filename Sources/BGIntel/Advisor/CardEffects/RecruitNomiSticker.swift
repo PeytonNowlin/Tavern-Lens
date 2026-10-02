@@ -4,10 +4,10 @@ enum RecruitNomiSticker: RecruitCardEffect {
     static let lesser = "BG30_MagicItem_544"
     static let greater = "BG30_MagicItem_544t"
     static let cardIDs: Set<String> = [lesser, greater]
-    static let since = 10
+    static let since = AdvisorPolicy.Feature.nomiSticker.introduced
 
     private static func increment(_ id: String, context: RecruitContext) -> (Int, Int)? {
-        guard (context.evaluationVersion ?? 0) >= 10 else { return nil }
+        guard context.policy.has(.nomiSticker) else { return nil }
         switch (id, context.text(id)) {
         case (lesser, "After you play an Elemental, give Elementals in the Tavern +3/+2 this game."):
             return (3, 2)
@@ -37,7 +37,7 @@ enum RecruitNomiSticker: RecruitCardEffect {
     /// Steps contain only validated plays, and this search cannot change active trinkets.
     /// Never apply this total to observed shop stats: afterPlay already applies each increment.
     static func pendingShopBuff(in state: RecruitState, context: RecruitContext) -> (attack: Int, health: Int) {
-        guard (context.evaluationVersion ?? 0) >= 10,
+        guard context.policy.has(.nomiSticker),
               let amount = activeIncrement(state, context: context) else { return (0, 0) }
         let plays = state.steps.filter { step in
             guard step.kind == .play, case .play(_, let id, _) = step.action,
@@ -48,7 +48,7 @@ enum RecruitNomiSticker: RecruitCardEffect {
     }
 
     static func afterPlay(before: RecruitState, state: inout RecruitState, context: RecruitContext) -> Bool {
-        guard (context.evaluationVersion ?? 0) >= 10 else { return true }
+        guard context.policy.has(.nomiSticker) else { return true }
         guard let amount = activeIncrement(before, context: context) else { return false }
         guard amount.0 > 0 || amount.1 > 0 else { return true }
         // A Battlecry can summon additional minions. Only the card moved from the

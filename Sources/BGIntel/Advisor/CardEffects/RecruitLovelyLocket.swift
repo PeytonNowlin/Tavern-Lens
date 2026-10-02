@@ -6,7 +6,7 @@ enum RecruitLovelyLocket: RecruitCardEffect {
     static let locketID = "BG36_MagicItem_211"
     static let locketText = "After you cast a spell on a friendly minion, this casts it on another friendly minion."
     static let cardIDs: Set<String> = [locketID]
-    static let since = 8
+    static let since = AdvisorPolicy.Feature.spellCopies.introduced
 
     private static func supported(_ context: RecruitContext) -> Bool { context.text(locketID) == locketText }
 

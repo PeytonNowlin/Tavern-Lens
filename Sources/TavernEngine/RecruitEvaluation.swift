@@ -48,12 +48,12 @@ public enum RecruitEvaluation {
         var selectionRequest = request
         // New readiness rules must see the policy being evaluated, including when
         // comparing a captured older request. Preserve archived selection order.
-        if plan.version >= 10 { selectionRequest.recruit?.evaluationVersion = plan.version }
-        let direction = plan.version >= 3 ? AdvisorStrategy.select(selectionRequest) : nil
+        if plan.policy.has(.buildReadinessCorrections) { selectionRequest.recruit?.evaluationVersion = plan.version }
+        let direction = plan.policy.has(.strategicDirection) ? AdvisorStrategy.select(selectionRequest) : nil
         var prepared = request
-        if plan.version >= 3 { prepared.recruit?.strategicEvaluation = true }
-        prepared.recruit?.evaluationVersion = plan.version >= 5 ? plan.version : nil
-        if plan.version >= 3 { prepared.builds = direction.map { [$0.build] } ?? [] }
+        if plan.policy.has(.strategicDirection) { prepared.recruit?.strategicEvaluation = true }
+        prepared.recruit?.evaluationVersion = plan.policy.has(.recordedEffects) ? plan.version : nil
+        if plan.policy.has(.strategicDirection) { prepared.builds = direction.map { [$0.build] } ?? [] }
         let request = prepared
         guard let context = request.recruit else {
             let done = AdvisorEvaluation.Progress(advice: Advice(status: .noData,
@@ -61,7 +61,7 @@ public enum RecruitEvaluation {
             report(done); return done
         }
         if context.pendingChoice == true {
-            if plan.version >= 3, let choice = request.choice {
+            if plan.policy.has(.strategicDirection), let choice = request.choice {
                 var advice = Advice(status: .noStrongRecommendation, note: "Consider \(choice.name): \(choice.reason). Reassess after choosing.")
                 advice.choice = choice
                 advice.strategy = direction?.guidance
@@ -117,7 +117,7 @@ public enum RecruitEvaluation {
     static func rank(_ request: AdvisorRequest, search: RecruitSearch, scenarios: [Scenario],
                      results: [String: [Int: CombatTally]], complete: Bool) -> Advice {
         let health = request.recruit?.input.playerBoard.player.hpLeft ?? 30
-        let usesLogPolicy = (request.recruit?.evaluationVersion ?? 0) >= 5
+        let usesLogPolicy = request.policy.has(.recordedEffects)
         let baseline = search.baseline
         let baseResults = results[baseline.id] ?? [:]
         struct Ranked {
@@ -188,7 +188,7 @@ public enum RecruitEvaluation {
                 reason = explanation
             }
             else if case .activateMinion(_, let cardID, _, let target, _) = first.action {
-                if (request.recruit?.evaluationVersion ?? 0) >= 11, ["BG36_201", "BG36_201_G"].contains(cardID) {
+                if request.policy.has(.lionfishActivate), ["BG36_201", "BG36_201_G"].contains(cardID) {
                     reason = "Replaces a Tavern card with Fishbait to strengthen your left-most Beast"
                 } else {
                     reason = target.kind == .shop ? "Uses Activate to take the highest-Attack Tavern minion"
@@ -196,7 +196,7 @@ public enum RecruitEvaluation {
                 }
             }
             else if case .activateUntargeted(_, let cardID, _) = first.action {
-                reason = (request.recruit?.evaluationVersion ?? 0) >= 11 && ["BG36_180", "BG36_180_G"].contains(cardID)
+                reason = request.policy.has(.livingPrison) && ["BG36_180", "BG36_180_G"].contains(cardID)
                     ? "Arms Living Prison to gain stats from your next minion purchase this turn"
                     : "Generates Tavern Dish Bananas to buff your minions"
             }
@@ -233,12 +233,12 @@ public enum RecruitEvaluation {
             notes.append(usesLogPolicy ? "Some alternative actions are unmodelled; ranking covers supported plans"
                 : "Unmodelled effects; no confident recommendation")
         }
-        if (request.recruit?.evaluationVersion ?? 0) >= 7 {
+        if request.policy.has(.activateEffects) {
             let prefix = "Unmodelled Activate: "
             let missing = search.limitations.filter { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }.sorted()
             if !missing.isEmpty { notes.append("Activate coverage missing: " + missing.joined(separator: ", ")) }
         }
-        if suggestions.isEmpty, (request.recruit?.evaluationVersion ?? 0) >= 9,
+        if suggestions.isEmpty, request.policy.has(.fallbackAdvice),
            let context = request.recruit {
             if results.isEmpty {
                 suggestions = RecruitFallback.suggestions(request, context: context, limitations: search.limitations)

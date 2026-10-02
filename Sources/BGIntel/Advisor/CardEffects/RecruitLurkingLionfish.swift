@@ -3,7 +3,7 @@
 enum RecruitLurkingLionfish: RecruitCardEffect {
     static let normal = "BG36_201", golden = "BG36_201_G"
     static let cardIDs: Set<String> = [normal, golden]
-    static let since = 11
+    static let since = AdvisorPolicy.Feature.lionfishActivate.introduced
     static let generated = ["BG36_205", "BG36_205_G"]
     static let requiresObservedActivationCost = true
 

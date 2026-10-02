@@ -34,10 +34,13 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     public var lobbySweepSimulations: Int
     public var weights: AdvisorWeights
 
+    /// What `version` changes about the advice.
+    public var policy: AdvisorPolicy { AdvisorPolicy(version: version) }
+
     /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3, lobbySweepSimulations: 30, version: 11
+        lobbyGroups: 3, lobbySweepSimulations: 30, version: AdvisorPolicy.live.version
     )
 
     public init(
@@ -128,7 +131,7 @@ public enum AdvisorEvaluation {
         shouldContinue: @Sendable () -> Bool = { true }, simulate: Simulate,
         isolation: isolated (any Actor)? = #isolation, report: (Progress) -> Void = { _ in }
     ) async throws -> Progress {
-        if plan.version >= 2 {
+        if plan.policy.has(.recruitPlanner) {
             return try await RecruitEvaluation.run(request, plan: plan, limit: limit, shouldContinue: shouldContinue,
                                                    simulate: simulate, report: report)
         }
@@ -264,27 +267,7 @@ public struct AdviceView: Codable, Hashable, Sendable {
 
     /// FNV-1a (64-bit) of the request's sorted-keys JSON: stable across processes and runs.
     public static func fingerprint(of request: AdvisorRequest, version: Int = AdvisorPlan.live.version) -> String {
-        var request = request
-        if version == 1 { request.recruit = nil }
-        if version < 3 { request.strategyCatalog = nil; request.choice = nil; request.poolTiers = nil }
-        if version < 5 { request.recruit?.evaluationVersion = nil }
-        if version < 11 {
-            request.cardTurnStats = nil; request.cardTurnStatsCheckedAt = nil
-            request.preview.input?.gameState.ruleset = nil
-            if var context = request.recruit {
-                context.input.gameState.ruleset = nil
-                context.pendingPrisonBuys = nil
-                context.activations = context.activations?.mapValues { value in
-                    var activation = value
-                    activation.costObserved = nil
-                    return activation
-                }
-                request.recruit = context
-            }
-        }
-        // Preserve archived encodings through version 5. New policies identify both raw
-        // requests and requests already prepared for evaluation with their selected version.
-        if version >= 6 { request.recruit?.evaluationVersion = version }
+        let request = AdvisorPolicy(version: version).identifying(request)
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let data = (try? encoder.encode(request)) ?? Data()
@@ -387,7 +370,7 @@ public final class AdvisorRunner {
             return
         }
         var replacing = false
-        if plan.version < 3, var view = current, view.requestID == request.id {
+        if !plan.policy.has(.strategicDirection), var view = current, view.requestID == request.id {
             view.isUpdating = true
             current = view
             replacing = true

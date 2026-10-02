@@ -88,7 +88,7 @@ enum RecruitCardEffects {
     }()
 
     static func isActive(_ entry: any RecruitCardEffect.Type, _ context: RecruitContext) -> Bool {
-        (context.evaluationVersion ?? 0) >= entry.since
+        context.policy >= AdvisorPolicy(version: entry.since)
     }
 
     private static func entry(_ id: String, _ context: RecruitContext) -> (any RecruitCardEffect.Type)? {

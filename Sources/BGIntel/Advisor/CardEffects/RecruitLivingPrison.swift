@@ -2,7 +2,7 @@
 /// body. Only explicit tag 4945, or an activation in this plan, arms a future buy.
 enum RecruitLivingPrison: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG36_180", "BG36_180_G"]
-    static let since = 11
+    static let since = AdvisorPolicy.Feature.livingPrison.introduced
     static let requiresObservedActivationCost = true
 
     private static func isPrison(_ id: String) -> Bool { cardIDs.contains(id) }

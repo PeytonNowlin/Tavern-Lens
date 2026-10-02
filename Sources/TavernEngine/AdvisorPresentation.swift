@@ -80,7 +80,7 @@ public struct AdvisorPresentation: Sendable {
         else if content.status == .thinking { state = .thinking }
         else if content.choice != nil { state = .choice }
         else if content.status == .noData { state = .noData }
-        else if advice.plan.version >= 9, content.suggestions.first?.confidence == .low { state = .estimated }
+        else if advice.plan.policy.has(.fallbackAdvice), content.suggestions.first?.confidence == .low { state = .estimated }
         else if content.status == .recommendation, !content.suggestions.isEmpty { state = .recommendation }
         else { state = .tentative }
 

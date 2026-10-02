@@ -3,7 +3,7 @@ import Foundation
 /// Exact Dark Gift definitions from the recorded games. Combat effects stay in the pinned simulator;
 /// only an observed pending recruit increment is applied to the projected board here.
 enum RecruitLogEffects {
-    static func enabled(_ context: RecruitContext) -> Bool { (context.evaluationVersion ?? 0) >= 5 }
+    static func enabled(_ context: RecruitContext) -> Bool { context.policy.has(.recordedEffects) }
 
     static func supportsGift(_ enchantment: BattleEnchantment, context: RecruitContext) -> Bool? {
         guard enabled(context) else { return nil }

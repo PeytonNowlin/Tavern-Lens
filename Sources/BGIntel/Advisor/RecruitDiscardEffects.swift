@@ -9,7 +9,7 @@ enum RecruitDiscardEffects {
     private static let affinity = "BG36_MidGameEffect_000t82e"
     private static let affinityText = "At the end of every 2 turns, get a random minion of this type. (2 turns left!)2At the end of every 2 turns, get a random minion of this type. (End of this turn!)"
 
-    static func enabled(_ context: RecruitContext) -> Bool { (context.evaluationVersion ?? 0) >= 6 }
+    static func enabled(_ context: RecruitContext) -> Bool { context.policy.has(.discardEffects) }
 
     static func supportsHammer(_ id: String, context: RecruitContext) -> Bool {
         enabled(context) && id == hammer && context.text(id)

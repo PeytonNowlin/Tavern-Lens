@@ -7,7 +7,7 @@ public enum RecruitCardTurnPrior {
     public static let supportedTurns = 1...3
 
     public static func value(_ state: RecruitState, request: AdvisorRequest, context: RecruitContext) -> Double {
-        guard (context.evaluationVersion ?? 0) >= 11,
+        guard context.policy.has(.cardTurnPrior),
               supportedTurns.contains(request.preview.bgTurn),
               let stats = request.cardTurnStats, let checkedAt = request.cardTurnStatsCheckedAt,
               stats.usable(now: checkedAt) else { return 0 }

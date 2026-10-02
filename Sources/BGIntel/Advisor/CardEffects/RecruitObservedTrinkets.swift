@@ -4,7 +4,7 @@
 
 enum RecruitOrnateClock: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG32_MagicItem_271"]
-    static let since = 11
+    static let since = AdvisorPolicy.Feature.greaterTrinketGold.introduced
 
     // Acquisition already granted gold and changed the trinket schedule in the
     // observed client state. It has no remaining recruit or combat projection event.
@@ -16,7 +16,7 @@ enum RecruitOrnateClock: RecruitCardEffect {
 
 enum RecruitDeathlyPhylactery: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG30_MagicItem_700"]
-    static let since = 7
+    static let since = AdvisorPolicy.Feature.observedTrinketState.introduced
 
     // The simulator consumes tags[32], not scriptDataNum1. Older recordings lack
     // that observation; never assume their first Deathrattle is still available.
@@ -30,7 +30,7 @@ enum RecruitDeathlyPhylactery: RecruitCardEffect {
 
 enum RecruitManipulatorPortrait: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG30_MagicItem_876"]
-    static let since = 7
+    static let since = AdvisorPolicy.Feature.observedTrinketState.introduced
 
     // Its one-time reward is already observed in hand. This does not model the
     // separate Faceless Manipulator copy Battlecry or grant another copy.
@@ -41,7 +41,7 @@ enum RecruitManipulatorPortrait: RecruitCardEffect {
 
 enum RecruitPocketCyclone: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG35_MagicItem_850", "BG35_MagicItem_850t"]
-    static let since = 9
+    static let since = AdvisorPolicy.Feature.easterlyWindsTrinkets.introduced
 
     // Past casts are reflected in observed shop stats. The next cast is next turn;
     // refreshes and repeated Tavern consumes retain their unknown-shop boundaries.
@@ -55,7 +55,7 @@ enum RecruitPocketCyclone: RecruitCardEffect {
 
 enum RecruitFaerieDragonScale: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG32_MagicItem_363"]
-    static let since = 5
+    static let since = AdvisorPolicy.Feature.recordedEffects.introduced
 
     // faerie-dragon-scale.js owns shield grants and the remaining-use counter.
     static func trinketSupported(_ id: String, context: RecruitContext) -> Bool? {
@@ -65,7 +65,7 @@ enum RecruitFaerieDragonScale: RecruitCardEffect {
 
 enum RecruitBeetleBand: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG32_MagicItem_860t"]
-    static let since = 5
+    static let since = AdvisorPolicy.Feature.recordedEffects.introduced
 
     // beetle-band.js owns avenge, summon count, Taunt and the global Beetle buffs.
     static func trinketSupported(_ id: String, context: RecruitContext) -> Bool? {
@@ -75,7 +75,7 @@ enum RecruitBeetleBand: RecruitCardEffect {
 
 enum RecruitRockinMusicBox: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG30_MagicItem_430"]
-    static let since = 5
+    static let since = AdvisorPolicy.Feature.recordedEffects.introduced
 
     // This turn's random reward is already observed in hand. The next arrives after
     // combat; never invent a card or resolve another reward in this projection.

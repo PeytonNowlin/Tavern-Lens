@@ -2,7 +2,7 @@
 /// still come from the log; unknown rewards and ambiguous selections are not invented.
 enum RecruitSuspiciousPrisonguard: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG36_345", "BG36_345_G"]
-    static let since = 7
+    static let since = AdvisorPolicy.Feature.activateEffects.introduced
 
     private static func amount(_ card: AdvisorCard, context: RecruitContext) -> Int? {
         guard !RecruitCardEffects.activatesTwice(card, context) else { return nil }
@@ -39,7 +39,7 @@ enum RecruitSuspiciousPrisonguard: RecruitCardEffect {
 
 enum RecruitDecoyConjurer: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG36_354"]
-    static let since = 7
+    static let since = AdvisorPolicy.Feature.activateEffects.introduced
 
     private static func recognized(_ card: AdvisorCard, context: RecruitContext) -> Bool {
         !RecruitCardEffects.activatesTwice(card, context)
@@ -91,7 +91,7 @@ enum RecruitDecoyConjurer: RecruitCardEffect {
 
 enum RecruitFruitVendor: RecruitCardEffect {
     static let cardIDs: Set<String> = ["BG36_346", "BG36_346_G"]
-    static let since = 8
+    static let since = AdvisorPolicy.Feature.bananaActivate.introduced
     static let banana = "BG28_897"
 
     private static func count(_ card: AdvisorCard, context: RecruitContext) -> Int? {
