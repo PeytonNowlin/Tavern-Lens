@@ -74,7 +74,7 @@ public enum RecruitPlanner {
             guard let availability = context.activations?[card.entity.entityId], availability.ready,
                   availability.cost <= state.gold, !state.usedActivations.contains(card.entity.entityId),
                   RecruitMechanics.activationSupported(card, context) else { continue }
-            if let supported = RecruitActivations.actions(card, index: i, state: state, context: context) {
+            if let supported = RecruitCardEffects.activationActions(card, index: i, state: state, context: context) {
                 actions += supported
                 continue
             }
@@ -128,7 +128,7 @@ public enum RecruitPlanner {
     }
 
     static func spellEffect(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> RecruitEffects.Effect {
-        if let effect = RecruitPolicy11Spells.effect(card, state: state, context: context) { return effect }
+        if let effect = RecruitCardEffects.spellEffect(card, state: state, context: context) { return effect }
         if card.cardID == "BG20_GEM" {
             return .buff(1 + (state.input.playerBoard.player.globalInfo["BloodGemAttackBonus"] ?? 0),
                          1 + (state.input.playerBoard.player.globalInfo["BloodGemHealthBonus"] ?? 0), all: false)
@@ -142,7 +142,7 @@ public enum RecruitPlanner {
         guard RecruitEffects.isSupported(effect) else { return }
         let targets: [Int?] = RecruitEffects.needsTarget(effect) ? state.board.map { $0.entity.entityId } : [nil]
         for target in targets {
-            guard RecruitPolicy11Spells.targetAllowed(card, target: target, state: state, context: context) else { continue }
+            guard RecruitCardEffects.spellTargetAllowed(card, target: target, state: state, context: context) else { continue }
             let i = state.board.firstIndex { $0.entity.entityId == target }
             let action = AdvisorAction.cast(from: source, index: index, cardID: card.cardID, option: 0,
                                             target: i, targetCardID: i.map { state.board[$0].cardID })
@@ -162,7 +162,7 @@ public enum RecruitPlanner {
             guard card.isMinion, cost <= s.gold, context.definitions[card.cardID] != nil,
                   RecruitEffects.isSupported(RecruitEffects.battlecry(card, context: context)) else { return nil }
             s.gold -= cost; s.shop.remove(at: i); s.hand.append(card)
-            guard RecruitPrison.afterBuy(card, state: &s, context: context) else { return nil }
+            guard RecruitCardEffects.afterBuy(card, state: &s, context: context) else { return nil }
             guard RecruitEffects.triples(state: &s, context: context) else { return nil }
         case .play:
             guard let i = s.hand.firstIndex(where: { $0.entity.entityId == step.entityID }), s.board.count < 7 else { return nil }
@@ -186,7 +186,7 @@ public enum RecruitPlanner {
         case .sell:
             guard let i = s.board.firstIndex(where: { $0.entity.entityId == step.entityID }), s.board.count > 1 else { return nil }
             let card = s.board.remove(at: i)
-            if RecruitPrison.enabled(context) { s.pendingPrisonBuys.removeValue(forKey: card.entity.entityId) }
+            RecruitCardEffects.afterSell(card, state: &s, context: context)
             guard RecruitEffects.apply(RecruitEffects.sell(card, context: context), target: nil, state: &s, context: context) else { return nil }
             s.gold += 1
         case .spell:
@@ -195,7 +195,7 @@ public enum RecruitPlanner {
             guard let card = inShop.map({ s.shop[$0] }) ?? inHand.map({ s.hand[$0] }), !card.isMinion else { return nil }
             let cost = inShop == nil ? 0 : card.cost ?? Int.max
             guard cost <= s.gold else { return nil }
-            guard RecruitPolicy11Spells.targetAllowed(card, target: step.targetID, state: s, context: context) else { return nil }
+            guard RecruitCardEffects.spellTargetAllowed(card, target: step.targetID, state: s, context: context) else { return nil }
             s.gold -= cost
             if let i = inShop { s.shop.remove(at: i) }; if let i = inHand { s.hand.remove(at: i) }
             let effect = spellEffect(card, state: s, context: context)
@@ -250,7 +250,7 @@ public enum RecruitPlanner {
             let card = s.board.remove(at: i); s.board.insert(card, at: to); s.terminal = true
         }
         guard RecruitEffects.triggerEffects(step.kind, before: original, state: &s, context: context) else { return nil }
-        guard RecruitSpellCopies.afterPlayerSpell(step, before: original, state: &s, context: context) else { return nil }
+        guard RecruitCardEffects.afterPlayerSpell(step, before: original, state: &s, context: context) else { return nil }
         if step.kind == .play || step.kind == .spell {
             RecruitMechanics.playedCard(before: original, state: &s, context: context)
         }

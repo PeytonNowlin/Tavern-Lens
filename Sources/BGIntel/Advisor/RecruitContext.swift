@@ -91,7 +91,7 @@ extension BattleInputBuilder {
         ids += local.player.secrets.map(\.cardId)
         ids += observed.flatMap { $0.entity.enchantments.map(\.cardId) }
         ids += tokens
-        ids += RecruitEffectDependencies.ids(for: observed)
+        ids += RecruitCardEffects.generated(for: observed)
         for id in ids {
             guard let card = cards[id] else { continue }
             definitions[id] = card
@@ -125,15 +125,14 @@ extension BattleInputBuilder {
             guard let entity = store[card.entity.entityId] else { continue }
             let parsed = RecruitEffects.captures(".*Activate \\(([0-9]+)\\):.*", context.text(card.cardID))
             let observedCost = entity.int(GameTag.id(4090))
-            let requiresObservedCost = RecruitPrison.isPrison(card.cardID)
-                || card.cardID == RecruitLionfish.normal || card.cardID == RecruitLionfish.golden
+            let requiresObservedCost = RecruitCardEffects.requiresObservedActivationCost(card.cardID)
             context.activations?[card.entity.entityId] = .init(
                 ready: entity.int(GameTag.id(4089)) == 1,
                 cost: observedCost ?? parsed.flatMap { Int($0[0]) } ?? 0,
                 costObserved: requiresObservedCost ? observedCost != nil : nil)
         }
         context.pendingPrisonBuys = [:]
-        for card in observed where card.cardID == "BG36_180" || card.cardID == "BG36_180_G" {
+        for card in observed where RecruitLivingPrison.cardIDs.contains(card.cardID) {
             guard let pending = store[card.entity.entityId]?.int(GameTag.id(4945)), pending == 0 || pending == 1 else { continue }
             context.pendingPrisonBuys?[card.entity.entityId] = pending == 1
         }

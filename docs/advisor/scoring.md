@@ -57,6 +57,17 @@ uses top 10% to broaden sparse samples; missing rating, table or selected files 
 all-player statistics. Publication dates remain separate from cache confirmations.
 The selected window, actual population and reason are archived with each hero's stats.
 
+### Card effects
+
+Card-specific recruit knowledge lives in `Sources/BGIntel/Advisor/CardEffects/`, one
+entry per card (normal and golden), listed in `RecruitCardEffects.all`. An entry declares
+the exact definition it accepts, the policy version it entered at (`since`), any
+definitions the search may generate from it, and only the hooks it needs: Activate,
+trinket support, spell or Battlecry effect, and buy/sell/play/spell/triple/projection
+listeners. Before its `since` version an entry is absent, so archived policies replay
+unchanged. Cards without an entry use the generic text grammar in `RecruitEffects`.
+Adding a card is one entry, one line in the table, and a test in `Tests/BGIntelTests`.
+
 ### Earlier policies
 
 Version 10 models exact lesser/greater Nomi Sticker increments after an Elemental

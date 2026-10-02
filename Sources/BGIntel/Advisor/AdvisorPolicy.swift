@@ -67,7 +67,7 @@ public struct AdvisorPolicy: Hashable, Comparable, Sendable {
         case livingPrison
         /// Firestone card win rates by turn as an early-turn prior.
         case cardTurnPrior
-        /// Arcane Absorption and the spells that grant it.
+        /// Fortify, Arcane Absorption and the cards that grant Absorption.
         case arcaneAbsorption
         /// The greater-trinket gold trinket.
         case greaterTrinketGold

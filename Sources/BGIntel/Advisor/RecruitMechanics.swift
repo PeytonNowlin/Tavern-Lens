@@ -66,7 +66,7 @@ enum RecruitMechanics {
     }
 
     static func activationSupported(_ card: AdvisorCard, _ context: RecruitContext) -> Bool {
-        if RecruitActivations.supported(card, context: context) { return true }
+        if RecruitCardEffects.activationRecognized(card, context: context) { return true }
         guard let body = activationBody(card, context),
               !gifts(card, context).contains("This minion's Activate triggers twice.") else { return false }
         if body == "Discard a card to get a random Tavern spell." { return true }
@@ -78,7 +78,7 @@ enum RecruitMechanics {
     }
 
     static func activate(_ step: RecruitStep, state: inout RecruitState, context: RecruitContext) -> Bool {
-        if let handled = RecruitActivations.apply(step, state: &state, context: context) { return handled }
+        if let handled = RecruitCardEffects.activate(step, state: &state, context: context) { return handled }
         guard let i = state.board.firstIndex(where: { $0.entity.entityId == step.entityID }),
               let availability = context.activations?[step.entityID], availability.ready,
               !state.usedActivations.contains(step.entityID), availability.cost <= state.gold,
@@ -146,9 +146,8 @@ enum RecruitMechanics {
 
     static func trinketSupported(_ id: String, context: RecruitContext) -> Bool {
         if RecruitDiscardEffects.supportsHammer(id, context: context) { return true }
-        if let supported = RecruitLogEffects.supportsTrinket(id, context: context) { return supported }
+        if let supported = RecruitCardEffects.trinketSupported(id, context: context) { return supported }
         let text = context.text(id)
-        if (id == "BG36_MagicItem_302" || id == "BG36_MagicItem_302t") && text.hasPrefix("At the end of your turn, give your minions +") { return true }
         if text == "Your end of turn effects trigger an extra time." { return true }
         if text == "When you buy a Greater Trinket, this transforms into a copy of it."
             || text == "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion." { return true }
@@ -165,7 +164,7 @@ enum RecruitMechanics {
             result.append("Unmodelled trinket: \(context.definitions[t.cardId]?.name ?? t.cardId)")
         }
         for card in state.board {
-            if !projectionOnly, let limitation = RecruitActivations.limitation(card, state: state, context: context) {
+            if !projectionOnly, let limitation = RecruitCardEffects.activationLimitation(card, state: state, context: context) {
                 result.append(limitation)
             }
             for enchantment in card.entity.enchantments where enchantment.cardId.hasPrefix("BG36_MidGameEffect_") {

@@ -1,12 +1,19 @@
 /// The captured recruit attack is replacement -> Rally -> zero-damage attack ->
 /// Fishbait Deathrattle. Other attack chains need their own verified transitions.
-enum RecruitLionfish {
+enum RecruitLurkingLionfish: RecruitCardEffect {
     static let normal = "BG36_201", golden = "BG36_201_G"
+    static let cardIDs: Set<String> = [normal, golden]
+    static let since = AdvisorPolicy.Feature.lionfishActivate.introduced
+    static let generated = ["BG36_205", "BG36_205_G"]
+    static let requiresObservedActivationCost = true
 
-    static func recognized(_ card: AdvisorCard, context: RecruitContext) -> Bool {
-        guard context.policy.has(.lionfishActivate), card.isMinion,
-              context.definitions[card.cardID]?.type == "MINION",
-              !RecruitMechanics.gifts(card, context).contains("This minion's Activate triggers twice.") else { return false }
+    static func activationRecognized(_ card: AdvisorCard, context: RecruitContext) -> Bool {
+        recognized(card, context: context)
+    }
+
+    private static func recognized(_ card: AdvisorCard, context: RecruitContext) -> Bool {
+        guard card.isMinion, context.definitions[card.cardID]?.type == "MINION",
+              !RecruitCardEffects.activatesTwice(card, context) else { return false }
         switch (card.cardID, context.text(card.cardID)) {
         case (normal, "Activate (2): Choose a card in the Tavern. Replace it with a Fishbait for your left-most Beast to attack."),
              (golden, "Activate (2): Choose a card in the Tavern. Replace it with a Golden Fishbait for your left- most Beast to attack."):
@@ -90,33 +97,27 @@ enum RecruitLionfish {
         return nil
     }
 
-    static func limitation(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> String? {
-        guard recognized(card, context: context), let available = context.activations?[card.entity.entityId],
-              available.ready, available.costObserved != false, available.cost >= 0, available.cost <= state.gold,
-              !state.usedActivations.contains(card.entity.entityId), !state.shop.isEmpty,
+    static func activationLimitation(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> String? {
+        guard recognized(card, context: context),
+              RecruitCardEffects.availableActivation(card.entity.entityId, state: state, context: context, observedCost: true) != nil,
+              !state.shop.isEmpty,
               let reason = reason(card, state: state, context: context) else { return nil }
         return "Lionfish attack unresolved: \(reason)"
     }
 
-    static func actions(_ card: AdvisorCard, index: Int, state: RecruitState, context: RecruitContext) -> [RecruitStep]? {
+    static func activationActions(_ card: AdvisorCard, index: Int, state: RecruitState, context: RecruitContext) -> [RecruitStep]? {
         guard recognized(card, context: context) else { return nil }
-        guard let available = context.activations?[card.entity.entityId], available.ready,
-              available.costObserved != false, available.cost >= 0, available.cost <= state.gold,
-              !state.usedActivations.contains(card.entity.entityId),
+        guard let available = RecruitCardEffects.availableActivation(card.entity.entityId, state: state, context: context, observedCost: true),
               reason(card, state: state, context: context) == nil else { return [] }
         return state.shop.enumerated().map { shopIndex, target in
-            let action = AdvisorAction.activateMinion(board: index, cardID: card.cardID, cost: available.cost,
-                target: AdvisorTarget(.shop, shopIndex), targetCardID: target.cardID)
-            return RecruitStep(kind: .activate, entityID: card.entity.entityId, targetID: target.entity.entityId,
-                action: action, title: action.title { context.definitions[$0]?.name ?? $0 })
+            RecruitCardEffects.targetedActivation(card, index: index, cost: available.cost, target: target,
+                                                  position: AdvisorTarget(.shop, shopIndex), context: context)
         }
     }
 
-    static func apply(_ step: RecruitStep, state: inout RecruitState, context: RecruitContext) -> Bool? {
-        guard let source = state.board.first(where: { $0.entity.entityId == step.entityID }), recognized(source, context: context) else { return nil }
-        guard let available = context.activations?[step.entityID], available.ready,
-              available.costObserved != false, available.cost >= 0,
-              available.cost <= state.gold, !state.usedActivations.contains(step.entityID),
+    static func activate(_ step: RecruitStep, source: AdvisorCard, state: inout RecruitState, context: RecruitContext) -> Bool? {
+        guard recognized(source, context: context) else { return nil }
+        guard let available = RecruitCardEffects.availableActivation(step.entityID, state: state, context: context, observedCost: true),
               reason(source, state: state, context: context) == nil,
               let shopIndex = state.shop.firstIndex(where: { $0.entity.entityId == step.targetID }),
               let attackerIndex = attacker(state, context: context), let bait = token(source, context: context),
@@ -133,9 +134,7 @@ enum RecruitLionfish {
         // its Deathrattle buffs that killer, then removes the replaced Tavern entity.
         RecruitEffects.buff(&state.board[attackerIndex], attack: bait.buff, health: bait.buff)
         state.shop.remove(at: shopIndex)
-        state.gold -= available.cost
-        state.input.playerBoard.player.globalInfo["GoldSpentThisGame", default: 0] += available.cost
-        state.usedActivations.insert(step.entityID)
+        RecruitCardEffects.spendActivation(available, entityID: step.entityID, state: &state)
         return true
     }
 }
