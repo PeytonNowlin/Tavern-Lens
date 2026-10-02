@@ -187,6 +187,9 @@ public enum RecruitEffects {
             guard let effect = trigger(context.text(card.cardID), kind: kind) else { continue }
             guard apply(effect, target: card.entity.entityId, state: &state, context: context) else { return false }
         }
+        if kind == .play {
+            return RecruitNomiSticker.afterPlay(before: before, state: &state, context: context)
+        }
         return true
     }
 

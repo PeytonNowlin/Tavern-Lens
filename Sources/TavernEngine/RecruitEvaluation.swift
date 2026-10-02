@@ -45,7 +45,11 @@ public enum RecruitEvaluation {
         simulate: AdvisorEvaluation.Simulate, isolation: isolated (any Actor)? = #isolation,
         report: (AdvisorEvaluation.Progress) -> Void
     ) async throws -> AdvisorEvaluation.Progress {
-        let direction = plan.version >= 3 ? AdvisorStrategy.select(request) : nil
+        var selectionRequest = request
+        // New readiness rules must see the policy being evaluated, including when
+        // comparing a captured older request. Preserve archived selection order.
+        if plan.version >= 10 { selectionRequest.recruit?.evaluationVersion = plan.version }
+        let direction = plan.version >= 3 ? AdvisorStrategy.select(selectionRequest) : nil
         var prepared = request
         if plan.version >= 3 { prepared.recruit?.strategicEvaluation = true }
         prepared.recruit?.evaluationVersion = plan.version >= 5 ? plan.version : nil

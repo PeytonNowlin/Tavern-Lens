@@ -8,6 +8,8 @@ enum RecruitLogEffects {
     static func supportsTrinket(_ id: String, context: RecruitContext) -> Bool? {
         guard enabled(context) else { return nil }
         switch id {
+        case RecruitNomiSticker.lesser, RecruitNomiSticker.greater:
+            return RecruitNomiSticker.supports(id, context: context)
         case RecruitSpellCopies.locketID:
             // Targeted player casts are resolved or limited per action by the copy handler.
             return RecruitSpellCopies.supportsLocket(id, context: context)

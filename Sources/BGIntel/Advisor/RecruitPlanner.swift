@@ -268,6 +268,10 @@ public enum RecruitPlanner {
             v.tempo += RecruitMechanics.combatValue(card, state: s, context: context)
             v.scaling += production(card, state: s, context: context) * horizon
         }
+        // Nomi's new permanent increment benefits later Elemental purchases. Value
+        // one discounted future recipient; current offered stats are handled by plays.
+        let nomi = RecruitNomiSticker.pendingShopBuff(in: s, context: context)
+        v.scaling += sqrt(Double(max(0, nomi.attack)) * Double(max(0, nomi.health))) * horizon
         for deity in s.input.playerBoard.player.secrets where deity.cardId == "BG_OldGod" {
             let attack = deity.tags?["4914"] ?? deity.scriptDataNum2
             let health = deity.tags?["4915"] ?? deity.scriptDataNum3
@@ -280,18 +284,26 @@ public enum RecruitPlanner {
         if s.pendingDiscover > 0 || s.limitations.contains(where: { $0.hasPrefix("Triple reward") }) {
             v.economy += Double(min(6, s.tier + 1)) * 1.5 * min(1, horizon)
         }
-        for card in s.hand { v.economy += card.isMinion ? 1.2 : 0.8 }
+        let purchased = Set(s.steps.compactMap { $0.kind == .buy ? $0.entityID : nil })
+        for card in s.hand {
+            // An unused purchase is worth its resale option, not more than its
+            // three-Gold price. Otherwise filler buys improve any useful sequence.
+            let unusedPurchase = (context.evaluationVersion ?? 0) >= 10
+                && purchased.contains(card.entity.entityId)
+            v.economy += card.isMinion ? (unusedPurchase ? 0.35 : 1.2) : 0.8
+        }
         let unlocked = max(0, s.tier - request.tier)
         let curveTier = request.preview.bgTurn < 5 ? 2 : request.preview.bgTurn < 7 ? 3 : request.preview.bgTurn < 9 ? 4 : 5
         v.economy += Double(unlocked) * (s.tier <= curveTier ? 7 : 3) * horizon
         let held = s.board + s.hand
+        let roleCards = AdvisorBuildReadiness.roleCards(board: s.board, hand: s.hand,
+            evaluationVersion: context.evaluationVersion, base: context.base)
         for build in request.builds ?? [] {
             let core = Set(held.map { context.base($0.cardID) }).intersection(build.core).count
             let support = Set(held.map { context.base($0.cardID) }).intersection(build.addons).count
             // Supporting cards have value when there is an engine; catalog membership alone is weak.
-            if let requirements = build.requirements, !requirements.isEmpty {
-                let heldIDs = Set(held.map { context.base($0.cardID) })
-                let supplied = requirements.filter { !heldIDs.intersection($0.anyOf).isEmpty }.count
+            if let requirements = AdvisorBuildReadiness.requirements(build, evaluationVersion: context.evaluationVersion), !requirements.isEmpty {
+                let supplied = requirements.filter { !roleCards.intersection($0.anyOf).isEmpty }.count
                 let complete = supplied == requirements.count
                 v.synergy += build.share * Double(supplied * 4 + core + (complete ? support * 2 + 4 : 0)) * horizon
             } else {
@@ -337,6 +349,7 @@ public enum RecruitPlanner {
     }
 
     private static func baseProduction(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double {
+        if let production = RecruitElementalValue.production(card, state: state, context: context) { return production }
         if let production = RecruitDiscardEffects.fleshlingProduction(card, state: state, context: context) { return production }
         let text = context.text(card.cardID).lowercased()
         // Battlecries have already been resolved by the transition. Counting their rewards

@@ -129,7 +129,9 @@ public enum RecruitFallback {
         var card = next.hand.remove(at: index)
         guard RecruitPlayedMinions.prepare(&card, before: state, state: &next, context: context) else { return [] }
         guard RecruitDiscardEffects.synchronizeHammer(card: &card, state: next, context: context) else { return [] }
-        next.board.append(card); next.steps.append(step)
+        next.board.append(card)
+        guard RecruitNomiSticker.afterPlay(before: state, state: &next, context: context) else { return [] }
+        next.steps.append(step)
         RecruitMechanics.playedCard(before: state, state: &next, context: context)
         next.limitations.append("Play triggers are unmodelled; estimate uses observed stats and known ongoing effects")
         return [next]

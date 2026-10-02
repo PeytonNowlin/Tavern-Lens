@@ -195,12 +195,11 @@
         "role": "Venom replacement",
         "dbfIDs": [
           90425,
-          122219,
-          126637
+          122219
         ]
       }
     ],
-    "guidance": "Use venom and defensive utility as a survival pivot when ordinary scaling cannot catch up. Positioning and the opponent composition still matter."
+    "guidance": "Use venom and defensive utility as a survival pivot when ordinary scaling cannot catch up. Expert Aviator needs an unlocked hand payload and is not a sufficient commitment signal by itself. Positioning and the opponent composition still matter."
   },
   "3": {
     "requirements": [

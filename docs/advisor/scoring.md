@@ -1,6 +1,23 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 9)
+## Live planner (evaluation version 10)
+
+Version 10 models exact lesser/greater Nomi Sticker increments after an Elemental
+or ALL-type minion's Battlecry. It buffs remaining observed Tavern Elementals once
+per play, including in fallback estimates. Existing shop buffs are never reapplied;
+refreshes still end at an unknown shop. Newly earned permanent increments also add
+a discounted future-purchase estimate, separate from projected combat stats.
+
+Shared production valuation now recognizes Air Revenant's recurring Easterly Winds,
+Ichoron's usable Elemental shield recipients and Greasefire's Tavern Elemental
+recipients. These bounded estimates protect engine value without forbidding strong
+off-tribe purchases. Missing or changed definitions remain conservative. Air's future
+value does not vanish when this turn's gold is spent; its generated spell definition
+is captured with new requests. Locked hand cards cannot complete a build's engine
+requirements, and Expert Aviator alone no longer establishes the Venom recipe.
+An unused purchased minion receives only resale option value in hand. Previously,
+the flat hand bonus exceeded its Gold cost and could prepend a useless filler buy
+to a productive sequence. Existing held options and explicit build synergy remain.
 
 Version 9 surfaces low-confidence options as **Consider** estimates with their first
 action, continuation and named uncertainty. Checked recommendations retain **Next**.
@@ -80,7 +97,7 @@ fully checked supported plan can have medium confidence with a visible caveat th
 the ranking covers supported plans, even while other plans are still being evaluated;
 unfinished candidate checks retain low confidence. Missing alternative coverage without combat
 evidence, missing chosen-card definitions and unresolved chosen effects remain uncertain.
-Recorded versions 1–3 and 5–8 retain their original policies and fingerprints. Version 4 is
+Recorded versions 1–3 and 5–9 retain their original policies and fingerprints. Version 4 is
 reserved for the separate, uncommitted advisor-quality worktree.
 
 Replay the captured development cases locally without committing private data:

@@ -74,7 +74,7 @@ extension BattleInputBuilder {
         })
         var definitions: [String: Card] = [:]
         let tokens = ["BG20_GEM", "BG28_810", "BG28_897", "BGS_115t", "BGS_115t_G", "BG_CFM_315t", "TB_BaconUps_093t", "BG36_301t",
-                      "BG31_812e", "BG31_812e2"]
+                      "BG31_812e", "BG31_812e2", "BG34_444"]
         let observed = request.board + request.hand + request.shop
         var ids = observed.map(\.cardID)
         ids += local.player.heroPowers.map(\.cardId)
