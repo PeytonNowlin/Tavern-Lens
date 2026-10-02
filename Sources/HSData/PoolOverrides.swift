@@ -1,4 +1,32 @@
 import Foundation
+import os
+
+/// The result of loading a directory of hand-dropped override files: the files that
+/// decoded, plus the ones skipped because they were unreadable or malformed.
+public struct OverrideLoad<Value: Sendable>: Sendable {
+    public struct Skipped: Hashable, Sendable {
+        public var file: String
+        public var error: String
+    }
+    public var loaded: [Value]
+    public var skipped: [Skipped]
+
+    /// Decodes every `*.json` file in `directory` in file-name order, logging each one it skips.
+    static func load(directory: URL, decode: (Data) throws -> Value) -> OverrideLoad {
+        let log = Logger(subsystem: "TavernLens", category: "overrides")
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        var result = OverrideLoad(loaded: [], skipped: [])
+        for file in files.filter({ $0.pathExtension == "json" }).sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
+            do {
+                result.loaded.append(try decode(Data(contentsOf: file)))
+            } catch {
+                log.error("Skipping override file \(file.lastPathComponent, privacy: .public): \(String(describing: error), privacy: .public)")
+                result.skipped.append(.init(file: file.lastPathComponent, error: String(describing: error)))
+            }
+        }
+        return result
+    }
+}
 
 /// Our maintained override file for the Battlegrounds minion pool: one JSON file per
 /// patch (`Resources/bg-pool/overrides/<patch>.json`), holding the live delta that the
@@ -163,12 +191,15 @@ public struct PoolOverrides: Codable, Hashable, Sendable {
         HSDataResources.url("bg-pool/overrides").map(load(directory:)) ?? []
     }
 
-    /// Every readable `*.json` override file in `directory`.
+    /// Every readable `*.json` override file in `directory`. Malformed files are logged and
+    /// skipped; use `loadReport(directory:)` to see which.
     public static func load(directory: URL) -> [PoolOverrides] {
-        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
-        return files.filter { $0.pathExtension == "json" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-            .compactMap { try? PoolOverrides(json: Data(contentsOf: $0)) }
+        loadReport(directory: directory).loaded
+    }
+
+    /// Like `load(directory:)`, but also reports the files that were skipped.
+    public static func loadReport(directory: URL) -> OverrideLoad<PoolOverrides> {
+        OverrideLoad.load(directory: directory) { try PoolOverrides(json: $0) }
     }
 
     /// `~/Library/Application Support/TavernLens/Pool/overrides`: drop a newer file here on

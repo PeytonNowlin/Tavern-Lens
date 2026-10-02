@@ -453,12 +453,15 @@ public struct BuildOverrides: Codable, Hashable, Sendable {
         HSDataResources.url("bg-pool/builds/overrides").map(load(directory:)) ?? []
     }
 
-    /// Every readable `*.json` file in `directory`.
+    /// Every readable `*.json` file in `directory`. Malformed files are logged and skipped;
+    /// use `loadReport(directory:)` to see which.
     public static func load(directory: URL) -> [BuildOverrides] {
-        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
-        return files.filter { $0.pathExtension == "json" }
-            .sorted { $0.lastPathComponent < $1.lastPathComponent }
-            .compactMap { try? BuildOverrides(json: Data(contentsOf: $0)) }
+        loadReport(directory: directory).loaded
+    }
+
+    /// Like `load(directory:)`, but also reports the files that were skipped.
+    public static func loadReport(directory: URL) -> OverrideLoad<BuildOverrides> {
+        OverrideLoad.load(directory: directory) { try BuildOverrides(json: $0) }
     }
 
     /// `~/Library/Application Support/TavernLens/Builds/overrides`: drop a newer file here to
