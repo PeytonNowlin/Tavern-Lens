@@ -185,7 +185,7 @@ struct AdvisorPanel: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
             if reasonLines > 0 || presentation.primary == nil {
-                Text(presentation.reason)
+                Text(presentation.summaryReason)
                     .font(.system(size: type.bodyFontSize))
                     .foregroundStyle(.secondary)
                     .lineLimit(presentation.primary == nil ? 4 : reasonLines)
@@ -203,7 +203,7 @@ struct AdvisorPanel: View {
                 if let direction = presentation.direction {
                     Divider()
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(direction.committed ? "Building toward" : "Suggested direction · Considering")
+                        Text(direction.committed ? "Building toward" : "Suggested direction")
                             .foregroundStyle(.secondary)
                         Text(direction.name).fontWeight(.medium)
                     }

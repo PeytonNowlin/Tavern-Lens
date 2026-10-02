@@ -402,11 +402,23 @@ public final class AdvisorRunner {
     }
 
     private func receive(_ progress: AdvisorEvaluation.Progress, for request: AdvisorRequest) {
+        var view: AdviceView
+        if let existing = current, currentRequest == request {
+            // A partial changes the result, not the request's identity. Keep the fingerprint
+            // instead of encoding and hashing the same card data again on the main actor.
+            view = existing
+            view.advice = progress.advice
+            view.evaluations = progress.evaluations
+            view.isComplete = progress.isComplete
+            view.isUpdating = false
+            view.failure = nil
+        } else {
+            // Older policies retain the previous request while a replacement is pending.
+            view = AdviceView(request: request, plan: plan, advice: progress.advice,
+                              evaluations: progress.evaluations, isComplete: progress.isComplete)
+        }
         currentRequest = request
-        current = AdviceView(
-            request: request, plan: plan, advice: progress.advice, evaluations: progress.evaluations,
-            isComplete: progress.isComplete
-        )
+        current = view
     }
 
     private func fail(_ error: any Error) {

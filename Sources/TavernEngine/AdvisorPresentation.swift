@@ -50,6 +50,10 @@ public struct AdvisorPresentation: Sendable {
     public let state: State
     public let title: String
     public let reason: String
+    /// A concise main-panel explanation; the full reason and limits remain in details.
+    public var summaryReason: String {
+        state == .tentative ? Self.coverageSummary(alternatives.first?.limitations ?? []) ?? reason : reason
+    }
     /// Evaluation-wide caveats, kept separate from the action's reason and continuation.
     public let note: String?
     /// The first actionable trust caveat; the complete evaluation note remains in details.
@@ -114,7 +118,6 @@ public struct AdvisorPresentation: Sendable {
             title = choice.map { "Consider \($0.name)" } ?? "Finish the current choice"
             reason = choice?.reason ?? content.note ?? "Reassess after choosing."
         }
-
         if let direction, let request,
            AdviceView.fingerprint(of: request, version: advice.plan.version) == advice.fingerprint,
            let build = (request.strategyCatalog ?? request.builds ?? []).first(where: { $0.id == direction.buildID }) {
@@ -130,6 +133,23 @@ public struct AdvisorPresentation: Sendable {
             "Combat checks use recent boards + stronger stress scenarios",
         ]
         return (note?.components(separatedBy: " · ") ?? []).filter { !neutral.contains($0) && !$0.isEmpty }
+    }
+
+    private static func coverageSummary(_ limitations: [String]) -> String? {
+        let prefixes = ["Unmodelled trinket: ", "Unmodelled Dark Gift: ", "Unmodelled Activate: ",
+                        "End-of-turn effect not resolved: "]
+        var seen: Set<String> = []
+        let effects = limitations.compactMap { limitation -> String? in
+            guard let prefix = prefixes.first(where: { limitation.hasPrefix($0) }) else { return nil }
+            let name = String(limitation.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            return !name.isEmpty && seen.insert(name).inserted ? name : nil
+        }
+        if let first = effects.first {
+            let remaining = effects.count - 1
+            let others = remaining == 0 ? "" : " and \(remaining) other \(remaining == 1 ? "effect" : "effects")"
+            return "Can't fully assess \(first)\(others)."
+        }
+        return limitations.contains("Missing card definitions") ? "Some card details are missing." : nil
     }
 
     private static func requirements(

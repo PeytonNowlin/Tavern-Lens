@@ -78,18 +78,22 @@ private struct AdvisorPreviewContent: View {
     @State var detailsExpanded: Bool
     @State var collapsed: Bool
     let name: (String) -> String
+    private let constants = LayoutConstants.current
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8 * scale) {
             if detailsExpanded, !collapsed {
                 AdvisorDetailsPanel(presentation: presentation, scale: scale, density: density, name: name)
-                    .frame(width: 180 * scale, height: 250 * scale)
+                    // Match the live HUD-width details surface when checking text wrapping.
+                    .frame(width: constants.hudSize.width * scale,
+                           height: constants.buildOverlay.tipsPanelHeight * scale)
             }
             AdvisorPanel(presentation: presentation, collapsed: collapsed, detailsExpanded: detailsExpanded,
                 scale: scale, density: density,
                 toggle: { collapsed.toggle(); detailsExpanded = false },
                 toggleDetails: { detailsExpanded.toggle() })
-                .frame(width: 250 * scale, height: (collapsed ? 34 : 262) * scale)
+                .frame(width: constants.advisor.panelSize.width * scale,
+                       height: (collapsed ? constants.advisor.headerHeight : constants.advisor.panelSize.height) * scale)
         }
     }
 }

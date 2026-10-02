@@ -104,7 +104,15 @@ scripts/bundle-app.sh --install
 open "/Applications/Tavern Lens.app"
 ```
 
-The bundling script builds a release executable, includes the SwiftPM resources, and signs the app. Use `scripts/bundle-app.sh --debug` for a debug bundle. `--install` creates a shortcut at `/Applications/Tavern Lens.app` to the bundle in `build/`, replacing an existing copy or shortcut. Both launch paths use the same app; keep this checkout and its disk available. Quit Tavern Lens before rebuilding its bundle, and use this same build location for updates. Separate `--output` bundles are for development; do not install or launch them for normal play.
+The bundling script builds a release executable, includes the SwiftPM resources, and signs the app. Use `scripts/bundle-app.sh --debug` for a debug bundle. `--install` creates a shortcut at `/Applications/Tavern Lens.app` to the bundle in `build/`, replacing an existing copy or shortcut. Both launch paths use the same app; keep this checkout and its disk available. The script refuses to replace a running target bundle, including through the shortcut. Quit Tavern Lens before rebuilding its bundle, and use this same build location for updates. Separate `--output` bundles are for development; do not install or launch them for normal play.
+
+While playing, prepare an update as a ZIP with limited build parallelism:
+
+```bash
+nice -n 15 scripts/bundle-app.sh --stage --jobs 2
+```
+
+This writes `build/Tavern Lens.zip` after verifying its signature and archive integrity. Temporary app bundles are removed when the script exits; the running app and `/Applications` shortcut stay in place. The ZIP is not opened or installed automatically. `--stage` cannot be combined with `--install`; `--output DIR` changes where the ZIP is saved. When ready to switch, quit Tavern Lens and run the usual `scripts/bundle-app.sh --install` command, then reopen `/Applications/Tavern Lens.app`.
 
 For stable permission grants across rebuilds, the script looks for a local code-signing identity named **Tavern Lens Local**. Without one, it falls back to ad-hoc signing, which can cause macOS to forget permissions after a rebuild. Run `scripts/bundle-app.sh --help` for the one-time certificate setup or use `TAVERN_SIGN_IDENTITY` to select an existing identity.
 

@@ -85,8 +85,15 @@ public struct AdvisorDecisionTrace: Sendable {
     public init(limit: Int = 12) { self.limit = max(2, limit) }
 
     public mutating func record(request: AdvisorRequest, displayed: AdviceView) {
-        guard displayed.advice.status != .thinking,
-              displayed.fingerprint == AdviceView.fingerprint(of: request, version: displayed.plan.version) else { return }
+        guard displayed.advice.status != .thinking else { return }
+        // The latest stored pair has already been validated. Refining its advice does not
+        // require another JSON encoding; a changed request, policy or fingerprint does.
+        let previous = decisions.last
+        let alreadyValidated = previous?.request == request
+            && previous?.displayed.plan.version == displayed.plan.version
+            && previous?.displayed.fingerprint == displayed.fingerprint
+        guard alreadyValidated
+            || displayed.fingerprint == AdviceView.fingerprint(of: request, version: displayed.plan.version) else { return }
         if let first = decisions.first,
            first.request.preview.gameSeed != request.preview.gameSeed || first.request.preview.bgTurn != request.preview.bgTurn {
             decisions = []

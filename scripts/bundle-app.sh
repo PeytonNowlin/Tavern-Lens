@@ -10,17 +10,21 @@ VERSION="${TAVERN_VERSION:-0.1.0}"
 CONFIG="release"
 OUT_DIR="$ROOT/build"
 INSTALL=0
+STAGE=0
+JOBS=""
 
 usage() {
     cat <<EOF
-Usage: scripts/bundle-app.sh [--debug] [--output DIR] [--install]
+Usage: scripts/bundle-app.sh [--debug] [--output DIR] [--jobs N] [--install | --stage]
 
 Builds the TavernLens product and assembles "Tavern Lens.app" (default: build/).
 
 Options:
   --debug        Build the debug configuration instead of release.
-  --output DIR   Put the app in DIR instead of build/.
+  --output DIR   Put the app or staged ZIP in DIR instead of build/.
+  --jobs N       Limit Swift build parallelism to N jobs (positive integer).
   --install      Link /Applications to this bundle, keeping one app copy.
+  --stage        Write a verified Tavern Lens.zip; leave the installed app alone.
   -h, --help     Show this help.
 
 Environment:
@@ -48,10 +52,22 @@ Signing:
 EOF
 }
 
+require_value() {
+    if [[ $# -lt 2 || -z "$2" || "$2" == --* ]]; then
+        echo "Missing value for $1" >&2
+        exit 2
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --debug) CONFIG="debug" ;;
-        --output) OUT_DIR="$2"; shift ;;
+        --output) require_value "$@"; OUT_DIR="$2"; shift ;;
+        --jobs)
+            require_value "$@"
+            [[ "$2" =~ ^[1-9][0-9]*$ ]] || { echo "--jobs requires a positive integer" >&2; exit 2; }
+            JOBS="$2"; shift ;;
+        --stage) STAGE=1 ;;
         --install) INSTALL=1 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -59,14 +75,73 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+if [[ "$STAGE" == 1 && "$INSTALL" == 1 ]]; then
+    echo "--stage and --install cannot be combined" >&2
+    exit 2
+fi
+
 mkdir -p "$OUT_DIR"
 OUT_DIR="$(cd "$OUT_DIR" && pwd -P)"
 APP="$OUT_DIR/Tavern Lens.app"
+DEST="/Applications/Tavern Lens.app"
 
+# Compare executable files as well as paths: /Applications may be a symlink to build/.
+ensure_stopped() {
+    local target="$1/Contents/MacOS/TavernLens" pids status pid executable
+    if pids="$(pgrep -x TavernLens 2>/dev/null)"; then
+        for pid in $pids; do
+            # An exited process is harmless; a live process we cannot inspect is not.
+            if ! executable="$(ps -p "$pid" -o comm=)"; then
+                if kill -0 "$pid" 2>/dev/null; then
+                    echo "Cannot inspect running Tavern Lens process $pid; use --stage." >&2
+                    return 1
+                fi
+                continue
+            fi
+            executable="${executable#"${executable%%[![:space:]]*}"}"
+            if [[ "$executable" == "$target" || "$executable" -ef "$target" ]]; then
+                echo "Tavern Lens is running from $1. Quit it before replacing this bundle, or use --stage." >&2
+                return 1
+            fi
+        done
+    else
+        status=$?
+        if [[ "$status" != 1 ]]; then
+            echo "Cannot check whether Tavern Lens is running; use --stage." >&2
+            return 1
+        fi
+    fi
+}
+
+ensure_targets_stopped() {
+    ensure_stopped "$APP"
+    if [[ "$INSTALL" == 1 && "$APP" != "$DEST" && ! "$APP" -ef "$DEST" ]]; then
+        ensure_stopped "$DEST"
+    fi
+}
+
+if [[ "$STAGE" == 1 ]]; then
+    WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tavern-lens-stage.XXXXXX")"
+    STAGED_ARCHIVE=""
+    cleanup_stage() {
+        rm -rf "$WORK_DIR"
+        if [[ -n "$STAGED_ARCHIVE" ]]; then rm -f "$STAGED_ARCHIVE"; fi
+    }
+    trap cleanup_stage EXIT
+    # Temporary, excluded from indexing, and never opened or registered with LaunchServices.
+    APP="$WORK_DIR/stage.noindex/Tavern Lens.app"
+else
+    ensure_targets_stopped
+fi
+
+BUILD_ARGS=(--package-path "$ROOT" -c "$CONFIG")
+if [[ -n "$JOBS" ]]; then BUILD_ARGS+=(--jobs "$JOBS"); fi
 echo "==> Building TavernLens ($CONFIG)"
-swift build --package-path "$ROOT" -c "$CONFIG" --product TavernLens
-BIN_DIR="$(swift build --package-path "$ROOT" -c "$CONFIG" --show-bin-path)"
+swift build "${BUILD_ARGS[@]}" --product TavernLens
+BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
 
+# The user may have launched the app while Swift was building.
+if [[ "$STAGE" == 0 ]]; then ensure_targets_stopped; fi
 echo "==> Assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -108,8 +183,26 @@ fi
 codesign --verify --strict "$APP"
 codesign --display --verbose=2 "$APP" 2>&1 | grep -E '^(Identifier|Authority|Signature)=' || true
 
+if [[ "$STAGE" == 1 ]]; then
+    ARCHIVE="$WORK_DIR/Tavern Lens.zip"
+    echo "==> Staging $OUT_DIR/Tavern Lens.zip"
+    ditto -c -k --sequesterRsrc --keepParent "$APP" "$ARCHIVE"
+    # TMPDIR and output can live on different disks. Copy to a hidden sibling first,
+    # preserving the previous ZIP if copying or verification fails, then rename atomically.
+    STAGED_ARCHIVE="$(mktemp "$OUT_DIR/.Tavern-Lens-stage.XXXXXX")"
+    cp "$ARCHIVE" "$STAGED_ARCHIVE"
+    unzip -tq "$STAGED_ARCHIVE"
+    # Verify the signed bundle survives the archive round trip before publishing the ZIP.
+    ditto -x -k "$STAGED_ARCHIVE" "$WORK_DIR/verify.noindex"
+    codesign --verify --strict "$WORK_DIR/verify.noindex/Tavern Lens.app"
+    mv -f "$STAGED_ARCHIVE" "$OUT_DIR/Tavern Lens.zip"
+    STAGED_ARCHIVE=""
+    echo "==> Staged: $OUT_DIR/Tavern Lens.zip (installed app unchanged)"
+    exit 0
+fi
+
 if [[ "$INSTALL" == 1 ]]; then
-    DEST="/Applications/Tavern Lens.app"
+    ensure_targets_stopped
     if [[ "$APP" != "$DEST" && ! "$APP" -ef "$DEST" ]]; then
         echo "==> Linking $DEST to $APP"
         rm -rf "$DEST"

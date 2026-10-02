@@ -116,6 +116,51 @@ struct AdvisorPresentationTests {
         #expect(tentative.note == view.advice.note)
     }
 
+    @Test("Tentative coverage names the blocker without promoting an action or losing details")
+    func tentativeCoverage() throws {
+        let request = try Self.request()
+        var view = Self.view(request, status: .noStrongRecommendation)
+        view.advice.note = "Plans use your board, scaling and gold · Evaluation incomplete; further plans may change the ranking · Some alternative actions are unmodelled; ranking covers supported plans"
+        let limitations = ["Unmodelled trinket: Quilligraphy Set", "Unmodelled trinket: Surveyor Portrait"]
+        view.advice.suggestions[0].confidence = .low
+        view.advice.suggestions[0].limitations = limitations
+        let presentation = AdvisorPresentation(advice: view, request: request)
+        #expect(presentation.summaryReason == "Can't fully assess Quilligraphy Set and 1 other effect.")
+        #expect(presentation.reason == "Evaluation incomplete; further plans may change the ranking · Some alternative actions are unmodelled; ranking covers supported plans")
+        #expect(presentation.note == view.advice.note)
+        #expect(presentation.alternatives.first?.limitations == limitations)
+        #expect(presentation.title == "No strong recommendation")
+        #expect(presentation.primary == nil)
+        #expect(presentation.alternatives.first?.confidence == .low)
+
+        view.advice.status = .recommendation
+        let recommended = AdvisorPresentation(advice: view, request: request)
+        #expect(recommended.summaryReason == recommended.reason)
+    }
+
+    @Test("Tentative summaries distinguish unsupported effects from unknown rewards and unused alternatives")
+    func tentativeCoverageBoundaries() throws {
+        let request = try Self.request()
+        var view = Self.view(request, status: .noStrongRecommendation)
+        view.advice.suggestions[0].limitations = ["Triple reward is unknown; choose it and replan"]
+        view.advice.suggestions[1].limitations = ["Unmodelled trinket: Surveyor Portrait"]
+        var presentation = AdvisorPresentation(advice: view)
+        #expect(presentation.summaryReason == presentation.reason)
+
+        view.advice.suggestions[0].limitations = [
+            "Triple reward is unknown; choose it and replan", "Unmodelled Dark Gift: Replication",
+            "Unmodelled Dark Gift: Replication",
+        ]
+        presentation = AdvisorPresentation(advice: view)
+        #expect(presentation.summaryReason == "Can't fully assess Replication.")
+        #expect(presentation.alternatives.first?.limitations.count == 3)
+
+        view.advice.suggestions[0].limitations = ["End-of-turn effect not resolved: Trench Fighter"]
+        #expect(AdvisorPresentation(advice: view).summaryReason == "Can't fully assess Trench Fighter.")
+        view.advice.suggestions[0].limitations = ["Missing card definitions"]
+        #expect(AdvisorPresentation(advice: view).summaryReason == "Some card details are missing.")
+    }
+
     @Test("Archived swap advice identifies the sale prerequisite before the shop target")
     func swapPrerequisite() throws {
         let request = try Self.request()

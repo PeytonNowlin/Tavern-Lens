@@ -52,8 +52,9 @@ final class CombatOddsModel {
         runner.onChange = { [weak self] view in
             guard let self else { return }
             self.advice = view
-            if let view, let request = self.advisorRunner.currentRequest,
-               AdviceView.fingerprint(of: request) == view.fingerprint {
+            // The runner installs currentRequest before publishing its matching view,
+            // including when an older policy temporarily retains the previous request.
+            if let view, let request = self.advisorRunner.currentRequest {
                 self.lastAdvice = view
                 self.lastRequest = request
                 self.decisionTrace.record(request: request, displayed: view)
