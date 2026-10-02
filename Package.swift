@@ -66,6 +66,13 @@ let package = Package(
             swiftSettings: commandLineToolsTesting.swift,
             linkerSettings: commandLineToolsTesting.linker
         ),
+        // The recruit card-effect table, tested directly on hand-built recruit states.
+        .testTarget(
+            name: "BGIntelTests",
+            dependencies: ["BGIntel", "HSData"],
+            swiftSettings: commandLineToolsTesting.swift,
+            linkerSettings: commandLineToolsTesting.linker
+        ),
         // Seam 2: layout geometry for the measured reference frames.
         .testTarget(
             name: "OverlayLayoutTests",

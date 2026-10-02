@@ -2,24 +2,27 @@ import Foundation
 
 /// Locket copies are casts by the trinket. They do not play another card or trigger
 /// hero-only spell counters/listeners. Unknown copy outcomes end this plan at the cast.
-enum RecruitSpellCopies {
+enum RecruitLovelyLocket: RecruitCardEffect {
     static let locketID = "BG36_MagicItem_211"
     static let locketText = "After you cast a spell on a friendly minion, this casts it on another friendly minion."
+    static let cardIDs: Set<String> = [locketID]
+    static let since = 8
 
-    static func supportsLocket(_ id: String, context: RecruitContext) -> Bool {
-        (context.evaluationVersion ?? 0) >= 8 && id == locketID && context.text(id) == locketText
-    }
+    private static func supported(_ context: RecruitContext) -> Bool { context.text(locketID) == locketText }
+
+    /// Targeted player casts are resolved or limited per action by `afterPlayerSpell`.
+    static func trinketSupported(_ id: String, context: RecruitContext) -> Bool? { supported(context) }
 
     static func afterPlayerSpell(_ step: RecruitStep, before: RecruitState, state: inout RecruitState,
                                  context: RecruitContext) -> Bool {
-        guard step.kind == .spell, supportsLocket(locketID, context: context),
+        guard step.kind == .spell, supported(context),
               let target = step.targetID, before.board.contains(where: { $0.entity.entityId == target }),
               let card = (before.hand + before.shop).first(where: { $0.entity.entityId == step.entityID }) else { return true }
         let lockets = state.input.playerBoard.player.trinkets.filter { $0.cardId == locketID }
         guard !lockets.isEmpty else { return true }
         let others = state.board.filter {
             $0.entity.entityId != target && $0.entity.health > 0
-                && RecruitPolicy11Spells.targetAllowed(card, target: $0.entity.entityId, state: state, context: context)
+                && RecruitCardEffects.spellTargetAllowed(card, target: $0.entity.entityId, state: state, context: context)
         }
 
         // Existing spell transitions only model a single cast (plus the hand-Gem aura).

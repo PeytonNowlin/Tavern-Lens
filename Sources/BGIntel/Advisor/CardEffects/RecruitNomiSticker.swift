@@ -1,8 +1,10 @@
 /// Nomi's accumulated shop buffs are already in observed stats. Only a new Elemental
 /// play adds an increment, after its Battlecry; future refreshes remain unknown.
-enum RecruitNomiSticker {
+enum RecruitNomiSticker: RecruitCardEffect {
     static let lesser = "BG30_MagicItem_544"
     static let greater = "BG30_MagicItem_544t"
+    static let cardIDs: Set<String> = [lesser, greater]
+    static let since = 10
 
     private static func increment(_ id: String, context: RecruitContext) -> (Int, Int)? {
         guard (context.evaluationVersion ?? 0) >= 10 else { return nil }
@@ -15,7 +17,7 @@ enum RecruitNomiSticker {
         }
     }
 
-    static func supports(_ id: String, context: RecruitContext) -> Bool {
+    static func trinketSupported(_ id: String, context: RecruitContext) -> Bool? {
         increment(id, context: context) != nil
     }
 
