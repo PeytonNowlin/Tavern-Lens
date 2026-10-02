@@ -11,6 +11,11 @@ struct DebugWindow: View {
     private let cardData = CardDataModel.shared
     @State private var isImporting = false
     @State private var selection: TimelineRow.ID?
+    /// The replay's timeline as table rows, rebuilt only when a replay finishes or is cleared,
+    /// not on every body evaluation. A row's id is its index in the timeline.
+    @State private var rows: [TimelineRow] = []
+    /// The selected entry as pretty-printed JSON; encoded on selection change, not per body.
+    @State private var selectedJSON = DebugWindow.noSelectionJSON
     @State private var detail = Detail.player
     @State private var entityFilter = ""
     @State private var showsBookmarks = false
@@ -70,6 +75,9 @@ struct DebugWindow: View {
             cardData.loadIfNeeded()
             model.refreshSavedReplays()
         }
+        // `result` is set just before `isReplaying` clears, and reset when a replay starts.
+        .onChange(of: model.isReplaying, initial: true) { rebuildRows() }
+        .onChange(of: selection) { updateSelectedJSON() }
     }
 
     // MARK: - Header
@@ -133,8 +141,15 @@ struct DebugWindow: View {
 
     // MARK: - Timeline
 
-    private var rows: [TimelineRow] {
-        (model.result?.timeline ?? []).enumerated().map { TimelineRow(id: $0.offset, entry: $0.element) }
+    private func rebuildRows() {
+        rows = (model.result?.timeline ?? []).enumerated().map { TimelineRow(id: $0.offset, entry: $0.element) }
+        updateSelectedJSON()
+    }
+
+    /// The selected row; ids are timeline indices, so no scan is needed.
+    private var selectedRow: TimelineRow? {
+        guard let selection, rows.indices.contains(selection) else { return nil }
+        return rows[selection]
     }
 
     @ViewBuilder private var content: some View {
@@ -211,7 +226,7 @@ struct DebugWindow: View {
     // MARK: - Player & shop
 
     private var selectedPlayerText: String {
-        guard let selection, let row = rows.first(where: { $0.id == selection }) else {
+        guard let row = selectedRow else {
             return "Select a timeline entry to see the player's state."
         }
         guard let game = row.entry.state.game else { return "No Battlegrounds game." }
@@ -219,7 +234,7 @@ struct DebugWindow: View {
     }
 
     private var selectedLobbyText: String {
-        guard let selection, let row = rows.first(where: { $0.id == selection }) else {
+        guard let row = selectedRow else {
             return "Select a timeline entry to see the lobby."
         }
         guard let game = row.entry.state.game else { return "No Battlegrounds game." }
@@ -305,16 +320,17 @@ struct DebugWindow: View {
         return title
     }
 
-    private var selectedJSON: String {
-        guard let selection, let row = rows.first(where: { $0.id == selection }) else {
-            return "Select a timeline entry to see its view state."
-        }
+    private static let noSelectionJSON = "Select a timeline entry to see its view state."
+
+    private func updateSelectedJSON() {
+        guard let row = selectedRow else { selectedJSON = Self.noSelectionJSON; return }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(row.entry), let text = String(data: data, encoding: .utf8) else {
-            return "Could not encode the entry."
+        if let data = try? encoder.encode(row.entry), let text = String(data: data, encoding: .utf8) {
+            selectedJSON = text
+        } else {
+            selectedJSON = "Could not encode the entry."
         }
-        return text
     }
 }
 
