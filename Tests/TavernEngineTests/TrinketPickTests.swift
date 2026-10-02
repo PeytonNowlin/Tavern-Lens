@@ -20,8 +20,8 @@ struct TrinketPickTests {
 
     @Test("Board fit changes with the engine; unknown and unaffordable choices do not get fake ranks")
     func ratings() throws {
-        let sludge = card("sludge", "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion.")
-        let end = card("end", "Your end of turn effects trigger an extra time.")
+        let sludge = card("BG36_MagicItem_430", "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion.")
+        let end = card("BG32_MagicItem_367", "Your end of turn effects trigger an extra time.")
         let unknown = card("unknown", "A completely new effect.")
         var engine = Card(id: "engine", dbfId: 4, name: "Engine")
         engine.text = "Activate (0): Discard a card to get a random Tavern spell."
@@ -40,7 +40,7 @@ struct TrinketPickTests {
 
     @Test("A trinket offer waits for display and clears on choice or another discover")
     func lifecycle() throws {
-        let c = card("sludge", "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion.")
+        let c = card("BG36_MagicItem_430", "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion.")
         let db = CardDB(build: 253216, cards: [c])
         var tracker = TrinketPickTracker()
         let offer = PowerEvent.entityChoices(.init(id: 10, choiceType: "GENERAL", taskList: 5,

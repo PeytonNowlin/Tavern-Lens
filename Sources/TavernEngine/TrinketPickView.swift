@@ -44,9 +44,9 @@ struct TrinketPickTracker: Sendable {
         var offers: [(Int, Card, Int?)] = []
         for option in choice.options {
             let entity = store[option.entityID]
-            let id = entity?.cardID.isEmpty == false ? entity!.cardID : option.cardID
+            let id = entity.map(\.cardID).flatMap { $0.isEmpty ? nil : $0 } ?? option.cardID
             guard let card = cards[id], card.type == "BATTLEGROUND_TRINKET" else { return nil }
-            offers.append((option.entityID, card, entity?.int(GameTag.id(48)) ?? card.cost))
+            offers.append((option.entityID, card, entity?.int(TrinketRater.costTag) ?? card.cost))
         }
         return TrinketRater.rate(choiceID: choice.id, offers: offers, game: game, cards: cards, stats: stats, now: now)
     }
@@ -55,72 +55,97 @@ struct TrinketPickTracker: Sendable {
 /// Explainable board-fit estimates. These are neither population win rates nor an optimal
 /// policy. Unrecognised effects stay unrated instead of receiving an invented average score.
 public enum TrinketRater {
+    /// COST (tag 48); the live price of the offered trinket.
+    static let costTag = GameTag.id(48)
+
+    /// The board facts every trinket model draws on.
+    private struct BoardFit {
+        var boardCount: Int, discarders: Int, endOfTurns: Int, hp: Int, horizon: Double, heldSpells: Int
+    }
+
     public static func rate(choiceID: Int, offers: [(Int, Card, Int?)], game: GameView, cards: CardDB, stats: TrinketStats? = nil, now: Date = Date()) -> TrinketPickView {
         let board = game.player?.board ?? []
         let texts = board.map { RecruitContext.plain(cards[$0.cardID]?.text ?? "").lowercased() }
-        let discarders = texts.filter { $0.contains("activate (") && $0.contains("discard a card") }.count
-        let endOfTurns = texts.filter { $0.contains("at the end of your turn") }.count
         let gold = game.player?.gold.available ?? 0
         let hp = game.player?.hero?.hp ?? 30
-        let horizon = hp <= 10 ? 1.0 : hp <= 20 ? 2.0 : 3.0
-        let stand = game.player?.mechanics?.trinkets.contains { $0.cardID == "BG30_MagicItem_888" } ?? false
+        let fit = BoardFit(
+            boardCount: board.count,
+            discarders: texts.filter { $0.contains("activate (") && $0.contains("discard a card") }.count,
+            endOfTurns: texts.filter { $0.contains("at the end of your turn") }.count,
+            hp: hp, horizon: TrinketWeights.horizon(hp: hp),
+            heldSpells: game.player?.hand.filter { cards[$0.cardID]?.type == "BATTLEGROUND_SPELL" || cards[$0.cardID]?.type == "SPELL" }.count ?? 0)
+        let stand = game.player?.mechanics?.trinkets.contains { $0.cardID == TrinketRaterTable.souvenirStandID } ?? false
         var ratings = offers.map { entity, card, cost -> TrinketOfferRating in
-            let text = RecruitContext.plain(card.text ?? "")
             var value: Double?, reason = "Effect not rated yet; compare its text before choosing"
-            if text == "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion." {
-                value = Double(board.count) * (1 + Double(discarders) * horizon)
-                reason = discarders > 0 ? "\(discarders) discard minion(s) supply repeated board buffs" : "Immediate board buff; no discard engine yet"
-            } else if text == "Your end of turn effects trigger an extra time." {
-                value = Double(endOfTurns) * 4 * horizon
-                reason = endOfTurns > 0 ? "Repeats \(endOfTurns) existing end-of-turn effect(s)" : "No end-of-turn engine on your board"
-            } else if text.hasPrefix("At the end of your turn, give your minions +"),
-                      let regex = try? NSRegularExpression(pattern: "give your minions \\+([0-9]+)/\\+([0-9]+)"),
-                      let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
-                let ns = text as NSString
-                let a = Double(ns.substring(with: match.range(at: 1))) ?? 0
-                let h = Double(ns.substring(with: match.range(at: 2))) ?? 0
-                value = (a + h) * Double(board.count) * 0.5 * horizon
-                reason = "Buffs all \(board.count) minions every turn"
-            } else if text == "When you buy a Greater Trinket, this transforms into a copy of it." {
-                value = hp > 20 ? 9 : 2
-                reason = hp > 20 ? "Invests in a second Greater Trinket; no immediate board strength" : "Delayed payoff is risky at your current health"
-            } else if text == "Get three random Tier 4 minions." {
-                value = 9; reason = "Three immediate minion options; outcomes are random"
-            } else if text == "Discover a Tier 4 minion of your most common type with a Dark Gift." {
-                value = 8; reason = "A tailored Tier 4 minion plus a Dark Gift; choices are unknown"
-            } else if text == "Get 2 random Tavern spells. When you play one, discard the other. At the start of your turn, repeat this." {
-                value = 2 * horizon + Double(discarders)
-                reason = "Recurring spell supply; only one of each pair can be played"
-            } else if text == "Your Tavern spells give an extra +1/+1. After you cast a spell on a minion, improve for this turn only." {
-                let held = game.player?.hand.filter { cards[$0.cardID]?.type == "BATTLEGROUND_SPELL" || cards[$0.cardID]?.type == "SPELL" }.count ?? 0
-                value = Double(held + discarders) * horizon * 2
-                reason = held + discarders > 0 ? "Supports your spell supply; needs targeted buff spells to ramp" : "Little spell supply visible on your board"
+            if let effect = TrinketRaterTable.effects[card.id], let modelled = model(effect, card: card, fit: fit) {
+                value = modelled.score; reason = modelled.reason
             }
+            let copied = stand && card.id != TrinketRaterTable.souvenirStandID
             if let current = value {
-                value = current * (stand && card.id != "BG30_MagicItem_888" ? 2 : 1) - Double(cost ?? 0) * 1.5
-                if stand && card.id != "BG30_MagicItem_888" { reason += "; Souvenir Stand copies it" }
+                value = current * (copied ? TrinketWeights.standCopyMultiplier : 1) - Double(cost ?? 0) * TrinketWeights.costPenalty
+                if copied { reason += "; Souvenir Stand copies it" }
             }
             let hasBoardModel = value != nil
             let meta = stats?.entry(card.id, now: now)
             if let meta {
                 // A modest population prior; board-specific engine payoff can outweigh it.
-                let prior = max(-8, min(8, (4.5 - meta.averagePlacement) * 8))
+                let prior = max(-TrinketWeights.priorLimit, min(TrinketWeights.priorLimit,
+                    (TrinketWeights.priorNeutralPlacement - meta.averagePlacement) * TrinketWeights.priorPerPlacement))
                 if let local = value { value = local + prior }
                 else {
-                    value = 8 + prior - Double(cost ?? 0) * 1.5
+                    value = TrinketWeights.baselineScore + prior - Double(cost ?? 0) * TrinketWeights.costPenalty
                     reason = "Population baseline only; board interaction not modelled"
                 }
             }
             let affordable = cost.map { $0 <= gold } ?? false
-            let rating = !affordable ? "Unavailable" : value.map { hasBoardModel ? ($0 >= 16 ? "Strong fit" : $0 >= 6 ? "Good fit" : "Weak fit") : "Meta baseline" } ?? "Unrated"
+            let rating = !affordable ? "Unavailable" : value.map { hasBoardModel ? label($0) : "Meta baseline" } ?? "Unrated"
             return TrinketOfferRating(entityID: entity, cardID: card.id, name: card.name, cost: cost,
                 rank: nil, rating: rating, reason: reason, score: value, affordable: affordable, averagePlacement: meta?.averagePlacement, sampleSize: meta?.dataPoints)
         }
         let order = ratings.indices.filter { ratings[$0].score != nil && ratings[$0].affordable }.sorted {
-            ratings[$0].score == ratings[$1].score ? $0 < $1 : ratings[$0].score! > ratings[$1].score!
+            let (a, b) = (ratings[$0].score ?? 0, ratings[$1].score ?? 0)
+            return a == b ? $0 < $1 : a > b
         }
         for (i, index) in order.enumerated() { ratings[index].rank = i + 1 }
         return TrinketPickView(choiceID: choiceID, offers: ratings,
             note: (stats?.usable(now: now) == true ? "Firestone · past 3 days · all ranks + board fit" : "Local board-fit estimates · no fresh population data") + " · low confidence" + (ratings.contains { $0.score == nil } ? " · some choices unrated" : ""))
+    }
+
+    private static func label(_ score: Double) -> String {
+        score >= TrinketWeights.strongFit ? "Strong fit" : score >= TrinketWeights.goodFit ? "Good fit" : "Weak fit"
+    }
+
+    /// Board-fit score and reason before cost, copying and the population prior; nil if the card text no longer fits the model.
+    private static func model(_ effect: TrinketEffect, card: Card, fit: BoardFit) -> (score: Double, reason: String)? {
+        switch effect {
+        case .sludgeCorrosion:
+            return (Double(fit.boardCount) * (1 + Double(fit.discarders) * fit.horizon),
+                    fit.discarders > 0 ? "\(fit.discarders) discard minion(s) supply repeated board buffs" : "Immediate board buff; no discard engine yet")
+        case .endOfTurnRepeat:
+            return (Double(fit.endOfTurns) * TrinketWeights.endOfTurnRepeatValue * fit.horizon,
+                    fit.endOfTurns > 0 ? "Repeats \(fit.endOfTurns) existing end-of-turn effect(s)" : "No end-of-turn engine on your board")
+        case .endOfTurnBuff:
+            let text = RecruitContext.plain(card.text ?? "")
+            guard text.hasPrefix(TrinketRaterTable.buffPrefix), let regex = TrinketRaterTable.buffPattern,
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+            let ns = text as NSString
+            let a = Double(ns.substring(with: match.range(at: 1))) ?? 0
+            let h = Double(ns.substring(with: match.range(at: 2))) ?? 0
+            return ((a + h) * Double(fit.boardCount) * TrinketWeights.endOfTurnBuffShare * fit.horizon, "Buffs all \(fit.boardCount) minions every turn")
+        case .souvenirStand:
+            let invest = fit.hp > TrinketWeights.healthyHP
+            return (invest ? TrinketWeights.standInvestScore : TrinketWeights.standRiskyScore,
+                    invest ? "Invests in a second Greater Trinket; no immediate board strength" : "Delayed payoff is risky at your current health")
+        case .tierFourMinions:
+            return (TrinketWeights.tierFourMinionsScore, "Three immediate minion options; outcomes are random")
+        case .darkGiftDiscover:
+            return (TrinketWeights.darkGiftDiscoverScore, "A tailored Tier 4 minion plus a Dark Gift; choices are unknown")
+        case .spellPairs:
+            return (TrinketWeights.spellPairsPerTurn * fit.horizon + Double(fit.discarders), "Recurring spell supply; only one of each pair can be played")
+        case .spellBuffs:
+            let supply = fit.heldSpells + fit.discarders
+            return (Double(supply) * fit.horizon * TrinketWeights.spellBuffValue,
+                    supply > 0 ? "Supports your spell supply; needs targeted buff spells to ramp" : "Little spell supply visible on your board")
+        }
     }
 }
