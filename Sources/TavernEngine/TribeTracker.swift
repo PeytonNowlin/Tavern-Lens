@@ -40,6 +40,11 @@ struct TribeTracker: Sendable {
 
     var estimate: TribeEstimate? { resolver?.estimate() }
 
+    /// The dated game pool, including this game's observed adoptions.
+    var currentPool: MinionPool? { pool }
+    /// Anchored when this game started; subsequent log timestamps cannot change rules.
+    var currentGameDate: Date? { gameIndex != nil ? gameDate : nil }
+
     /// There's a pool to infer the tribes with (for the game in progress).
     var hasResolver: Bool { gameIndex != nil && resolver != nil }
 
@@ -54,7 +59,7 @@ struct TribeTracker: Sendable {
 
     mutating func usePool(_ newPool: MinionPool?) {
         basePool = newPool
-        pool = newPool
+        pool = newPool?.applyingCorrections(at: gameIndex != nil ? gameDate : nil)
         // Cards this game already showed to be in the pool stay in it.
         for adopted in drift where adopted.gameSeed == gameSeed && gameIndex != nil {
             _ = pool?.adopt(adopted.cardID, tier: adopted.tier, gameSeed: gameSeed)
@@ -114,7 +119,7 @@ struct TribeTracker: Sendable {
         gameDate = date
         collector = BGSightingCollector()
         evidence = []
-        pool = basePool
+        pool = basePool?.applyingCorrections(at: date)
         rebuild()
     }
 

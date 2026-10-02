@@ -104,7 +104,11 @@ public enum AdvisorAction: Codable, Hashable, Sendable {
         switch self {
         case .activate(_, let card, _, _, let discarded): discarded.map { "Activate \(name(card)): discard \(name($0))" } ?? "Activate \(name(card))"
         case .activateMinion(_, let card, _, let target, let targetCard):
-            target.kind == .shop ? "Activate \(name(card)): steal \(name(targetCard))" : "Activate \(name(card)) on \(name(targetCard))"
+            if target.kind == .shop && (card == "BG36_201" || card == "BG36_201_G") {
+                "Activate \(name(card)): replace \(name(targetCard))"
+            } else {
+                target.kind == .shop ? "Activate \(name(card)): steal \(name(targetCard))" : "Activate \(name(card)) on \(name(targetCard))"
+            }
         case .activateUntargeted(_, let card, _): "Activate \(name(card))"
         case .heroPower(let card, _, _, let target): target.map { "\(name(card)) on \(name($0))" } ?? "Use \(name(card))"
         case .darkDiscovery(let cost, _, _): "Use Dark Discovery (\(cost) Gold)"

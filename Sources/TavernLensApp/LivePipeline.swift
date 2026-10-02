@@ -1,5 +1,6 @@
 import Foundation
 import HSLog
+import os
 import TavernEngine
 
 /// What the live pipeline reports to the main actor.
@@ -34,6 +35,9 @@ final class LivePipeline: @unchecked Sendable {
 
     private let publish: @Sendable (LiveUpdate) -> Void
     private let records: GameRecordStore?
+    private let playerActions: PlayerActionDiagnosticStore?
+    private var playerActionWrite: Task<Void, Never>?
+    private static let actionLog = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "player-actions")
     private let onGameEnded: @Sendable (GameRecord) -> Void
     private let onCombatRequest: @Sendable (CombatSimulationRequest) -> Void
     private let onOddsPreview: @Sendable (OddsPreviewRequest?) -> Void
@@ -70,6 +74,7 @@ final class LivePipeline: @unchecked Sendable {
     /// - Parameter records: where game records are saved and resumed from; nil keeps them in memory.
     init(
         records: GameRecordStore?,
+        playerActions: PlayerActionDiagnosticStore? = .standard,
         onGameEnded: @escaping @Sendable (GameRecord) -> Void = { _ in },
         onCombatRequest: @escaping @Sendable (CombatSimulationRequest) -> Void = { _ in },
         onOddsPreview: @escaping @Sendable (OddsPreviewRequest?) -> Void = { _ in },
@@ -77,6 +82,7 @@ final class LivePipeline: @unchecked Sendable {
         publish: @escaping @Sendable (LiveUpdate) -> Void
     ) {
         self.records = records
+        self.playerActions = playerActions
         self.onGameEnded = onGameEnded
         self.onCombatRequest = onCombatRequest
         self.onOddsPreview = onOddsPreview
@@ -130,6 +136,7 @@ final class LivePipeline: @unchecked Sendable {
                 break
             }
         }
+        savePlayerActions()
         if !engine.isCatchingUp { saveRecords() }
         dispatchCombatRequests()
         publishIfDue()
@@ -154,6 +161,28 @@ final class LivePipeline: @unchecked Sendable {
         updateEngine {
             $0.setup.trinketStats = stats
             $0.engine.useTrinketStats(stats)
+        }
+    }
+
+    func useCardTurnStats(_ stats: CardTurnStats?, checkedAt: Date?) {
+        updateEngine {
+            $0.setup.cardTurnStats = stats
+            $0.setup.cardTurnStatsCheckedAt = checkedAt
+            $0.engine.useCardTurnStats(stats, checkedAt: checkedAt)
+        }
+    }
+
+    /// One ordered writer, off the log queue. A failed write remains visible in diagnostics.
+    private func savePlayerActions() {
+        let actions = engine.takePlayerActions()
+        guard !actions.isEmpty, let store = playerActions else { return }
+        let previous = playerActionWrite
+        playerActionWrite = Task {
+            await previous?.value
+            for action in actions {
+                do { try await store.save(action) }
+                catch { Self.actionLog.error("Could not save player action: \(String(describing: error), privacy: .public)") }
+            }
         }
     }
 

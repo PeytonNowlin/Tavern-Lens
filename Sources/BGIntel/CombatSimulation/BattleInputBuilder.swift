@@ -158,10 +158,14 @@ public enum BattleInputBuilder {
             },
             hand: hand,
             secrets: secrets,
+            // The pinned simulator reads TRIGGER_VISUAL only for Phylactery and Bubble Crown.
+            // Other trinkets' unused tags would change archived inputs and advice fingerprints.
             trinkets: mechanics.trinkets.map {
                 BattleTrinket(cardId: $0.cardID, entityId: $0.entityID, scriptDataNum1: $0.scriptData[1],
                               scriptDataNum2: $0.scriptData[2], scriptDataNum6: $0.scriptData[6],
-                              tags: store[$0.entityID]?.int(GameTag.id(32)).map { ["32": $0] })
+                              tags: ["BG30_MagicItem_700", "BG35_MagicItem_920"].contains($0.cardID)
+                                  ? store[$0.entityID]?.int(GameTag.id(32)).map { ["32": $0] }
+                                  : nil)
             },
             globalInfo: globalInfo(mechanics)
         )

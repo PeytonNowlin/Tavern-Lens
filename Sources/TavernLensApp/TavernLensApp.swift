@@ -117,9 +117,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         PoolDataModel.shared.start()
         // Firestone's hero stats (fetched at launch and every 6 h) feed the hero-pick plates.
         HeroStatsModel.shared.onChanged = { [live] stats, cards in live.heroStats = (stats, cards) }
-        HeroStatsModel.shared.start()
+        HeroStatsModel.shared.start(ratings: ratingHistory)
         TrinketStatsModel.shared.onChanged = { [live] stats in live.trinketStats = stats }
         TrinketStatsModel.shared.start()
+        CardTurnStatsModel.shared.onChanged = { [live] stats, checkedAt in
+            live.cardTurnStatsCheckedAt = checkedAt
+            live.cardTurnStats = stats
+        }
+        CardTurnStatsModel.shared.start()
         // Build data (Firestone comps + our override file, filtered by the pool) feeds build detection.
         BuildDataModel.shared.onCatalogChanged = { [live] catalog in live.builds = catalog }
         BuildDataModel.shared.start()

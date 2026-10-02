@@ -48,22 +48,24 @@ public struct PowerLogParser: Sendable {
     }
 
     private var pendingChoice: PendingChoice?
+    private var actionPackets = ActionPacketParser()
 
     public init() {}
 
     /// Parses a raw line. Returns the parsed line (for its timestamp) or nil if unparsable.
     @discardableResult
-    public mutating func feed(_ text: String, emit: (PowerEvent) -> Void) -> LogLine? {
+    public mutating func feed(_ text: String, lineNumber: Int? = nil, emit: (PowerEvent) -> Void) -> LogLine? {
         guard let line = LogLine(text) else {
             diagnostics.unparsableLines += 1
             return nil
         }
-        feed(line, emit: emit)
+        feed(line, lineNumber: lineNumber, emit: emit)
         return line
     }
 
-    public mutating func feed(_ line: LogLine, emit: (PowerEvent) -> Void) {
+    public mutating func feed(_ line: LogLine, lineNumber: Int? = nil, emit: (PowerEvent) -> Void) {
         if pendingChoice != nil, !continuesChoice(line) { flushChoice(emit: emit) }
+        actionPackets.feed(line, lineNumber: lineNumber, emit: emit)
         switch line.method {
         case "PowerTaskList.DebugPrintPower":
             feedPower(line.payload, emit: emit)
@@ -90,6 +92,7 @@ public struct PowerLogParser: Sendable {
     /// Call at end of input so a trailing header is not lost.
     public mutating func finish(emit: (PowerEvent) -> Void) {
         flushChoice(emit: emit)
+        actionPackets.finish(emit: emit)
         flushHeader(emit: emit)
     }
 

@@ -8,6 +8,12 @@ enum RecruitLogEffects {
     static func supportsTrinket(_ id: String, context: RecruitContext) -> Bool? {
         guard enabled(context) else { return nil }
         switch id {
+        case "BG32_MagicItem_271":
+            // Acquisition already granted gold and changed the trinket schedule in the
+            // observed client state. It has no remaining recruit or combat projection event.
+            return (context.evaluationVersion ?? 0) >= 11
+                && context.definitions[id]?.type == "BATTLEGROUND_TRINKET"
+                && context.text(id) == "Gain 2 Gold. Buy your Greater Trinket next turn instead of Turn 9."
         case RecruitNomiSticker.lesser, RecruitNomiSticker.greater:
             return RecruitNomiSticker.supports(id, context: context)
         case RecruitSpellCopies.locketID:

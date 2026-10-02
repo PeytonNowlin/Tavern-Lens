@@ -21,6 +21,38 @@ struct MinionPoolTests {
         MinionPool.compose(cards: cards, metaPeriod: meta, overrides: overrides, mode: mode)
     }
 
+    /// The historical trim lacks two returning definitions; these minimal public
+    /// definitions retain the installed 253216 tiers and golden links.
+    static let hotfixCards: CardDB = {
+        var records = cards.cards
+        for (id, dbf, name, tier, tribe, goldenDbf) in [
+            ("BG33_828", 123595, "Ship Master Eudora", 6, "PIRATE", 123596),
+            ("BG34_403", 129263, "Eternal Tycoon", 5, "UNDEAD", 129264),
+            ("BG34_Giant_078", 126758, "Timewarped Thorncaller", 3, "QUILBOAR", 127353),
+        ] {
+            var card = Card(id: id, dbfId: dbf, name: name)
+            card.type = "MINION"
+            card.techLevel = tier
+            card.races = [tribe]
+            card.battlegroundsPremiumDbfId = goldenDbf
+            var golden = Card(id: id + "_G", dbfId: goldenDbf, name: name)
+            golden.type = "MINION"
+            golden.techLevel = tier
+            golden.races = [tribe]
+            golden.battlegroundsNormalDbfId = dbf
+            records += [card, golden]
+        }
+        return CardDB(build: 253216, cards: records)
+    }()
+
+    static func hotfixPool() -> MinionPool {
+        var stale = meta
+        // Reproduce the partial local 36.6.3 cache and a stale Thorncaller flag.
+        stale.tagOverrides += [.init(dbfID: 132636, tag: 1456, value: 0),
+                               .init(dbfID: 126758, tag: 1456, value: 1)]
+        return MinionPool.compose(cards: hotfixCards, metaPeriod: stale, overrides: overrides)
+    }
+
     /// Blizzard's 36.6.1 removed minions (§A.10).
     static let removed = [
         "BG_TTN_401", "BG32_172", "BG36_507", "BG36_760", "BG29_503", "BG35_142", "BG26_162", "BG35_143", "BGS_071",
@@ -45,11 +77,13 @@ struct MinionPoolTests {
     func bundledData() throws {
         #expect(Self.overrides.patch == "36.6.1")
         #expect(Self.overrides.tribesPerLobby == 5)
-        #expect(Self.overrides.forcedTribes == [.init(tribe: "ABERRATION", until: Self.date("2026-10-06T17:00:00Z"))])
+        #expect(Self.overrides.forcedTribes == [.init(tribe: "ABERRATION", until: Self.date("2026-10-01T15:55:00Z"))])
         #expect(Self.overrides.minionPool["BG32_172"] == 0)
         #expect(Self.overrides.minionPool["BG36_849"] == 1)
         #expect(Self.overrides.heroTribeRules["TB_BaconShop_HERO_53"]?.needsAny == ["DRAGON"])
         #expect(Self.overrides.minionTribeGates["BG28_303"] == ["UNDEAD"])
+        #expect(Self.overrides.datedCorrections.first?.patch == "36.6.3")
+        #expect(Self.overrides.datedCorrections.first?.validFrom == Self.date("2026-10-01T15:55:00Z"))
 
         #expect(Self.meta.name == "Real 36.6.1")
         #expect(Self.meta.periodStart == Date(timeIntervalSince1970: 1_790_097_494))
@@ -73,6 +107,81 @@ struct MinionPoolTests {
         #expect(solo.forcedTribes(at: Self.date("2026-10-07T00:00:00Z")) == [])
         #expect(!solo.tribesInRotation.contains(.naga))
         #expect(solo.provenance.metaPeriodName == "Real 36.6.1")
+    }
+
+    @Test("The historical Aberration guarantee ends at the 36.6.3 publication boundary")
+    func forcedTribeHotfixBoundary() throws {
+        // The hotfix changes server rules even with older client definitions.
+        for build in [251_952, 253_216] {
+            let cards = try CardDB(build: build, json: Data(contentsOf: Self.cardsURL))
+            let pool = MinionPool.compose(cards: cards, metaPeriod: Self.meta, overrides: Self.overrides)
+            #expect(pool.forcedTribes(at: Self.date("2026-09-25T20:00:00Z")) == [.aberration])
+            #expect(pool.forcedTribes(at: Self.date("2026-10-01T15:54:59Z")) == [.aberration])
+            #expect(pool.forcedTribes(at: Self.date("2026-10-01T15:55:00Z")) == [])
+            #expect(pool.forcedTribes(at: Self.date("2026-10-02T00:00:00Z")) == [])
+            #expect(pool.forcedTribes(at: nil) == [.aberration])
+            #expect(pool.tribesInRotation.contains(.aberration))
+            #expect(!pool.contains("BGFYM_000") && !pool.contains("BGFYM_011"))
+        }
+    }
+
+    @Test("Dated 36.6.3 shop corrections preserve the base and historical pool")
+    func datedShopCorrections() throws {
+        let base = Self.hotfixPool()
+        let boundary = Self.date("2026-10-01T15:55:00Z")
+        let before = base.applyingCorrections(at: Self.date("2026-10-01T15:54:59Z"))
+        #expect(before.minions == base.minions)
+        #expect(base.applyingCorrections(at: nil).minions == base.minions)
+        let current = base.applyingCorrections(at: boundary)
+        for (id, tier) in ["BG33_828": 5, "BG34_403": 5, "BG36_333": 7,
+                           "BG31_327": 3, "BG25_009": 5, "BG36_700": 5] {
+            let minion = try #require(current.minion(id), "\(id) missing after the hotfix")
+            #expect(minion.tier == tier)
+            #expect(minion.source == .overrides)
+            if let golden = Self.hotfixCards[id]?.battlegroundsPremiumDbfId.flatMap(Self.hotfixCards.card(dbfID:)) {
+                #expect(current.minion(golden.id)?.tier == tier)
+            }
+        }
+        #expect(!current.contains("BG34_683"))
+        #expect(!current.contains("BG34_Giant_078"))
+        #expect(!current.contains("BGFYM_000") && !current.contains("BGFYM_011"))
+        #expect(current.provenance.overridesPatch == "36.6.3")
+        #expect(current.applyingCorrections(at: boundary).minions == current.minions)
+        #expect(base.minion("BG31_327")?.tier == 4)
+        #expect(base.provenance.overridesPatch == "36.6.1")
+        #expect(current.spells == base.spells)
+    }
+
+    @Test("Dated corrections respect lobby gates and game-observed adoptions")
+    func datedCorrectionGates() throws {
+        let boundary = Self.date("2026-10-01T15:55:00Z")
+        var base = Self.hotfixPool().applyingCorrections(at: boundary)
+        #expect(base.adopt("BG34_683", tier: 3, gameSeed: 7) != nil)
+        let reapplied = base.applyingCorrections(at: boundary)
+        #expect(reapplied.minion("BG34_683")?.source == .sessionDrift)
+
+        var overrides = Self.overrides
+        overrides.tribesInRotation = ["QUILBOAR", "MURLOC"]
+        let limited = MinionPool.compose(cards: Self.hotfixCards, metaPeriod: nil, overrides: overrides)
+            .applyingCorrections(at: boundary)
+        #expect(!limited.contains("BG33_828"))  // Pirate remains out of rotation.
+        #expect(limited.minion("BG36_333")?.tier == 7)  // Quilboar is in rotation.
+        #expect(!limited.minions.values.contains { $0.isDuosOnly })
+
+        var gated = Self.overrides
+        let golden = try #require(Self.cards["BG31_327"]?.battlegroundsPremiumDbfId.flatMap(Self.cards.card(dbfID:)))
+        gated.datedCorrections.append(.init(
+            patch: "36.6.3", validFrom: boundary,
+            minionPool: ["BGDUO_700": 1, "BGFYM_000": 1, "BG28_303": 1, golden.id: 1, "MISSING": 1]
+        ))
+        let solo = MinionPool.compose(cards: Self.hotfixCards, metaPeriod: Self.meta, overrides: gated)
+            .applyingCorrections(at: boundary)
+        let duos = MinionPool.compose(cards: Self.hotfixCards, metaPeriod: Self.meta, overrides: gated, mode: .duos)
+            .applyingCorrections(at: boundary)
+        #expect(!solo.contains("BGDUO_700") && duos.contains("BGDUO_700"))
+        #expect(!solo.contains("BGFYM_000") && !solo.contains("MISSING"))
+        #expect(solo.minions[golden.id] == nil)
+        #expect(solo.minion("BG28_303")?.lobbyGate == [.undead])
     }
 
     @Test("No removed or rotated-out minion is in the pool; Naga dual-types stay through their other tribe")
@@ -186,5 +295,14 @@ struct MinionPoolTests {
         #expect(PoolOverrides.current(at: Self.date("2026-10-21T00:00:00Z"), bundled: [base, next], local: [])?.patch == "36.8")
         #expect(PoolOverrides.current(at: Self.date("2026-09-25T00:00:00Z"), bundled: [base], local: [local])?.patch == "36.6.1-local")
         #expect(PoolOverrides.current(at: Self.date("2020-01-01T00:00:00Z"), bundled: [next, base], local: [])?.patch == "36.6.1")
+    }
+
+    @Test("Legacy override files omit dated deltas and current deltas round-trip")
+    func datedOverrideCoding() throws {
+        let legacy = Data(#"{"patch":"legacy","valid_from":"2026-09-22T17:18:14Z"}"#.utf8)
+        #expect(try PoolOverrides(json: legacy).datedCorrections.isEmpty)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        #expect(try PoolOverrides(json: encoder.encode(Self.overrides)) == Self.overrides)
     }
 }

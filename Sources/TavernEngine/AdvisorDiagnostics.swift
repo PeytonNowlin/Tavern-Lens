@@ -73,8 +73,12 @@ public actor AdvisorDiagnosticStore {
 public struct AdvisorDecision: Codable, Hashable, Sendable {
     public var request: AdvisorRequest
     public var displayed: AdviceView
-    public init(request: AdvisorRequest, displayed: AdviceView) {
+    /// Publication time of this advice; absent in older diagnostic files.
+    public var displayedAt: Date?
+    public var coverage: AdvisorCoverageDiagnostic?
+    public init(request: AdvisorRequest, displayed: AdviceView, displayedAt: Date? = nil) {
         self.request = request; self.displayed = displayed
+        self.displayedAt = displayedAt
     }
 }
 
@@ -84,7 +88,7 @@ public struct AdvisorDecisionTrace: Sendable {
     public let limit: Int
     public init(limit: Int = 12) { self.limit = max(2, limit) }
 
-    public mutating func record(request: AdvisorRequest, displayed: AdviceView) {
+    public mutating func record(request: AdvisorRequest, displayed: AdviceView, displayedAt: Date = Date()) {
         guard displayed.advice.status != .thinking else { return }
         // The latest stored pair has already been validated. Refining its advice does not
         // require another JSON encoding; a changed request, policy or fingerprint does.
@@ -98,7 +102,11 @@ public struct AdvisorDecisionTrace: Sendable {
            first.request.preview.gameSeed != request.preview.gameSeed || first.request.preview.bgTurn != request.preview.bgTurn {
             decisions = []
         }
-        let decision = AdvisorDecision(request: request, displayed: displayed)
+        var decision = AdvisorDecision(request: request, displayed: displayed, displayedAt: displayedAt)
+        if displayed.plan.version >= 11 {
+            decision.coverage = alreadyValidated ? previous?.coverage
+                : AdvisorCoverageDiagnostic(request: request, policyVersion: displayed.plan.version)
+        }
         if decisions.last?.displayed.fingerprint == displayed.fingerprint { decisions[decisions.count - 1] = decision }
         else { decisions.append(decision) }
         if decisions.count > limit { decisions.remove(at: 1) }

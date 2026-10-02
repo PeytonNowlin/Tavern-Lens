@@ -17,7 +17,10 @@ enum RecruitSpellCopies {
               let card = (before.hand + before.shop).first(where: { $0.entity.entityId == step.entityID }) else { return true }
         let lockets = state.input.playerBoard.player.trinkets.filter { $0.cardId == locketID }
         guard !lockets.isEmpty else { return true }
-        let others = state.board.filter { $0.entity.entityId != target && $0.entity.health > 0 }
+        let others = state.board.filter {
+            $0.entity.entityId != target && $0.entity.health > 0
+                && RecruitPolicy11Spells.targetAllowed(card, target: $0.entity.entityId, state: state, context: context)
+        }
 
         // Existing spell transitions only model a single cast (plus the hand-Gem aura).
         // These sources require a separate original/copy event sequence for each repeat.

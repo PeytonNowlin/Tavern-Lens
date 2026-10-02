@@ -4,12 +4,14 @@ import Testing
 
 /// The build catalog: Firestone's comp stats and curated strategies joined, cards the
 /// 36.6.1 pool no longer has taken out, gutted builds left out, and our override file's
-/// builds used for tribes the sources don't cover. Uses the data HSData ships.
+/// builds used for tribes the sources don't cover. Uses the frozen September 23 data.
 @Suite("Build catalog")
 struct BuildCatalogTests {
     static let pool = MinionPoolTests.pool()
-    static let stats = FirestoneCompStats.bundled()!
-    static let strategies = FirestoneStrategies.bundled()!
+    static let sourceDirectory = URL(filePath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "Fixtures/Firestone/2026-09-23", directoryHint: .isDirectory)
+    static let stats = try! FirestoneCompStats(json: Data(contentsOf: sourceDirectory.appending(path: "firestone-comp-stats.json")))
+    static let strategies = try! FirestoneStrategies(json: Data(contentsOf: sourceDirectory.appending(path: "firestone-comp-strategies.json")))
     static let overrides = BuildOverrides.current(at: MinionPoolTests.date("2026-09-23T01:00:00Z"), local: [])!
 
     static func catalog(
@@ -30,7 +32,7 @@ struct BuildCatalogTests {
         #expect(!build.core.contains("BG36_110"))
     }
 
-    @Test("The shipped comp stats, strategies and override file decode")
+    @Test("The September comp stats, strategies and override fixtures retain their original contract")
     func bundledData() {
         #expect(Self.stats.timePeriod == "last-patch")
         #expect(Self.stats.dataPoints == 728_692)

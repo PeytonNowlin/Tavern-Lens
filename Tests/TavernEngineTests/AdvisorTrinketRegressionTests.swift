@@ -6,6 +6,7 @@ import TavernEngine
 struct AdvisorTrinketRegressionTests {
     typealias S = AdvisorSynthetic
     static let phylactery = "BG30_MagicItem_700"
+    static let crown = "BG35_MagicItem_920"
     static let portrait = "BG30_MagicItem_876"
     static let phylacteryText = "Discover a Deathrattle minion. Your first Deathrattle each combat triggers an extra time."
     static let portraitText = "Get a Faceless Manipulator."
@@ -22,10 +23,11 @@ struct AdvisorTrinketRegressionTests {
         return object?["tags"] as? [String: Int]
     }
 
-    @Test("Observed trinket trigger state reaches simulator input, including consumed zero", arguments: [0, 1])
-    func observedTrigger(_ trigger: Int) throws {
+    @Test("Observed simulator-consumed trinket triggers preserve ready and consumed state",
+          arguments: [phylactery, crown], [0, 1])
+    func observedTrigger(_ id: String, _ trigger: Int) throws {
         let log = CombatInputSyntheticTests.combat(local: { log in
-            log.trinket(348, Self.phylactery, controller: CombatInputSyntheticTests.local, slot: 1)
+            log.trinket(348, id, controller: CombatInputSyntheticTests.local, slot: 1)
             log.tag(348, "TRIGGER_VISUAL", "\(trigger)")
         })
         let input = try CombatInputSyntheticTests.request(log).input
@@ -33,12 +35,24 @@ struct AdvisorTrinketRegressionTests {
         #expect(try Self.tags(trinket)?["32"] == trigger)
     }
 
-    @Test("Old recordings and unobserved trinket tags stay absent instead of inventing a trigger")
-    func legacyAndMissingTrigger() throws {
-        let old = try Self.trinket(Self.phylactery)
+    @Test("Old recordings and unobserved trinket tags stay absent instead of inventing a trigger",
+          arguments: [phylactery, crown])
+    func legacyAndMissingTrigger(_ id: String) throws {
+        let old = try Self.trinket(id)
         #expect(try Self.tags(old) == nil)
         let log = CombatInputSyntheticTests.combat(local: { log in
-            log.trinket(348, Self.phylactery, controller: CombatInputSyntheticTests.local, slot: 1)
+            log.trinket(348, id, controller: CombatInputSyntheticTests.local, slot: 1)
+        })
+        let input = try CombatInputSyntheticTests.request(log).input
+        #expect(try Self.tags(#require(input.playerBoard.player.trinkets.first)) == nil)
+    }
+
+    @Test("Unrelated trinket trigger metadata stays absent from simulator inputs and legacy requests",
+          arguments: ["BG36_MagicItem_404", "BG36_MagicItem_404t", "BG36_MagicItem_407"], [0, 1])
+    func unrelatedTrigger(_ id: String, _ trigger: Int) throws {
+        let log = CombatInputSyntheticTests.combat(local: { log in
+            log.trinket(348, id, controller: CombatInputSyntheticTests.local, slot: 1)
+            log.tag(348, "TRIGGER_VISUAL", "\(trigger)")
         })
         let input = try CombatInputSyntheticTests.request(log).input
         #expect(try Self.tags(#require(input.playerBoard.player.trinkets.first)) == nil)

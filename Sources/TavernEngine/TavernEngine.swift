@@ -52,6 +52,8 @@ public struct EngineSetup: Sendable {
     public var heroStats: HeroStatsSet?
     public var heroCards: CardDB?
     public var trinketStats: TrinketStats?
+    public var cardTurnStats: CardTurnStats?
+    public var cardTurnStatsCheckedAt: Date?
 
     public init(
         cards: CardDB? = nil, pool: MinionPool? = nil, builds: BuildCatalog? = nil, heroStats: HeroStatsSet? = nil,
@@ -138,6 +140,11 @@ public struct TavernEngine: Sendable {
     private var heroPick = BGHeroPickTracker()
     private var trinketPick = TrinketPickTracker()
     private var trinketStats: TrinketStats?
+    private var cardTurnStats: CardTurnStats?
+    private var cardTurnStatsCheckedAt: Date?
+    private var playerOptions: PowerOptions?
+    private var playerChoice: EntityChoice?
+    private var unsavedPlayerActions: [PlayerActionDiagnostic] = []
     private var heroPickData: HeroPickData?
     private var recruitCards: CardDB?
     /// Build detection, shop highlights and opponents' likely builds (nothing without a catalog).
@@ -186,6 +193,7 @@ public struct TavernEngine: Sendable {
         self.init(cards: setup.cards, pool: setup.pool, builds: setup.builds, session: session, timeZone: timeZone)
         useHeroStats(setup.heroStats, cards: setup.heroCards)
         useTrinketStats(setup.trinketStats)
+        useCardTurnStats(setup.cardTurnStats, checkedAt: setup.cardTurnStatsCheckedAt)
     }
 
     public var games: [BGGameRecord] { history.games }
@@ -379,7 +387,7 @@ public struct TavernEngine: Sendable {
     public mutating func ingest(_ rawLine: String) {
         linesRead += 1
         var events: [PowerEvent] = []
-        if let line = parser.feed(rawLine, emit: { events.append($0) }) {
+        if let line = parser.feed(rawLine, lineNumber: linesRead, emit: { events.append($0) }) {
             lastTimestamp = line.timestamp
             clock?.observe(line.timestamp)
         }
@@ -409,6 +417,7 @@ public struct TavernEngine: Sendable {
         let position = LogPosition(line: linesRead, time: String(lastTimestamp))
         let clock = clock
         for event in batch {
+            capturePlayerAction(event, at: position)
             var changes: [EntityChange] = []
             store.apply(event, changes: { changes.append($0) })
             for change in changes {
@@ -432,15 +441,48 @@ public struct TavernEngine: Sendable {
         if !history.changedGames.isEmpty { noteChangedGames() }
     }
 
+    /// A bounded queue of live outgoing selections, captured before the next reducer effect.
+    /// Catch-up reconstructs state but never presents historical input as newly played input.
+    public mutating func takePlayerActions() -> [PlayerActionDiagnostic] {
+        let result = unsavedPlayerActions
+        unsavedPlayerActions.removeAll(keepingCapacity: true)
+        return result
+    }
+
+    private mutating func capturePlayerAction(_ event: PowerEvent, at position: LogPosition) {
+        switch event {
+        case .newGameAnnounced, .createGame:
+            playerOptions = nil; playerChoice = nil
+        case .options(let options):
+            playerOptions = options
+        case .entityChoices(let choice):
+            playerChoice = choice
+        case .sendOption(let selection):
+            guard !isCatchingUp, let request = advisorRequest else { return }
+            let options = playerOptions?.id == selection.optionsID ? playerOptions : nil
+            unsavedPlayerActions.append(PlayerActionDiagnostic(request: request, selection: .option(selection),
+                position: selection.position ?? position, options: options))
+        case .sendChoices(let selection):
+            defer { playerChoice = nil }
+            guard !isCatchingUp, let request = advisorRequest else { return }
+            let choice = playerChoice?.id == selection.id ? playerChoice : nil
+            unsavedPlayerActions.append(PlayerActionDiagnostic(request: request, selection: .choices(selection),
+                position: selection.position ?? position, choice: choice))
+        default: break
+        }
+        if unsavedPlayerActions.count > 64 { unsavedPlayerActions.removeFirst(unsavedPlayerActions.count - 64) }
+    }
+
     /// A combat just started (history accepted the tag 2022 1→0 edge): builds the simulator's input
     /// from the store as it is at this line, before any Start of Combat effect.
     private mutating func noteCombatStart(at position: LogPosition) {
         combatStartsSeen = history.combatStartCount
         guard let snapshot = BGSnapshot.project(store), let opponent = snapshot.combatOpponentPlayerID,
-              let input = BattleInputBuilder.build(
+              var input = BattleInputBuilder.build(
                   store: store, snapshot: snapshot, validTribes: simulatorLobbyTribes(snapshot)
               )
         else { return }
+        input.gameState.ruleset = BattleRuleset.at(date: tribes.currentGameDate)
         combatRequests.append(CombatSimulationRequest(
             gameSeed: snapshot.gameSeed, bgTurn: snapshot.bgTurn, opponentPlayerID: opponent, position: position,
             input: input
@@ -460,10 +502,12 @@ public struct TavernEngine: Sendable {
         guard let snapshot = BGSnapshot.project(store), snapshot.phase == .recruit,
               let next = snapshot.nextOpponentPlayerID
         else { return nil }
-        return BattleInputBuilder.preview(
+        var preview = BattleInputBuilder.preview(
             store: store, snapshot: snapshot, opponent: lastSeenSide(of: next, snapshot: snapshot),
             validTribes: simulatorLobbyTribes(snapshot)
         )
+        preview?.input?.gameState.ruleset = BattleRuleset.at(date: tribes.currentGameDate)
+        return preview
     }
 
     /// An opponent's last-seen side: their side of the combat-start input when they were last
@@ -500,6 +544,7 @@ public struct TavernEngine: Sendable {
         guard let preview = oddsPreview, let snapshot = BGSnapshot.project(store),
               var request = BattleInputBuilder.advisorRequest(store: store, snapshot: snapshot, preview: preview)
         else { return nil }
+        let advisorPool = tribes.basePool?.applyingCorrections(at: tribes.currentGameDate)
         var lobby: [AdvisorLobbyOpponent] = []
         for entry in snapshot.lobby where !entry.isLocal && !entry.isDead && entry.playerID != preview.opponentPlayerID {
             guard var seen = lastSeenSide(of: entry.playerID, snapshot: snapshot) else { continue }
@@ -512,10 +557,11 @@ public struct TavernEngine: Sendable {
         let seen = preview.opponentSeenTurn
         if !request.hasData || seen.map({ preview.bgTurn - $0 >= AdvisorRequest.staleBoardTurns }) == true,
            let standIn = AdvisorRequest.standIn(from: lobby.filter { $0.seenTurn > seen ?? Int.min }),
-           let stood = BattleInputBuilder.preview(
+           var stood = BattleInputBuilder.preview(
                store: store, snapshot: snapshot, opponent: (standIn.side, standIn.seenTurn, standIn.source),
                validTribes: simulatorLobbyTribes(snapshot)
            ), stood.hasData {
+            stood.input?.gameState.ruleset = BattleRuleset.at(date: tribes.currentGameDate)
             if let seen, let source = preview.opponentSource, let side = preview.input?.opponentBoard {
                 lobby.append(AdvisorLobbyOpponent(playerID: preview.opponentPlayerID, seenTurn: seen, source: source, side: side))
             }
@@ -526,6 +572,7 @@ public struct TavernEngine: Sendable {
         request.recruit = BattleInputBuilder.recruitContext(
             store: store, snapshot: snapshot, cards: recruitCards ?? cards, request: request
         )
+        request.recruit?.input.gameState.ruleset = BattleRuleset.at(date: tribes.currentGameDate)
         request.recruit?.pendingChoice = trinketPick.choice != nil
         if let offer = state.game?.trinketPick?.offers.first(where: { $0.rank == 1 && $0.affordable }) {
             request.choice = AdvisorChoice(entityID: offer.entityID, cardID: offer.cardID, name: offer.name,
@@ -536,7 +583,7 @@ public struct TavernEngine: Sendable {
         if let catalog = builds.catalog {
             let game = state.game
             let absent = Set((game?.tribes?.tribes ?? []).filter { $0.confidence == .absent }.compactMap { HS.Race(name: $0.tribe) })
-            if let pool = tribes.basePool {
+            if let pool = advisorPool {
                 request.poolTiers = Dictionary(uniqueKeysWithValues: pool.minions.values.filter {
                     !$0.isOutOfRotation && !$0.isDuosOnly && ($0.lobbyGate.isEmpty || !$0.lobbyGate.allSatisfy(absent.contains))
                 }.map { ($0.cardID, $0.tier) })
@@ -546,7 +593,7 @@ public struct TavernEngine: Sendable {
                     && (build.requiresDeityDbfID == nil || build.requiresDeityDbfID == game?.mechanics?.deityDbfID)
             }.map { build in
                 let tiers = Dictionary(uniqueKeysWithValues: build.core.compactMap { card -> (String, Int)? in
-                    guard let tier = tribes.basePool?.minion(card)?.tier ?? cards?[card]?.techLevel else { return nil }
+                    guard let tier = advisorPool?.minion(card)?.tier ?? cards?[card]?.techLevel else { return nil }
                     return (card, tier)
                 })
                 var result = AdvisorBuild(id: build.id, name: build.name, share: 1,
@@ -565,7 +612,7 @@ public struct TavernEngine: Sendable {
             }
         }
         if let catalog = builds.catalog, let detected = state.game?.builds?.detected, !detected.isEmpty {
-            let pool = tribes.basePool
+            let pool = advisorPool
             request.builds = detected.enumerated().compactMap { index, view in
                 guard let build = catalog.build(view.id) else { return nil }
                 var tiers: [String: Int] = [:]
@@ -585,6 +632,25 @@ public struct TavernEngine: Sendable {
                 }
             }
             if !bases.isEmpty { request.baseCardIDs = bases }
+        }
+        if RecruitCardTurnPrior.supportedTurns.contains(request.preview.bgTurn),
+           let stats = cardTurnStats, let pool = advisorPool,
+           let checkedAt = cardTurnStatsCheckedAt, stats.usable(now: checkedAt),
+           pool.provenance.cardDataIsExact, snapshot.buildNumber == pool.cards.build {
+            let absent = Set((state.game?.tribes?.tribes ?? []).filter { $0.confidence == .absent }
+                .compactMap { HS.Race(name: $0.tribe) })
+            let eligible = Set(request.shop.filter { card in
+                guard card.kind == .minion, let minion = pool.minion(request.baseCardID(card.cardID)) else { return false }
+                return !minion.isOutOfRotation && !minion.isDuosOnly
+                    && (minion.lobbyGate.isEmpty || !minion.lobbyGate.allSatisfy(absent.contains))
+            }.map(\.cardID))
+            if !eligible.isEmpty {
+                let subset = stats.subset(cardIDs: eligible, turn: request.preview.bgTurn, now: clock?.currentDate ?? Date())
+                if !subset.cardStats.isEmpty {
+                    request.cardTurnStats = subset
+                    request.cardTurnStatsCheckedAt = checkedAt
+                }
+            }
         }
         return request
     }
@@ -621,6 +687,11 @@ public struct TavernEngine: Sendable {
     public mutating func useTrinketStats(_ stats: TrinketStats?) {
         trinketStats = stats
         publish()
+    }
+
+    public mutating func useCardTurnStats(_ stats: CardTurnStats?, checkedAt: Date? = nil) {
+        cardTurnStats = stats
+        cardTurnStatsCheckedAt = stats == nil ? nil : checkedAt ?? Date()
     }
 
     private mutating func publish() {

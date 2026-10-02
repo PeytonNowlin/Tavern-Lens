@@ -98,6 +98,10 @@ public enum PowerEvent: Hashable, Sendable {
     case entityChoices(EntityChoice)
     /// `GameState.DebugPrintEntitiesChosen`: what the player picked for choice `choiceID`.
     case entitiesChosen(choiceID: Int, chosen: [ChoiceOption])
+    /// Client option groups and outgoing selections. They do not change visible entity state.
+    case options(PowerOptions)
+    case sendOption(SentOption)
+    case sendChoices(SentChoices)
 
     /// `PowerProcessor.EndCurrentTaskList`: a batch finished, state is settled.
     case taskListEnd

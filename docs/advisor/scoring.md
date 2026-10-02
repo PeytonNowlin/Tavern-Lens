@@ -1,6 +1,63 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 10)
+## Live planner (evaluation version 11)
+
+Version 11 recognizes Ornate Clock's exact one-time acquisition as already resolved;
+it permits purchase combat checks without granting its Gold again. Fortify casts its
+exact +3 Health and Taunt effect. Living Prison records the observed pending-copy tag
+per entity and consumes it only on a minion purchase. Missing pending state stays an
+explicit boundary. Arcane Absorption uses the highest-Health observed Tavern minion,
+rounding half of each stat up; differing-stat ties remain unsupported. Leyline Surfacer's
+exact normal/golden Battlecry captures its one/two Absorption rewards for later casts.
+
+Lionfish activation is limited to supported attack chains, including plain Beast
+attacks and the exact Wolf Pup Rally. Normal/golden Fishbait dependencies must be
+captured, with their exact definitions. Unknown attack listeners, unsupported
+Deathrattles and missing tokens prevent an activation projection.
+New live Prison/Lionfish actions require the observed interaction-cost tag. Missing
+prices produce a state coverage gap without blocking unrelated purchase projections;
+older archives retain their explicitly recorded costs.
+
+Fresh Firestone MMR-25 last-patch, exact-turn card associations contribute a small
+positive purchase prior on recruit turns 1–3 only. Later associations are excluded
+because comparison populations collapse and selection by survival increases.
+Both populations need at least 200 observations; the
+smaller population shrinks influence by `n / (n + 1000)`. Influence is capped at
+0.4 strategic units per newly purchased and deployed card and 0.75 per plan.
+Unplayed buys, free rewards, transformed triples and pre-existing board cards
+receive no prior. It cannot legalize a plan or bypass combat/survival checks.
+The MMR-25 bucket describes the top quarter of the source population; it does not
+claim to match the player's rating. Placement associations are not causal effects.
+
+The live engine captures only eligible observed shop rows, validated against the
+log clock. A stable retrieval time travels with the source subset so archived
+evaluation never reads a later feed or the current wall clock. Source age is
+limited to 48 hours, future data is rejected and retrieval/304 dates do not renew
+source generation time. Policies through version 10 ignore the new evidence and
+pending-Prison, activation-cost provenance and simulator ruleset fields in request fingerprints.
+
+The dated simulator ruleset travels with combat and preview inputs. From the official
+36.6.3 publication boundary, an isolated card service applies Tier-1 Deity damage and
+four deaths for an unset sigil counter. Positive counters retain the observed remaining
+deaths. Unknown/older dates and older archived inputs retain the pinned behavior.
+
+Individual displayed decisions now include publication time and a coverage inventory.
+Local `PlayerActions` files preserve offered groups and outgoing selections with the
+preceding recruit request. Catch-up input is excluded. These packets describe logged
+client selections; advice adherence and UI gestures are not inferred. Automatic
+display association is left empty unless a dated outgoing timestamp and a matching,
+preceding advice fingerprint establish it.
+
+Hero warband/winrate series, variance fields and trinket percentile/pick-rate fields
+are retained for subsequent analysis. They do not alter live danger estimates or
+claim trinket-pair synergy.
+Hero-pick statistics now select a population separately for each window from a recent
+own-player rating and fresh Firestone percentile evidence. The matched top-1% bucket
+uses top 10% to broaden sparse samples; missing rating, table or selected files use
+all-player statistics. Publication dates remain separate from cache confirmations.
+The selected window, actual population and reason are archived with each hero's stats.
+
+### Earlier policies
 
 Version 10 models exact lesser/greater Nomi Sticker increments after an Elemental
 or ALL-type minion's Battlecry. It buffs remaining observed Tavern Elementals once

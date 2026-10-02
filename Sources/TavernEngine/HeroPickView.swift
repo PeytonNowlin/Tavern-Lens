@@ -98,10 +98,13 @@ public struct HeroPickStatsView: Codable, Hashable, Sendable {
     public var dataPoints: Int
     /// The window the numbers come from (`past-three`, `past-seven` or `last-patch`).
     public var window: HeroStatsWindow
+    /// Exact population and evidence used for this hero's window; absent in older archives.
+    public var population: HeroStatsMMRSelection?
 
     public init(
         averagePlacement: Double, baseAveragePlacement: Double, tribeModifier: Double, tier: HeroTier?,
-        top4Percent: Double, winPercent: Double, placements: [Double], dataPoints: Int, window: HeroStatsWindow
+        top4Percent: Double, winPercent: Double, placements: [Double], dataPoints: Int, window: HeroStatsWindow,
+        population: HeroStatsMMRSelection? = nil
     ) {
         self.averagePlacement = averagePlacement
         self.baseAveragePlacement = baseAveragePlacement
@@ -112,17 +115,18 @@ public struct HeroPickStatsView: Codable, Hashable, Sendable {
         self.placements = placements
         self.dataPoints = dataPoints
         self.window = window
+        self.population = population
     }
 
     /// Too few games for a tier letter.
     public var isLowData: Bool { tier == nil }
 
-    init(_ stat: HeroPickStat) {
+    init(_ stat: HeroPickStat, population: HeroStatsMMRSelection? = nil) {
         self.init(
             averagePlacement: Self.round(stat.averagePlacement, 2), baseAveragePlacement: Self.round(stat.baseAveragePlacement, 2),
             tribeModifier: Self.round(stat.tribeModifier, 2), tier: stat.tier, top4Percent: Self.round(stat.top4Percent, 1),
             winPercent: Self.round(stat.winPercent, 1), placements: stat.placements.map { Self.round($0, 1) },
-            dataPoints: stat.dataPoints, window: stat.window
+            dataPoints: stat.dataPoints, window: stat.window, population: population
         )
     }
 
@@ -162,7 +166,8 @@ extension HeroPickView {
             if let stat { windowsShown.insert(stat.window) }
             return HeroOfferView(
                 cardID: offer.cardID, baseCardID: base, name: cards?.name(of: offer.cardID) ?? cards?.name(of: base),
-                isLocked: offer.isLocked, stats: stat.map(HeroPickStatsView.init)
+                isLocked: offer.isLocked,
+                stats: stat.map { HeroPickStatsView($0, population: data.stats.selections[$0.window]) }
             )
         }
         let dates = windowsShown.map(data.stats.lastUpdate(of:))

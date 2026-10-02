@@ -10,8 +10,9 @@ struct TribeSyntheticTests {
     static let utc = TimeZone(identifier: "UTC")!
 
     /// A game in its first recruit phase, the local player at tier 1.
-    static func recruiting(seed: Int = SyntheticLog.defaultSeed) -> SyntheticLog {
+    static func recruiting(seed: Int = SyntheticLog.defaultSeed, time: String = "21:09:40.3435500") -> SyntheticLog {
         var log = SyntheticLog()
+        log.time = time
         log.createGame(gameType: "GT_BATTLEGROUNDS", seed: seed)
         log.pickHero()
         log.tag(SyntheticLog.pickedHeroID, "PLAYER_TECH_LEVEL", "1")
@@ -94,10 +95,38 @@ struct TribeSyntheticTests {
         #expect(aberration.isForced && aberration.confidence == .confirmed)
         #expect(Self.percent(during, "BEAST") == 44)
 
-        let after = try Self.replay(Self.recruiting(), session: "Hearthstone_2026_10_10_20_00_00")
+        let beforeHotfix = try Self.replay(Self.recruiting(time: "15:54:59.0000000"), session: "Hearthstone_2026_10_01_15_54_59")
+        #expect(beforeHotfix.state.game?.tribes?.tribes.first { $0.tribe == "ABERRATION" }?.isForced == true)
+
+        let after = try Self.replay(Self.recruiting(time: "15:55:00.0000000"), session: "Hearthstone_2026_10_01_15_55_00")
         let tribes = try #require(after.state.game?.tribes)
         #expect(tribes.tribes.count == 10)
         #expect(tribes.tribes.allSatisfy { !$0.isForced && $0.percent == 50 })
+    }
+
+    @Test("A Tier 3 Trailblazer shop draw uses the hotfix pool selected by session date")
+    func datedShopEvidence() throws {
+        func draw(at time: String) -> SyntheticLog {
+            var log = Self.recruiting(time: time)
+            log.tag(SyntheticLog.pickedHeroID, "PLAYER_TECH_LEVEL", "3")
+            log.shopCard(200, "BG31_327", position: 1, extra: ["TECH_LEVEL=3", "IS_BACON_POOL_MINION=1"])
+            log.endTaskList()
+            return log
+        }
+        var earlierLog = draw(at: "15:54:59.0000000")
+        let before = try Self.replay(earlierLog, session: "Hearthstone_2026_10_01_15_54_59")
+        var after = try Self.replay(draw(at: "15:55:00.0000000"), session: "Hearthstone_2026_10_01_15_55_00")
+        let undated = try Self.replay(earlierLog)
+        #expect(before.tribeEstimate?.shopDraws == 0)
+        #expect(undated.tribeEstimate?.shopDraws == 0)
+        #expect(after.tribeEstimate?.shopDraws == 1)
+        after.usePool(PoolFixture.pool)
+        #expect(after.tribeEstimate?.shopDraws == 1)
+
+        earlierLog.time = "15:56:00.0000000"
+        earlierLog.reconnect(turn: 1)
+        let reconnected = try Self.replay(earlierLog, session: "Hearthstone_2026_10_01_15_54_59")
+        #expect(reconnected.tribeEstimate?.shopDraws == 0)
     }
 
     @Test("A reconnect keeps the game's evidence; a new game starts over")

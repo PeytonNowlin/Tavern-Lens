@@ -187,12 +187,18 @@ public enum RecruitEvaluation {
                     let context = request.recruit, let explanation = RecruitHeroPowers.explanation(id, context: context) {
                 reason = explanation
             }
-            else if case .activateMinion(_, _, _, let target, _) = first.action {
-                reason = target.kind == .shop ? "Uses Activate to take the highest-Attack Tavern minion"
-                    : "Uses Activate to strengthen a minion with the gold available"
+            else if case .activateMinion(_, let cardID, _, let target, _) = first.action {
+                if (request.recruit?.evaluationVersion ?? 0) >= 11, ["BG36_201", "BG36_201_G"].contains(cardID) {
+                    reason = "Replaces a Tavern card with Fishbait to strengthen your left-most Beast"
+                } else {
+                    reason = target.kind == .shop ? "Uses Activate to take the highest-Attack Tavern minion"
+                        : "Uses Activate to strengthen a minion with the gold available"
+                }
             }
-            else if case .activateUntargeted = first.action {
-                reason = "Generates Tavern Dish Bananas to buff your minions"
+            else if case .activateUntargeted(_, let cardID, _) = first.action {
+                reason = (request.recruit?.evaluationVersion ?? 0) >= 11 && ["BG36_180", "BG36_180_G"].contains(cardID)
+                    ? "Arms Living Prison to gain stats from your next minion purchase this turn"
+                    : "Generates Tavern Dish Bananas to buff your minions"
             }
             else if first.kind == .activate { reason = "Uses your discard engine and its attached rewards" }
             else if first.kind == .roll { reason = "Keep enough gold to buy; reassess after the refresh" }

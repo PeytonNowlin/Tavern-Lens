@@ -23,11 +23,14 @@ public struct FirestoneHeroStatsFile: Codable, Hashable, Sendable {
     /// Games in the file.
     public var dataPoints: Int
     public var heroStats: [FirestoneHeroStat]
+    /// Optional supplemental evidence; a malformed table must not discard the hero rows.
+    public var mmrPercentiles: [MMRPercentileRow]?
 
-    public init(lastUpdateDate: Date?, dataPoints: Int, heroStats: [FirestoneHeroStat]) {
+    public init(lastUpdateDate: Date?, dataPoints: Int, heroStats: [FirestoneHeroStat], mmrPercentiles: [MMRPercentileRow]? = nil) {
         self.lastUpdateDate = lastUpdateDate
         self.dataPoints = dataPoints
         self.heroStats = heroStats
+        self.mmrPercentiles = mmrPercentiles
     }
 
     public init(json: Data) throws {
@@ -35,7 +38,7 @@ public struct FirestoneHeroStatsFile: Codable, Hashable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case lastUpdateDate, dataPoints, heroStats
+        case lastUpdateDate, dataPoints, heroStats, mmrPercentiles
     }
 
     public init(from decoder: any Decoder) throws {
@@ -43,6 +46,7 @@ public struct FirestoneHeroStatsFile: Codable, Hashable, Sendable {
         lastUpdateDate = try c.decodeIfPresent(String.self, forKey: .lastUpdateDate).flatMap(FirestoneDate.parse)
         dataPoints = try c.decodeIfPresent(Int.self, forKey: .dataPoints) ?? 0
         heroStats = try c.decode([Lenient<FirestoneHeroStat>].self, forKey: .heroStats).compactMap(\.value)
+        mmrPercentiles = try? c.decode([MMRPercentileRow].self, forKey: .mmrPercentiles)
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -50,6 +54,7 @@ public struct FirestoneHeroStatsFile: Codable, Hashable, Sendable {
         try c.encodeIfPresent(lastUpdateDate.map(FirestoneDate.format), forKey: .lastUpdateDate)
         try c.encode(dataPoints, forKey: .dataPoints)
         try c.encode(heroStats, forKey: .heroStats)
+        try c.encodeIfPresent(mmrPercentiles, forKey: .mmrPercentiles)
     }
 
     /// A file worth keeping: Firestone sometimes publishes an empty or partial one.
@@ -58,6 +63,15 @@ public struct FirestoneHeroStatsFile: Codable, Hashable, Sendable {
 
 /// One hero's row in a Firestone hero-stats file.
 public struct FirestoneHeroStat: Codable, Hashable, Sendable {
+    /// Population averages only: the provider supplies no per-turn sample counts.
+    public struct WarbandStat: Codable, Hashable, Sendable {
+        public var turn: Int
+        public var averageStats: Double
+    }
+    public struct CombatWinrate: Codable, Hashable, Sendable {
+        public var turn: Int
+        public var winrate: Double?
+    }
     public struct Placement: Codable, Hashable, Sendable {
         public var rank: Int
         /// Percent of the hero's games (0…100).
@@ -98,6 +112,10 @@ public struct FirestoneHeroStat: Codable, Hashable, Sendable {
     public var conservativePositionEstimate: Double?
     public var placementDistribution: [Placement]
     public var tribeStats: [TribeStat]
+    public var standardDeviation: Double?
+    public var standardDeviationOfTheMean: Double?
+    public var warbandStats: [WarbandStat]?
+    public var combatWinrate: [CombatWinrate]?
 
     public init(
         heroCardId: String, dataPoints: Int, totalOffered: Int? = nil, totalPicked: Int? = nil,
@@ -116,7 +134,7 @@ public struct FirestoneHeroStat: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case heroCardId, dataPoints, totalOffered, totalPicked, averagePosition, conservativePositionEstimate
-        case placementDistribution, tribeStats
+        case placementDistribution, tribeStats, standardDeviation, standardDeviationOfTheMean, warbandStats, combatWinrate
     }
 
     public init(from decoder: any Decoder) throws {
@@ -130,6 +148,16 @@ public struct FirestoneHeroStat: Codable, Hashable, Sendable {
         placementDistribution = try c.decodeIfPresent([Lenient<Placement>].self, forKey: .placementDistribution)?
             .compactMap(\.value) ?? []
         tribeStats = try c.decodeIfPresent([Lenient<TribeStat>].self, forKey: .tribeStats)?.compactMap(\.value) ?? []
+        standardDeviation = (try? c.decodeIfPresent(Double.self, forKey: .standardDeviation)).flatMap {
+            $0.isFinite && $0 >= 0 ? $0 : nil
+        }
+        standardDeviationOfTheMean = (try? c.decodeIfPresent(Double.self, forKey: .standardDeviationOfTheMean)).flatMap {
+            $0.isFinite && $0 >= 0 ? $0 : nil
+        }
+        warbandStats = (try? c.decodeIfPresent([Lenient<WarbandStat>].self, forKey: .warbandStats))?
+            .compactMap(\.value).filter { $0.turn > 0 && $0.averageStats.isFinite && $0.averageStats >= 0 }
+        combatWinrate = (try? c.decodeIfPresent([Lenient<CombatWinrate>].self, forKey: .combatWinrate))?
+            .compactMap(\.value).filter { $0.turn > 0 && ($0.winrate.map { $0.isFinite && (0...100).contains($0) } ?? true) }
     }
 
     /// Percent of games in 1st place.
@@ -155,12 +183,18 @@ public struct HeroStatsSet: Hashable, Sendable {
     /// Firestone's MMR percentile bucket: 100 is all players.
     public let mmrPercentile: Int
     public let files: [HeroStatsWindow: FirestoneHeroStatsFile]
+    /// The population for each window, when a recorded rating was considered.
+    public let selections: [HeroStatsWindow: HeroStatsMMRSelection]
     /// A hero needs this many games in a window for the window to be used for it.
     public let minimumGames: Int
 
-    public init(mmrPercentile: Int = 100, files: [HeroStatsWindow: FirestoneHeroStatsFile], minimumGames: Int = 300) {
+    public init(
+        mmrPercentile: Int = 100, files: [HeroStatsWindow: FirestoneHeroStatsFile], minimumGames: Int = 300,
+        selections: [HeroStatsWindow: HeroStatsMMRSelection] = [:]
+    ) {
         self.mmrPercentile = mmrPercentile
         self.files = files
+        self.selections = selections
         self.minimumGames = minimumGames
         index = files.mapValues { file in
             Dictionary(file.heroStats.map { ($0.heroCardId, $0) }, uniquingKeysWith: { first, _ in first })
@@ -171,6 +205,8 @@ public struct HeroStatsSet: Hashable, Sendable {
 
     /// Every hero in any window.
     public var heroCardIDs: Set<String> { Set(index.values.flatMap(\.keys)) }
+
+    public func bucket(of window: HeroStatsWindow) -> Int { selections[window]?.mmrPercentile ?? mmrPercentile }
 
     /// A base hero's stats from the newest window where it has at least `minimumGames`
     /// games (past three days, then past seven, then last patch); failing that, the window

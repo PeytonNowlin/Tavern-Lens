@@ -1,4 +1,5 @@
 import BGState
+import Foundation
 import EntityStore
 import HSData
 import PowerParser
@@ -45,6 +46,11 @@ public struct AdvisorRequest: Codable, Hashable, Sendable {
     public var builds: [AdvisorBuild]?
     /// Complete lobby-eligible catalog captured for version 3 strategic planning.
     public var strategyCatalog: [AdvisorBuild]?
+    /// Exact-turn purchase associations, restricted to eligible cards in this request.
+    /// Kept with the request so replay never consults a later live feed.
+    public var cardTurnStats: CardTurnStats?
+    /// Stable retrieval time of the accepted source snapshot, for deterministic replay.
+    public var cardTurnStatsCheckedAt: Date?
     public var choice: AdvisorChoice?
     public var poolTiers: [String: Int]?
     /// The base card of every golden card in the request (`…_G` or `TB_BaconUps_*` → the normal
