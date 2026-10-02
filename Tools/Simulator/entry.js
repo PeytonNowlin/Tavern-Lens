@@ -18,6 +18,7 @@ const simPackage = require('@firestone-hs/simulate-bgs-battle/package.json');
 const refPackage = require('@firestone-hs/reference-data/package.json');
 
 let cards = null;
+const cardsByRuleset = new Map();
 const cardsDataByKey = new Map();
 const runs = new Map();
 let nextHandle = 1;
@@ -56,17 +57,35 @@ function loadCards(json) {
     service.initializeCardsDbFromCards(typeof json === 'string' ? JSON.parse(json) : json);
     sim.assignCards(service);
     cards = service;
+    cardsByRuleset.clear();
     cardsDataByKey.clear();
     return service.getCards().length;
 }
 
 // CardsData.inititialize(validTribes, anomalies) must be called by the embedder;
 // simulateBattle doesn't read the lobby's tribes itself.
-function cardsDataFor(validTribes, anomalies) {
-    const key = JSON.stringify([validTribes || null, anomalies || []]);
+function cardsFor(ruleset) {
+    if (ruleset !== '36.6.3') return cards;
+    let service = cardsByRuleset.get(ruleset);
+    if (!service) {
+        // Blizzard's 36.6.3 hotfix made both Deities Tier 1. Keep the MIT-pinned
+        // database untouched so old inputs and interleaved runs retain their rules.
+        const deities = new Set(['BGFYM_000', 'BGFYM_000_G', 'BGFYM_011', 'BGFYM_011_G']);
+        service = new AllCardsService();
+        // AllCardsService initializes related-card metadata in place.
+        const patchCards = JSON.parse(JSON.stringify(cards.getCards()));
+        for (const card of patchCards) if (deities.has(card.id)) card.techLevel = 1;
+        service.initializeCardsDbFromCards(patchCards);
+        cardsByRuleset.set(ruleset, service);
+    }
+    return service;
+}
+
+function cardsDataFor(service, ruleset, validTribes, anomalies) {
+    const key = JSON.stringify([ruleset || null, validTribes || null, anomalies || []]);
     let data = cardsDataByKey.get(key);
     if (!data) {
-        data = new CardsData(cards, false);
+        data = new CardsData(service, false);
         data.inititialize(validTribes, anomalies || []);
         cardsDataByKey.set(key, data);
     }
@@ -88,8 +107,8 @@ function summary(result, done, elapsed) {
 
 // Tavern Lens sends dbfIds where only the card DB knows the card ID: the lobby's anomaly
 // (`gameState.anomalyDbfIds`) and Zilliax / Build-An-Undead parts (`additionalCardDbfIds`).
-function resolveDbfIds(input) {
-    const idOf = (dbfId) => cards.getCardFromDbfId(dbfId).id;
+function resolveDbfIds(input, service) {
+    const idOf = (dbfId) => service.getCardFromDbfId(dbfId).id;
     const gameState = input.gameState = input.gameState || {};
     if (gameState.anomalyDbfIds) {
         gameState.anomalies = (gameState.anomalies || []).concat(gameState.anomalyDbfIds.map(idOf).filter(Boolean));
@@ -112,11 +131,24 @@ function start(inputJson, optionsJson) {
     if (!cards) throw new Error('TavernSim: cards not loaded');
     const input = JSON.parse(inputJson);
     input.options = Object.assign(input.options || {}, optionsJson ? JSON.parse(optionsJson) : {});
-    resolveDbfIds(input);
+    const ruleset = input.gameState?.ruleset === '36.6.3' ? '36.6.3' : null;
+    const service = cardsFor(ruleset);
+    resolveDbfIds(input, service);
     const gameState = input.gameState;
-    const data = cardsDataFor(gameState.validTribes, gameState.anomalies);
+    delete gameState.ruleset; // Tavern Lens transport, not part of upstream BgsGameState.
+    if (ruleset === '36.6.3') {
+        for (const side of [input.playerBoard, input.opponentBoard,
+            input.playerTeammateBoard, input.opponentTeammateBoard].filter(Boolean)) {
+            for (const secret of side.player.secrets || []) {
+                // Positive script data is the observed remaining count, not the threshold.
+                // Only replace the pinned simulator's unset-counter default (three).
+                if (secret.cardId === 'BG_OldGod' && !secret.scriptDataNum1) secret.scriptDataNum1 = 4;
+            }
+        }
+    }
+    const data = cardsDataFor(service, ruleset, gameState.validTribes, gameState.anomalies);
     const handle = nextHandle++;
-    runs.set(handle, { generator: sim.simulateBattle(input, cards, data), last: null, t0: Date.now() });
+    runs.set(handle, { generator: sim.simulateBattle(input, service, data), last: null, t0: Date.now() });
     return handle;
 }
 

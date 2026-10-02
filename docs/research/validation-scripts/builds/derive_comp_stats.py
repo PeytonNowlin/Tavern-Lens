@@ -16,9 +16,50 @@ Usage (from the repo root):
   cp strategies.json Sources/HSData/Resources/bg-pool/builds/firestone-comp-strategies.json
 """
 import json
+import math
 import sys
 
 MINIMUM_SHARE = 0.02
+ALIASES = {
+    "abberation_deathrattle": "aberration_deathrattle",
+    "abberation_discard": "aberration_discard",
+}
+
+
+def normalize(comps):
+    groups = {}
+    for comp in comps:
+        key = ALIASES.get(comp["archetype"], comp["archetype"])
+        # An identical label repeated in the source is not another population.
+        groups.setdefault(key, {}).setdefault(comp["archetype"], comp)
+    result = []
+    for key, group in sorted(groups.items()):
+        rows = [group[label] for label in sorted(group)]
+        merged = dict(rows[0], archetype=key)
+        if len(rows) > 1:
+            population = sum(row["dataPoints"] for row in rows)
+            merged["dataPoints"] = population
+            if population > 0:
+                merged["averagePlacement"] = sum(row["averagePlacement"] * row["dataPoints"] for row in rows) / population
+            merged["sampledBoards"] = sum(row["sampledBoards"] for row in rows)
+            counts = {}
+            for row in rows:
+                for card, count in row["boardsWithCard"].items():
+                    counts[card] = counts.get(card, 0) + count
+            merged["boardsWithCard"] = counts
+            buckets = sorted({item["mmr"] for row in rows for item in row["averagePlacementAtMmr"]}, reverse=True)
+            placements = []
+            for mmr in buckets:
+                observations = [next((item for item in row["averagePlacementAtMmr"] if item["mmr"] == mmr), None) for row in rows]
+                observations = [item for item in observations if item is not None and item["dataPoints"] > 0
+                                and math.isfinite(item["placement"]) and 1 <= item["placement"] <= 8]
+                population = sum(item["dataPoints"] for item in observations)
+                if population > 0:
+                    placements.append({"mmr": mmr, "dataPoints": population,
+                                       "placement": sum(item["placement"] * item["dataPoints"] for item in observations) / population})
+            merged["averagePlacementAtMmr"] = placements
+        result.append(merged)
+    return result
 
 
 def derive(raw):
@@ -39,7 +80,6 @@ def derive(raw):
                     seen.add(card)
                 for card in seen:
                     counts[card] = counts.get(card, 0) + 1
-        floor = boards * MINIMUM_SHARE
         comps.append({
             "archetype": comp["archetype"],
             "dataPoints": comp.get("dataPoints") or 0,
@@ -50,9 +90,12 @@ def derive(raw):
                 if e.get("mmr") is not None and e.get("placement") is not None
             ],
             "sampledBoards": boards,
-            "boardsWithCard": {k: v for k, v in counts.items() if v >= floor and v > 0},
+            "boardsWithCard": counts,
         })
-    comps.sort(key=lambda c: c["archetype"])
+    comps = normalize(comps)
+    for comp in comps:
+        floor = comp["sampledBoards"] * MINIMUM_SHARE
+        comp["boardsWithCard"] = {k: v for k, v in comp["boardsWithCard"].items() if v >= floor and v > 0}
     return {
         "lastUpdateDate": raw.get("lastUpdateDate") or "",
         "timePeriod": raw.get("timePeriod") or "",

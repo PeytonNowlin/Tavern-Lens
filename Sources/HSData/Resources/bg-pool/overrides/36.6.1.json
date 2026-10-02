@@ -18,8 +18,8 @@
   "forced_tribes": [
     {
       "tribe": "ABERRATION",
-      "until": "2026-10-06T17:00:00Z",
-      "note": "Estimate: Blizzard says \"first two weeks ... starting September 22\". Confirm when announced."
+      "until": "2026-10-01T15:55:00Z",
+      "note": "36.6.3 ended the guarantee early. Boundary is the official news publish timestamp; retain the guarantee for historical games before publication."
     }
   ],
   "minion_pool": {
@@ -293,6 +293,27 @@
       ]
     }
   },
+  "dated_corrections": [
+    {
+      "patch": "36.6.3",
+      "valid_from": "2026-10-01T15:55:00Z",
+      "minion_pool": {
+        "BG33_828": 1,
+        "BG34_403": 1,
+        "BG36_333": 1,
+        "BG34_683": 0,
+        "BG34_Giant_078": 0
+      },
+      "minion_tiers": {
+        "BG31_327": 3,
+        "BG25_009": 5,
+        "BG36_700": 5,
+        "BG33_828": 5
+      },
+      "note": "Official 36.6.3 shop delta: return Ship Master Eudora, Eternal Tycoon and Jailbird Juggernaut; remove Briarback Drummer and Timewarped Thorncaller; move Thorned Trailblazer to Tier 3, Eternal Summoner and Sewer Escapee to Tier 5, and returning Eudora to Tier 5. Deities remain non-shop cards; their Tier 1 combat rule is separate.",
+      "source": "https://hearthstone.blizzard.com/en-gb/news/24303864/36-6-3-patch-notes"
+    }
+  ],
   "special": {
     "BG36_360": "Dark Paradox: one ALL-type variant per game (t3..t9), tier varies; never tribe evidence"
   },
@@ -301,6 +322,8 @@
   },
   "sources": [
     "https://hearthstone.blizzard.com/en-us/news/24302091/aberrations-join-battlegrounds-at-blizzcon",
+    "https://hearthstone.blizzard.com/en-gb/news/24303864/36-6-3-patch-notes",
+    "https://hearthstone.blizzard.com/en-us/api/blog/articleList/?page=1&pageSize=10 (article 24303864 publish=1790870100000)",
     "https://hsbg.cards/api/v1/patches/36.4.2_36.6.1",
     "https://github.com/Zero-to-Heroes/hs-reference-data/blob/master/src/cards_rules.json (minion_tribe_gates, hero_tribe_rules)",
     "docs/research/minion-pool-and-tribe-inference.md"

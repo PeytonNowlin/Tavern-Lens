@@ -29,10 +29,18 @@ public struct RecruitContext: Codable, Hashable, Sendable {
     }
     /// Observed interaction state. Absent in older archives: never assume an activation is ready.
     public var activations: [Int: Activation]?
+    /// Observed Living Prison tag 4945. Historical buff enchantments do not imply a pending buy.
+    /// Missing keys are unknown; older archives omit this field entirely.
+    public var pendingPrisonBuys: [Int: Bool]?
     public struct Activation: Codable, Hashable, Sendable {
         public var ready: Bool
         public var cost: Int
-        public init(ready: Bool, cost: Int) { self.ready = ready; self.cost = cost }
+        /// Nil preserves archived recorded prices. New effect families explicitly
+        /// record whether live tag 4090 was present; printed text is not a live price.
+        public var costObserved: Bool?
+        public init(ready: Bool, cost: Int, costObserved: Bool? = nil) {
+            self.ready = ready; self.cost = cost; self.costObserved = costObserved
+        }
     }
 
     public init(input: BattleInput, definitions: [String: Card], powerCosts: [String: Int] = [:], build: Int? = nil) {
@@ -69,9 +77,10 @@ extension BattleInputBuilder {
         // An empty opponent is just storage for the local board, never a prediction or simulation scenario.
         var empty = local
         empty.board = []
-        let base = input(player: local, opponent: empty, snapshot: snapshot, validTribes: request.preview.input?.gameState.validTribes.flatMap {
+        var base = input(player: local, opponent: empty, snapshot: snapshot, validTribes: request.preview.input?.gameState.validTribes.flatMap {
             Set($0.compactMap { HS.Race(rawValue: $0) })
         })
+        base.gameState.ruleset = request.preview.input?.gameState.ruleset
         var definitions: [String: Card] = [:]
         let tokens = ["BG20_GEM", "BG28_810", "BG28_897", "BGS_115t", "BGS_115t_G", "BG_CFM_315t", "TB_BaconUps_093t", "BG36_301t",
                       "BG31_812e", "BG31_812e2", "BG34_444"]
@@ -82,6 +91,7 @@ extension BattleInputBuilder {
         ids += local.player.secrets.map(\.cardId)
         ids += observed.flatMap { $0.entity.enchantments.map(\.cardId) }
         ids += tokens
+        ids += RecruitCardEffects.generated(for: observed)
         for id in ids {
             guard let card = cards[id] else { continue }
             definitions[id] = card
@@ -114,9 +124,17 @@ extension BattleInputBuilder {
         for card in request.board + request.hand + request.shop where context.text(card.cardID).contains("Activate (") {
             guard let entity = store[card.entity.entityId] else { continue }
             let parsed = RecruitEffects.captures(".*Activate \\(([0-9]+)\\):.*", context.text(card.cardID))
+            let observedCost = entity.int(GameTag.id(4090))
+            let requiresObservedCost = RecruitCardEffects.requiresObservedActivationCost(card.cardID)
             context.activations?[card.entity.entityId] = .init(
                 ready: entity.int(GameTag.id(4089)) == 1,
-                cost: entity.int(GameTag.id(4090)) ?? parsed.flatMap { Int($0[0]) } ?? 0)
+                cost: observedCost ?? parsed.flatMap { Int($0[0]) } ?? 0,
+                costObserved: requiresObservedCost ? observedCost != nil : nil)
+        }
+        context.pendingPrisonBuys = [:]
+        for card in observed where RecruitLivingPrison.cardIDs.contains(card.cardID) {
+            guard let pending = store[card.entity.entityId]?.int(GameTag.id(4945)), pending == 0 || pending == 1 else { continue }
+            context.pendingPrisonBuys?[card.entity.entityId] = pending == 1
         }
         if let player = store.localPlayer,
            let button = store.entities(controller: player.playerID, zone: "PLAY")
@@ -171,12 +189,17 @@ public struct RecruitState: Hashable, Sendable {
     public var pendingDiscover = 0
     public var nextEntityID = -1
     public var usedActivations: Set<Int> = []
+    /// Per-instance pending state; absence remains unknown until observed or activated in this plan.
+    public var pendingPrisonBuys: [Int: Bool] = [:]
     /// Random rewards have option value but cannot be played before the log reveals them.
     public var unknownRewards = 0
 
     public init(request: AdvisorRequest, context: RecruitContext) {
         board = request.board; hand = request.hand; shop = request.shop; gold = request.gold; tier = request.tier
         levelCost = request.levelCost; rollCost = request.rollCost; frozen = request.shopFrozen; input = context.input
+        if (context.evaluationVersion ?? 0) >= 11 {
+            pendingPrisonBuys = context.pendingPrisonBuys ?? [:]
+        }
     }
 
     public var combatInput: BattleInput {

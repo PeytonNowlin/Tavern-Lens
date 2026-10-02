@@ -4,6 +4,14 @@ import Foundation
 // override file. `BuildCatalog.compose` turns them into build definitions.
 // See docs/research/meta-comps-2026-09.md §7-8 and aberrations-2026-09.md §8.
 
+private enum FirestoneCompIdentity {
+    // These two separate populations occur in the same last-patch feed. Other IDs are
+    // left alone; spelling similarity does not establish archetype identity.
+    static let aliases = ["abberation_deathrattle": "aberration_deathrattle",
+                          "abberation_discard": "aberration_discard"]
+    static func canonical(_ id: String) -> String { aliases[id] ?? id }
+}
+
 // MARK: - Firestone comp stats
 
 /// Firestone's Battlegrounds comp stats
@@ -71,7 +79,50 @@ public struct FirestoneCompStats: Codable, Hashable, Sendable {
         self.lastUpdateDate = lastUpdateDate
         self.timePeriod = timePeriod
         self.dataPoints = dataPoints
-        self.comps = comps
+        self.comps = Self.normalized(comps)
+    }
+
+    private enum CodingKeys: String, CodingKey { case lastUpdateDate, timePeriod, dataPoints, comps }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(lastUpdateDate: try c.decode(String.self, forKey: .lastUpdateDate),
+            timePeriod: try c.decode(String.self, forKey: .timePeriod),
+            dataPoints: try c.decode(Int.self, forKey: .dataPoints),
+            comps: try c.decode([Comp].self, forKey: .comps))
+    }
+
+    /// Joins only the verified spelling aliases. Repeated copies of one source label
+    /// are not additional observations; retain its first row, as the catalog does.
+    private static func normalized(_ comps: [Comp]) -> [Comp] {
+        let groups = Dictionary(grouping: comps) { FirestoneCompIdentity.canonical($0.archetype) }
+        return groups.keys.sorted().compactMap { id in
+            let rows = Dictionary(groups[id, default: []].map { ($0.archetype, $0) },
+                uniquingKeysWith: { first, _ in first }).values.sorted { $0.archetype < $1.archetype }
+            guard var merged = rows.first else { return nil }
+            merged.archetype = id
+            guard rows.count > 1 else { return merged }
+            merged.dataPoints = rows.reduce(0) { $0 + $1.dataPoints }
+            if merged.dataPoints > 0 {
+                merged.averagePlacement = rows.reduce(0) { $0 + $1.averagePlacement * Double($1.dataPoints) }
+                    / Double(merged.dataPoints)
+            }
+            merged.sampledBoards = rows.reduce(0) { $0 + $1.sampledBoards }
+            merged.boardsWithCard = [:]
+            for row in rows {
+                for (card, count) in row.boardsWithCard { merged.boardsWithCard[card, default: 0] += count }
+            }
+            let buckets = Set(rows.flatMap(\.averagePlacementAtMmr).map(\.mmr)).sorted(by: >)
+            merged.averagePlacementAtMmr = buckets.compactMap { mmr in
+                let observations = rows.compactMap { $0.averagePlacementAtMmr.first { $0.mmr == mmr } }
+                    .filter { $0.dataPoints > 0 && $0.placement.isFinite && (1...8).contains($0.placement) }
+                let population = observations.reduce(0) { $0 + $1.dataPoints }
+                guard population > 0 else { return nil }
+                let placement = observations.reduce(0) { $0 + $1.placement * Double($1.dataPoints) } / Double(population)
+                return Placement(mmr: mmr, dataPoints: population, placement: placement)
+            }
+            return merged
+        }
     }
 
     public var updatedAt: Date? { FirestoneDate.parse(lastUpdateDate) }
@@ -106,7 +157,6 @@ public struct FirestoneCompStats: Codable, Hashable, Sendable {
                     for id in seen { counts[id, default: 0] += 1 }
                 }
             }
-            let floor = Double(boards) * minimumShare
             return Comp(
                 archetype: comp.archetype, dataPoints: comp.dataPoints ?? 0,
                 averagePlacement: comp.averagePlacement ?? 0,
@@ -115,13 +165,22 @@ public struct FirestoneCompStats: Codable, Hashable, Sendable {
                     return Placement(mmr: mmr, dataPoints: entry.dataPoints ?? 0, placement: placement)
                 },
                 sampledBoards: boards,
-                boardsWithCard: counts.filter { Double($0.value) >= floor && $0.value > 0 }
+                boardsWithCard: counts
             )
         }
-        return FirestoneCompStats(
+        var result = FirestoneCompStats(
             lastUpdateDate: raw.lastUpdateDate ?? "", timePeriod: raw.timePeriod ?? "",
             dataPoints: raw.dataPoints ?? 0, comps: comps.sorted { $0.archetype < $1.archetype }
         )
+        // Apply the share cutoff to the combined population, so a card seen in both
+        // spelling aliases is not discarded before its combined share is known.
+        result.comps = result.comps.map { comp in
+            var kept = comp
+            let floor = Double(comp.sampledBoards) * minimumShare
+            kept.boardsWithCard = comp.boardsWithCard.filter { Double($0.value) >= floor && $0.value > 0 }
+            return kept
+        }
+        return result
     }
 
     /// The copy shipped with the app (derived from Firestone's `last-patch` file).
@@ -254,11 +313,22 @@ public struct FirestoneStrategies: Hashable, Sendable {
         }
     }
 
-    /// Only the real comps: the blank placeholders are dropped.
+    /// Blank IDs and unfinished recipes with neither a name nor usable card references are dropped.
     public var comps: [Comp]
 
     public init(comps: [Comp]) {
-        self.comps = comps.filter { !$0.compId.trimmingCharacters(in: .whitespaces).isEmpty }
+        func meaningful(_ text: String?) -> Bool {
+            guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
+            return !text.isEmpty && text != "#N/A"
+        }
+        self.comps = comps.filter { comp in
+            meaningful(comp.compId) && (meaningful(comp.name)
+                || comp.cards.contains { meaningful($0.cardId) || meaningful($0.name) })
+        }.map { comp in
+            var canonical = comp
+            canonical.compId = FirestoneCompIdentity.canonical(comp.compId)
+            return canonical
+        }
     }
 
     /// Decodes the raw file (a JSON array). Throws on anything that isn't one.
@@ -266,7 +336,7 @@ public struct FirestoneStrategies: Hashable, Sendable {
         self.init(comps: try JSONDecoder().decode([Comp].self, from: json))
     }
 
-    public func comp(_ id: String) -> Comp? { comps.first { $0.compId == id } }
+    public func comp(_ id: String) -> Comp? { comps.first { $0.compId == FirestoneCompIdentity.canonical(id) } }
 
     /// The copy shipped with the app.
     public static func bundled() -> FirestoneStrategies? {

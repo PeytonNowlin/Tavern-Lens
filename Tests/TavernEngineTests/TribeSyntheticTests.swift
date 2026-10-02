@@ -94,10 +94,27 @@ struct TribeSyntheticTests {
         #expect(aberration.isForced && aberration.confidence == .confirmed)
         #expect(Self.percent(during, "BEAST") == 44)
 
-        let after = try Self.replay(Self.recruiting(), session: "Hearthstone_2026_10_10_20_00_00")
+        let beforeHotfix = try Self.replay(Self.recruiting(), session: "Hearthstone_2026_10_01_15_54_59")
+        #expect(beforeHotfix.state.game?.tribes?.tribes.first { $0.tribe == "ABERRATION" }?.isForced == true)
+
+        let after = try Self.replay(Self.recruiting(), session: "Hearthstone_2026_10_01_15_55_00")
         let tribes = try #require(after.state.game?.tribes)
         #expect(tribes.tribes.count == 10)
         #expect(tribes.tribes.allSatisfy { !$0.isForced && $0.percent == 50 })
+    }
+
+    @Test("A Tier 3 Trailblazer shop draw uses the hotfix pool selected by session date")
+    func datedShopEvidence() throws {
+        var log = Self.recruiting()
+        log.tag(SyntheticLog.pickedHeroID, "PLAYER_TECH_LEVEL", "3")
+        log.shopCard(200, "BG31_327", position: 1, extra: ["TECH_LEVEL=3", "IS_BACON_POOL_MINION=1"])
+        log.endTaskList()
+        let before = try Self.replay(log, session: "Hearthstone_2026_10_01_15_54_59")
+        let after = try Self.replay(log, session: "Hearthstone_2026_10_01_15_55_00")
+        let undated = try Self.replay(log)
+        #expect(before.tribeEstimate?.shopDraws == 0)
+        #expect(undated.tribeEstimate?.shopDraws == 0)
+        #expect(after.tribeEstimate?.shopDraws == 1)
     }
 
     @Test("A reconnect keeps the game's evidence; a new game starts over")

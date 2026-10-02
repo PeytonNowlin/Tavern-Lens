@@ -1,0 +1,58 @@
+{
+  "compStats": {
+    "canonicalRows": 23,
+    "capturedAt": "2026-10-02T22:04:35Z",
+    "dataPoints": 44506,
+    "decodedBodyBytes": 16821094,
+    "decodedBodySHA256": "4843018d8f298b1b16bd354840a7688d44efbf413a2c45121da80e963f0d011b",
+    "etag": "\"e756f7cd46c6d28d0716c667f0d7fbec\"",
+    "httpStatus": 200,
+    "lastModified": "Fri, 02 Oct 2026 18:10:57 GMT",
+    "resource": "firestone-comp-stats.json",
+    "resourceSHA256": "19a5b6a9195fac0b8509aaf44ee940c62021f34422e0a213e87bc5b98113a789",
+    "sampledBoards": 3971,
+    "sourceRows": 25,
+    "sourceUpdated": "2026-10-02T18:10:36.245Z",
+    "timePeriod": "last-patch",
+    "url": "https://static.zerotoheroes.com/api/bgs/comp-stats/last-patch/overview-from-hourly.gz.json"
+  },
+  "format": 1,
+  "normalization": {
+    "aliases": {
+      "abberation_deathrattle": "aberration_deathrattle",
+      "abberation_discard": "aberration_discard"
+    },
+    "boardPresence": "Count each base _G-folded card once per sampled board. Sum alias board denominators and presence counts before the 2% share cutoff.",
+    "legacyCaches": "Normalize known aliases from derived caches; counts already omitted by an old per-row share cutoff cannot be reconstructed.",
+    "placementMeans": "Known alias populations use dataPoints-weighted means; each MMR bucket uses its own positive observed dataPoints. Zero-population buckets contribute no placement.",
+    "replay": "Previously captured AdvisorRequests remain authoritative; September catalog/replay tests read frozen September 23 sources under Tests/Fixtures/Firestone/2026-09-23.",
+    "strategyPlaceholders": "Drop blank/#N/A IDs and rows with neither meaningful names nor usable card ID/name references. Preserve name-based resolution for #N/A card IDs.",
+    "tinySamples": "Retained as provider evidence. Existing catalog gates require >=50 games for placement and >=50 sampled boards for frequency-derived cards."
+  },
+  "strategies": {
+    "blankIDRows": 4,
+    "capturedAt": "2026-10-02T22:04:35Z",
+    "decodedBodyBytes": 23506,
+    "decodedBodySHA256": "50aec9234c2ab315ddb70a3e37eedb2f31e9faec932b678148b9a0f9bfda791d",
+    "etag": "\"85dd85e3f7cdf6dcc1d722f7ebed3517\"",
+    "httpStatus": 200,
+    "lastModified": "Thu, 01 Oct 2026 14:06:14 GMT",
+    "patchNumbers": [
+      231720,
+      251952
+    ],
+    "resource": "firestone-comp-strategies.json",
+    "resourceSHA256": "50aec9234c2ab315ddb70a3e37eedb2f31e9faec932b678148b9a0f9bfda791d",
+    "retainedUnconsumedFinalBoardWeights": [
+      1,
+      20,
+      30,
+      50,
+      100
+    ],
+    "sourceRows": 25,
+    "unfinishedRecipeRows": 3,
+    "url": "https://static.zerotoheroes.com/hearthstone/data/battlegrounds-strategies/bgs-comps-strategies.gz.json",
+    "usableRecipes": 18
+  }
+}

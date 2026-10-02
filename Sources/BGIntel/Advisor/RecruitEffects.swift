@@ -38,6 +38,7 @@ public enum RecruitEffects {
     }
 
     static func battlecry(_ card: AdvisorCard, context: RecruitContext) -> Effect {
+        if let effect = RecruitCardEffects.battlecry(card, context: context) { return effect }
         guard let definition = context.definitions[card.cardID] else { return .unsupported("Missing card data") }
         let text = context.text(card.cardID)
         if text.hasPrefix("Battlecry and Deathrattle: ") {
@@ -188,7 +189,7 @@ public enum RecruitEffects {
             guard apply(effect, target: card.entity.entityId, state: &state, context: context) else { return false }
         }
         if kind == .play {
-            return RecruitNomiSticker.afterPlay(before: before, state: &state, context: context)
+            return RecruitCardEffects.afterPlay(before: before, state: &state, context: context)
         }
         return true
     }
@@ -226,6 +227,7 @@ public enum RecruitEffects {
             guard RecruitDiscardEffects.hammerValidation(state, context: context).isEmpty else { return false }
             guard let normal = context.definitions[id], let golden = context.golden(id) else { return false }
             var consumed = Array(copies.prefix(3)); let ids = Set(consumed.map { $0.entity.entityId })
+            guard RecruitCardEffects.canTriple(consumed, state: state, context: context) else { return false }
             for i in consumed.indices { RecruitDiscardEffects.stripHammer(card: &consumed[i], context: context) }
             var combined = consumed[0]
             combined.cardID = golden.id; combined.entity.cardId = golden.id; combined.golden = true
@@ -241,6 +243,7 @@ public enum RecruitEffects {
             combined.entity.poisonous = consumed.contains { $0.entity.poisonous }
             combined.entity.stealth = consumed.contains { $0.entity.stealth }
             state.board.removeAll { ids.contains($0.entity.entityId) }; state.hand.removeAll { ids.contains($0.entity.entityId) }
+            RecruitCardEffects.afterTriple(id, consumed: ids, golden: combined, state: &state, context: context)
             guard state.hand.count < AdvisorRequest.handLimit else { return false }
             state.hand.append(combined)
             state.pendingDiscover += 1
@@ -253,6 +256,7 @@ public enum RecruitEffects {
     /// effects are recorded and exclude this board from exact combat claims.
     public static func combatProjection(_ state: RecruitState, context: RecruitContext) -> RecruitState {
         var result = state
+        RecruitCardEffects.beforeCombatProjection(&result, context: context)
         var consumedFromShop = false
         for card in state.board {
             if let resolved = RecruitDiscardEffects.projectFleshling(card, state: &result, context: context) {

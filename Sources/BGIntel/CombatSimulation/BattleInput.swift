@@ -10,6 +10,21 @@
 // because only the simulator's card DB is sure to be loaded: `gameState.anomalyDbfIds` and
 // `BoardEntity.additionalCardDbfIds`.
 
+import Foundation
+
+/// Dated compatibility rules for the pinned simulator. Unknown dates retain its original rules.
+public enum BattleRuleset: String, Codable, Hashable, Sendable {
+    case patch36_6_3 = "36.6.3"
+
+    /// Blizzard's 36.6.3 publication time, corroborated by the official forum announcement.
+    public static let patch36_6_3Start = Date(timeIntervalSince1970: 1_790_870_100)
+
+    public static func at(date: Date?) -> Self? {
+        guard let date, date >= patch36_6_3Start else { return nil }
+        return .patch36_6_3
+    }
+}
+
 /// `BgsBattleInfo`.
 public struct BattleInput: Codable, Hashable, Sendable {
     public var playerBoard: BattleBoard
@@ -203,4 +218,7 @@ public struct BattleGameState: Codable, Hashable, Sendable {
     public var numberOfPlayersAlive: Int
     /// The lobby's tribes as `Race` numbers; nil (every tribe) while unknown.
     public var validTribes: [Int]?
+    /// Tavern Lens extension: archived with the input, resolved by Tools/Simulator/entry.js.
+    /// Missing in older inputs and when the log's date is unknown.
+    public var ruleset: BattleRuleset? = nil
 }

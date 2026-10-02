@@ -132,6 +132,9 @@ public struct MinionPool: Sendable {
     /// By the hero's base card ID.
     public let heroRules: [String: HeroTribeRule]
     public var provenance: Provenance
+    private let datedCorrections: [PoolOverrides.DatedCorrection]
+    private let nonShop: Set<String>
+    private let minionTribeGates: [String: [HS.Race]]
 
     static let poolMinionTag = 1456
     static let techLevelTag = 1440
@@ -202,8 +205,41 @@ public struct MinionPool: Sendable {
             heroRules: heroRules,
             provenance: provenance ?? Provenance(
                 cardBuild: cards.build, metaPeriodName: metaPeriod?.name, overridesPatch: overrides?.patch
-            )
+            ),
+            datedCorrections: overrides?.datedCorrections ?? [], nonShop: nonShop, minionTribeGates: gates
         )
+    }
+
+    /// Applies verified hotfix deltas to one game's pool. An unknown or earlier game
+    /// date preserves the base. The tracker calls this before that game's adoptions.
+    public func applyingCorrections(at date: Date?) -> MinionPool {
+        guard let date else { return self }
+        var result = self
+        let rotation = Set(tribesInRotation)
+        for correction in datedCorrections.sorted(by: { $0.validFrom < $1.validFrom }) where correction.validFrom <= date {
+            let ids = Set(correction.minionPool.keys).union(correction.minionTiers.keys)
+            for id in ids {
+                // The observed game's layer remains authoritative when reapplied.
+                guard result.minions[id]?.source != .sessionDrift else { continue }
+                if let flag = correction.minionPool[id], flag != 1 {
+                    result.minions.removeValue(forKey: id)
+                    continue
+                }
+                guard !nonShop.contains(id), let card = cards[id], card.type == "MINION",
+                      card.battlegroundsNormalDbfId == nil,
+                      mode == .duos || card.isBattlegroundsDuosExclusive != true else { continue }
+                let existing = result.minions[id]
+                guard existing != nil || correction.minionPool[id] == 1 else { continue }
+                let tier = correction.minionTiers[id] ?? existing?.tier ?? card.techLevel ?? 0
+                guard tier > 0 else { continue }
+                let minion = Self.poolMinion(
+                    card, tier: tier, rotation: rotation, gate: minionTribeGates[id], source: .overrides
+                )
+                if !minion.isOutOfRotation { result.minions[id] = minion }
+            }
+            result.provenance.overridesPatch = correction.patch
+        }
+        return result
     }
 
     /// The tribes in rotation: from whichever of the meta period and the override file is

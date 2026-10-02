@@ -19,6 +19,38 @@ public struct PoolOverrides: Codable, Hashable, Sendable {
         }
     }
 
+    /// A server hotfix applied only to games starting on or after its publication.
+    public struct DatedCorrection: Codable, Hashable, Sendable {
+        public var patch: String
+        public var validFrom: Date
+        public var minionPool: [String: Int]
+        public var minionTiers: [String: Int]
+
+        public init(
+            patch: String, validFrom: Date, minionPool: [String: Int] = [:], minionTiers: [String: Int] = [:]
+        ) {
+            self.patch = patch
+            self.validFrom = validFrom
+            self.minionPool = minionPool
+            self.minionTiers = minionTiers
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case patch
+            case validFrom = "valid_from"
+            case minionPool = "minion_pool"
+            case minionTiers = "minion_tiers"
+        }
+
+        public init(from decoder: any Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            patch = try c.decode(String.self, forKey: .patch)
+            validFrom = try c.decode(Date.self, forKey: .validFrom)
+            minionPool = try c.decodeIfPresent([String: Int].self, forKey: .minionPool) ?? [:]
+            minionTiers = try c.decodeIfPresent([String: Int].self, forKey: .minionTiers) ?? [:]
+        }
+    }
+
     /// Which lobbies a hero is offered in (Firestone `cards_rules.json` `bgsMinionTypesRules`).
     public struct HeroTribeRule: Codable, Hashable, Sendable {
         /// Offered only when at least one of these tribes is in the lobby.
@@ -62,12 +94,14 @@ public struct PoolOverrides: Codable, Hashable, Sendable {
     public var minionTribeGates: [String: [String]]
     /// By the hero's base card ID (skins resolve to it).
     public var heroTribeRules: [String: HeroTribeRule]
+    /// Date-gated deltas; the undated base composition retains its original values.
+    public var datedCorrections: [DatedCorrection]
 
     public init(
         patch: String, clientBuild: Int? = nil, validFrom: Date, tribesInRotation: [String]? = nil,
         tribesPerLobby: Int? = nil, forcedTribes: [ForcedTribe] = [], minionPool: [String: Int] = [:],
         spellPool: [String: Int] = [:], nonShop: [String] = [], minionTribeGates: [String: [String]] = [:],
-        heroTribeRules: [String: HeroTribeRule] = [:]
+        heroTribeRules: [String: HeroTribeRule] = [:], datedCorrections: [DatedCorrection] = []
     ) {
         self.patch = patch
         self.clientBuild = clientBuild
@@ -80,6 +114,7 @@ public struct PoolOverrides: Codable, Hashable, Sendable {
         self.nonShop = nonShop
         self.minionTribeGates = minionTribeGates
         self.heroTribeRules = heroTribeRules
+        self.datedCorrections = datedCorrections
     }
 
     // Explicit snake_case keys: a key decoding strategy would also rewrite the card IDs
@@ -96,6 +131,7 @@ public struct PoolOverrides: Codable, Hashable, Sendable {
         case nonShop = "non_shop"
         case minionTribeGates = "minion_tribe_gates"
         case heroTribeRules = "hero_tribe_rules"
+        case datedCorrections = "dated_corrections"
     }
 
     public init(from decoder: any Decoder) throws {
@@ -111,6 +147,7 @@ public struct PoolOverrides: Codable, Hashable, Sendable {
         nonShop = try c.decodeIfPresent([String].self, forKey: .nonShop) ?? []
         minionTribeGates = try c.decodeIfPresent([String: [String]].self, forKey: .minionTribeGates) ?? [:]
         heroTribeRules = try c.decodeIfPresent([String: HeroTribeRule].self, forKey: .heroTribeRules) ?? [:]
+        datedCorrections = try c.decodeIfPresent([DatedCorrection].self, forKey: .datedCorrections) ?? []
     }
 
     /// Decodes one override file (snake_case keys, ISO 8601 dates). Unknown keys, such as

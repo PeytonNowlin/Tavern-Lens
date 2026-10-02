@@ -37,7 +37,7 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3, lobbySweepSimulations: 30, version: 10
+        lobbyGroups: 3, lobbySweepSimulations: 30, version: 11
     )
 
     public init(
@@ -268,6 +268,20 @@ public struct AdviceView: Codable, Hashable, Sendable {
         if version == 1 { request.recruit = nil }
         if version < 3 { request.strategyCatalog = nil; request.choice = nil; request.poolTiers = nil }
         if version < 5 { request.recruit?.evaluationVersion = nil }
+        if version < 11 {
+            request.cardTurnStats = nil; request.cardTurnStatsCheckedAt = nil
+            request.preview.input?.gameState.ruleset = nil
+            if var context = request.recruit {
+                context.input.gameState.ruleset = nil
+                context.pendingPrisonBuys = nil
+                context.activations = context.activations?.mapValues { value in
+                    var activation = value
+                    activation.costObserved = nil
+                    return activation
+                }
+                request.recruit = context
+            }
+        }
         // Preserve archived encodings through version 5. New policies identify both raw
         // requests and requests already prepared for evaluation with their selected version.
         if version >= 6 { request.recruit?.evaluationVersion = version }

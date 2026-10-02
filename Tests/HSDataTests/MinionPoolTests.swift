@@ -45,7 +45,7 @@ struct MinionPoolTests {
     func bundledData() throws {
         #expect(Self.overrides.patch == "36.6.1")
         #expect(Self.overrides.tribesPerLobby == 5)
-        #expect(Self.overrides.forcedTribes == [.init(tribe: "ABERRATION", until: Self.date("2026-10-06T17:00:00Z"))])
+        #expect(Self.overrides.forcedTribes == [.init(tribe: "ABERRATION", until: Self.date("2026-10-01T15:55:00Z"))])
         #expect(Self.overrides.minionPool["BG32_172"] == 0)
         #expect(Self.overrides.minionPool["BG36_849"] == 1)
         #expect(Self.overrides.heroTribeRules["TB_BaconShop_HERO_53"]?.needsAny == ["DRAGON"])
@@ -73,6 +73,22 @@ struct MinionPoolTests {
         #expect(solo.forcedTribes(at: Self.date("2026-10-07T00:00:00Z")) == [])
         #expect(!solo.tribesInRotation.contains(.naga))
         #expect(solo.provenance.metaPeriodName == "Real 36.6.1")
+    }
+
+    @Test("The historical Aberration guarantee ends at the 36.6.3 publication boundary")
+    func forcedTribeHotfixBoundary() throws {
+        // The hotfix changes server rules even with older client definitions.
+        for build in [251_952, 253_216] {
+            let cards = try CardDB(build: build, json: Data(contentsOf: Self.cardsURL))
+            let pool = MinionPool.compose(cards: cards, metaPeriod: Self.meta, overrides: Self.overrides)
+            #expect(pool.forcedTribes(at: Self.date("2026-09-25T20:00:00Z")) == [.aberration])
+            #expect(pool.forcedTribes(at: Self.date("2026-10-01T15:54:59Z")) == [.aberration])
+            #expect(pool.forcedTribes(at: Self.date("2026-10-01T15:55:00Z")) == [])
+            #expect(pool.forcedTribes(at: Self.date("2026-10-02T00:00:00Z")) == [])
+            #expect(pool.forcedTribes(at: nil) == [.aberration])
+            #expect(pool.tribesInRotation.contains(.aberration))
+            #expect(!pool.contains("BGFYM_000") && !pool.contains("BGFYM_011"))
+        }
     }
 
     @Test("No removed or rotated-out minion is in the pool; Naga dual-types stay through their other tribe")
