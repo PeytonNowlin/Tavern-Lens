@@ -26,7 +26,7 @@ public struct AdvisorCase: Codable, Hashable, Sendable {
         guard let request = bookmark.adviceRequest, let advice = bookmark.advice,
               AdviceView.fingerprint(of: request, version: advice.plan.version) == advice.fingerprint
         else { return nil }
-        self.init(name: name ?? BookmarkExport.defaultName(for: bookmark), note: bookmark.note, request: request, recorded: advice)
+        self.init(name: name ?? bookmark.defaultCaseName, note: bookmark.note, request: request, recorded: advice)
     }
 
     /// A committed golden bookmark case's, when it has advice and the state it was for.

@@ -4,7 +4,7 @@ import PackageDescription
 
 // Module layout follows the Tavern Lens v1 spec (docs/spec/tavern-lens-v1.md).
 // Dependencies only point "down" this list:
-//   HSLog, PowerParser -> EntityStore -> BGState -> BGIntel -> TavernEngine -> TavernLensApp
+//   HSLog, PowerParser -> EntityStore -> BGState -> BGIntel -> TavernEngine -> BookmarkTooling -> TavernLensApp
 // HSData (enums, card data, stats) is shared data used by BGIntel and TavernEngine.
 let package = Package(
     name: "TavernLens",
@@ -42,13 +42,16 @@ let package = Package(
                 "HSLog", "GzipSupport", "PowerParser", "EntityStore", "BGState", "HSData", "BGIntel", "SimulatorRuntime",
             ]
         ),
+        // Golden-case export from a bookmark into a repository checkout (repo-relative paths, file
+        // writing). Used by the debug window's exporter and the tests; the engine keeps only the case format.
+        .target(name: "BookmarkTooling", dependencies: ["TavernEngine"]),
         // Pure overlay geometry: Hearthstone's content frame -> element rects (seam 2).
         .target(name: "OverlayLayout"),
         // Screen reading without the capture: Vision text recognition of the hero-pick banner
         // (lobby tribes and the alignment check). Needs no permission, so it's tested on images.
         .target(name: "ScreenReading", dependencies: ["BGIntel", "HSData", "OverlayLayout"]),
         // Thin menu-bar app: OS integration and UI only.
-        .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "HSLog", "OverlayLayout", "ScreenReading"]),
+        .executableTarget(name: "TavernLensApp", dependencies: ["TavernEngine", "BookmarkTooling", "HSLog", "OverlayLayout", "ScreenReading"]),
         // Build-time codegen: HearthstoneJSON enums.json (Data/HearthstoneJSON) -> Swift enum tables.
         .executableTarget(name: "HSEnumsGenerator", path: "Tools/HSEnumsGenerator"),
         .plugin(name: "HSEnumsPlugin", capability: .buildTool(), dependencies: ["HSEnumsGenerator"]),
@@ -60,7 +63,7 @@ let package = Package(
         ),
         .testTarget(
             name: "TavernEngineTests",
-            dependencies: ["TavernEngine", "HSLog"],
+            dependencies: ["TavernEngine", "BookmarkTooling", "HSLog"],
             // Golden JSON is read from (and recorded into) the source tree via #filePath.
             exclude: ["Golden"],
             swiftSettings: commandLineToolsTesting.swift,
