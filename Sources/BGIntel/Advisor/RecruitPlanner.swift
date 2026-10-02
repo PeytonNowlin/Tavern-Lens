@@ -163,8 +163,9 @@ public enum RecruitPlanner {
             guard RecruitEffects.triples(state: &s, context: context) else { return nil }
         case .play:
             guard let i = s.hand.firstIndex(where: { $0.entity.entityId == step.entityID }), s.board.count < 7 else { return nil }
-            let card = s.hand.remove(at: i)
+            var card = s.hand.remove(at: i)
             guard card.isMinion, !card.entity.locked else { return nil }
+            guard RecruitPlayedMinions.prepare(&card, before: original, state: &s, context: context) else { return nil }
             s.board.append(card)
             let entered = s
             guard RecruitDiscardEffects.synchronizeHammer(card: &s.board[s.board.count - 1], state: entered, context: context) else { return nil }

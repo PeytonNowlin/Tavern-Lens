@@ -23,6 +23,14 @@ enum RecruitLogEffects {
             // Its one-time reward is already observed in hand. This does not model the
             // separate Faceless Manipulator copy Battlecry or grant another copy.
             return (context.evaluationVersion ?? 0) >= 7 && context.text(id) == "Get a Faceless Manipulator."
+        case "BG35_MagicItem_850":
+            // Past casts are reflected in observed shop stats. The next cast is next turn;
+            // refreshes and repeated Tavern consumes retain their unknown-shop boundaries.
+            return (context.evaluationVersion ?? 0) >= 9
+                && context.text(id) == "Cast Easterly Winds. At the start of each turn, cast it again."
+        case "BG35_MagicItem_850t":
+            return (context.evaluationVersion ?? 0) >= 9
+                && context.text(id) == "Cast Easterly Winds four times. At the start of each turn, cast it twice more."
         case "BG32_MagicItem_363":
             // faerie-dragon-scale.js owns shield grants and the remaining-use counter.
             return context.text(id) == "Whenever a friendly Dragon attacks, give it Divine Shield. (3 times per combat.)"

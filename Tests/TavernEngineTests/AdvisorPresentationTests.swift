@@ -38,11 +38,13 @@ struct AdvisorPresentationTests {
         return suggestion
     }
 
-    private static func view(_ request: AdvisorRequest, status: Advice.Status = .recommendation) -> AdviceView {
+    private static func view(_ request: AdvisorRequest, status: Advice.Status = .recommendation,
+                             version: Int = 8) -> AdviceView {
         var advice = Advice(status: status, note: "Combat evidence is limited",
                             suggestions: [suggestion(), suggestion(rank: 2)])
         advice.strategy = AdvisorStrategy.select(request)?.guidance
-        return AdviceView(request: request, plan: .live, advice: advice, isComplete: true)
+        var plan = AdvisorPlan.live; plan.version = version
+        return AdviceView(request: request, plan: plan, advice: advice, isComplete: true)
     }
 
     @Test("The next action and its reason stay separate from the exact ordered continuation")
@@ -71,6 +73,58 @@ struct AdvisorPresentationTests {
         #expect(presentation.primary == nil)
         #expect(presentation.alternatives.map(\.rank) == [1, 2])
         #expect(presentation.alternatives.first?.steps.first == "Sell Engine")
+    }
+
+    @Test("Policy nine makes a tentative option visible with its first action and named uncertainty")
+    func estimatedOption() throws {
+        let request = try Self.request()
+        var view = Self.view(request, status: .noStrongRecommendation, version: 9)
+        view.advice.suggestions[0].confidence = .low
+        view.advice.suggestions[0].limitations = ["Unmodelled trinket: Quilligraphy Set"]
+        let presentation = AdvisorPresentation(advice: view, request: request)
+        #expect(presentation.state == .estimated)
+        #expect(presentation.title == "Consider: Sell Engine")
+        #expect(presentation.summaryReason == "Funds the stronger follow-up")
+        #expect(presentation.caveat == "Can't fully assess Quilligraphy Set.")
+        #expect(presentation.highlightLabel == "Consider")
+        let primary = try #require(presentation.primary)
+        #expect(primary.confidence == .low)
+        #expect(primary.targets == [.init(.board, 0)])
+        #expect(primary.steps == ["Sell Engine", "Buy Payoff", "Play Payoff"])
+        #expect(presentation.alternatives.map(\.rank) == [2])
+        #expect(presentation.topSuggestion?.gain == 3)
+        #expect(presentation.note == view.advice.note)
+        let compact = AdvisorPresentation(advice: view)
+        #expect(compact.title == presentation.title && compact.primary?.targets == primary.targets)
+        #expect(compact.caveat == presentation.caveat)
+    }
+
+    @Test("Estimated options retain uncertainty and retract immediately when stale, missing or replaced by a choice")
+    func estimatedBoundaries() throws {
+        let request = try Self.request()
+        var view = Self.view(request, status: .noStrongRecommendation, version: 9)
+        view.advice.suggestions[0].confidence = .low
+        view.advice.suggestions[0].limitations = nil
+        view.advice.note = nil
+        #expect(AdvisorPresentation(advice: view).caveat == "Combat outcome is uncertain; reassess after this action.")
+        var updating = view; updating.isUpdating = true
+        var failed = view; failed.failure = "Unavailable"
+        var thinking = view; thinking.advice.status = .thinking
+        var noData = view; noData.advice.status = .noData
+        var empty = view; empty.advice.suggestions = []
+        var choice = view
+        choice.advice.choice = AdvisorChoice(entityID: 22, cardID: "trinket", name: "Trinket", cost: 2,
+                                             reason: "Choose first", confidence: .low)
+        for changed in [updating, failed, thinking, noData, empty, choice] {
+            let presentation = AdvisorPresentation(advice: changed)
+            #expect(presentation.state != .estimated)
+            #expect(presentation.primary == nil)
+        }
+        var checked = view; checked.advice.status = .recommendation
+        checked.advice.suggestions[0].confidence = .medium
+        let recommended = AdvisorPresentation(advice: checked)
+        #expect(recommended.state == .recommendation && recommended.highlightLabel == "Next")
+        #expect(recommended.title == "Sell Engine")
     }
 
     @Test("Changed, unavailable and missing-data states retract previous actions and direction")

@@ -167,6 +167,7 @@ public enum RecruitEffects {
 
     static func triggersSupported(_ kind: RecruitStep.Kind, state: RecruitState, context: RecruitContext) -> Bool {
         for card in state.board {
+            if kind == .play, RecruitPlayedMinions.supported(card, context: context) { continue }
             let text = context.text(card.cardID)
             let t = text.lowercased()
             let relevant = (kind == .buy && (t.contains("after you buy") || t.contains("whenever you buy")))

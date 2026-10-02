@@ -5,7 +5,7 @@ import HSData
 /// The advisor's display contract. It formats existing decisions without ranking them again.
 public struct AdvisorPresentation: Sendable {
     public enum State: Equatable, Sendable {
-        case unavailable, updating, thinking, noData, tentative, recommendation, choice
+        case unavailable, updating, thinking, noData, tentative, estimated, recommendation, choice
     }
 
     public struct Suggestion: Sendable {
@@ -58,8 +58,9 @@ public struct AdvisorPresentation: Sendable {
     public let note: String?
     /// The first actionable trust caveat; the complete evaluation note remains in details.
     public let caveat: String?
-    /// Present only for a current recommendation. Tentative options belong in details.
+    /// A checked recommendation or an explicitly estimated current option.
     public let primary: Suggestion?
+    public var highlightLabel: String { state == .estimated ? "Consider" : "Next" }
     public let alternatives: [Suggestion]
     public let topSuggestion: AdvisorSuggestion?
     public let currentFits: [DetectedBuildView]
@@ -79,19 +80,26 @@ public struct AdvisorPresentation: Sendable {
         else if content.status == .thinking { state = .thinking }
         else if content.choice != nil { state = .choice }
         else if content.status == .noData { state = .noData }
+        else if advice.plan.version >= 9, content.suggestions.first?.confidence == .low { state = .estimated }
         else if content.status == .recommendation, !content.suggestions.isEmpty { state = .recommendation }
         else { state = .tentative }
 
-        let showsDetails = state == .recommendation || state == .tentative || state == .choice
+        let showsDetails = state == .recommendation || state == .estimated || state == .tentative || state == .choice
         note = showsDetails ? content.note : nil
         direction = showsDetails ? content.strategy : nil
         choice = state == .choice ? content.choice : nil
         let suggestions = showsDetails && choice == nil ? content.suggestions : []
         topSuggestion = suggestions.first
         let noteClauses = Self.meaningfulNoteClauses(content.note)
-        caveat = showsDetails ? suggestions.first?.limitations?.first ?? noteClauses.first : nil
+        if state == .estimated {
+            caveat = Self.coverageSummary(suggestions.first?.limitations ?? [])
+                ?? suggestions.first?.limitations?.first ?? noteClauses.first
+                ?? "Combat outcome is uncertain; reassess after this action."
+        } else {
+            caveat = showsDetails ? suggestions.first?.limitations?.first ?? noteClauses.first : nil
+        }
         let options = suggestions.map { Suggestion($0, name: name) }
-        primary = state == .recommendation ? options.first : nil
+        primary = state == .recommendation || state == .estimated ? options.first : nil
         alternatives = primary == nil ? options : Array(options.dropFirst())
 
         switch state {
@@ -114,6 +122,9 @@ public struct AdvisorPresentation: Sendable {
         case .recommendation:
             title = primary?.title ?? "Advisor"
             reason = primary?.reason ?? content.note ?? ""
+        case .estimated:
+            title = "Consider: " + (primary?.title ?? "the best available option")
+            reason = primary?.reason ?? "Ranks the known effects; unresolved effects may change this choice."
         case .choice:
             title = choice.map { "Consider \($0.name)" } ?? "Finish the current choice"
             reason = choice?.reason ?? content.note ?? "Reassess after choosing."

@@ -228,6 +228,21 @@ public enum RecruitEvaluation {
             let missing = search.limitations.filter { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }.sorted()
             if !missing.isEmpty { notes.append("Activate coverage missing: " + missing.joined(separator: ", ")) }
         }
+        if suggestions.isEmpty, (request.recruit?.evaluationVersion ?? 0) >= 9,
+           let context = request.recruit {
+            if results.isEmpty {
+                suggestions = RecruitFallback.suggestions(request, context: context, limitations: search.limitations)
+            } else {
+                // A heuristic must not bring back a move rejected by observed combat evidence.
+                var hold = AdvisorSuggestion(rank: 1, action: .keep, targets: [],
+                    reason: "Keep your board; the available combat checks have not established a better supported move",
+                    confidence: .low, odds: nil, gain: 0,
+                    terms: AdvisorTerms(combat: 0, lobby: nil, build: 0, economy: 0))
+                hold.limitations = search.limitations
+                suggestions = [hold]
+            }
+            if !suggestions.isEmpty { notes.append("Fallback estimate; reassess after each action") }
+        }
         if suggestions.isEmpty { notes.append("No supported plan clearly improves the position") }
         return Advice(status: suggestions.first?.confidence == .medium ? .recommendation : .noStrongRecommendation,
                       note: notes.joined(separator: " · "), suggestions: suggestions,

@@ -1,6 +1,28 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 8)
+## Live planner (evaluation version 9)
+
+Version 9 surfaces low-confidence options as **Consider** estimates with their first
+action, continuation and named uncertainty. Checked recommendations retain **Next**.
+When no plan survives and no combat results exist, `RecruitFallback` directly compares
+short buy/play and necessary single-sale continuations against keeping the board. It
+uses observed stats and the same known end-of-turn, trinket, gift, production and build
+valuation for both sides, including the opportunity cost of buying food for a Tavern
+consumer. It never sends these estimates to the combat simulator. Unknown board buy/play
+triggers can produce an explicitly limited body estimate only for a known minion with
+no mandatory play effect; unknown Battlecries, linked discards and unresolved triples
+are not treated as ordinary bodies. Hand room, board room, prices and funding remain
+real constraints. Sales must enable a named purchase or hand play. Unchecked leveling
+still requires more than 15 Health; fallback leveling never sells to fund the upgrade.
+When combat results exist but reject the available moves, fallback cannot resurrect
+those moves. Hold/refresh guidance replaces silence; refresh keeps purchase gold and
+cannot give up known projected consume value. These are heuristics, not win-rate claims.
+
+Ichoron's normal/golden exact definitions now grant a played Elemental or ALL-tribe
+minion the temporary/permanent shield attachment before Battlecry resolution; summoned
+tokens do not receive this play trigger. Pocket Cyclone's lesser/greater start-of-turn
+casts are already reflected in observed Tavern stats. Recognition applies no extra buff
+and does not remove unknown refresh or multiple-consume limitations.
 
 Version 8 adds normal/golden Fruit Vendor's known two/four Tavern Dish Bananas.
 The activation spends its observed gold cost once; later casts use the existing
@@ -58,7 +80,7 @@ fully checked supported plan can have medium confidence with a visible caveat th
 the ranking covers supported plans, even while other plans are still being evaluated;
 unfinished candidate checks retain low confidence. Missing alternative coverage without combat
 evidence, missing chosen-card definitions and unresolved chosen effects remain uncertain.
-Recorded versions 1–3 and 5–7 retain their original policies and fingerprints. Version 4 is
+Recorded versions 1–3 and 5–8 retain their original policies and fingerprints. Version 4 is
 reserved for the separate, uncommitted advisor-quality worktree.
 
 Replay the captured development cases locally without committing private data:

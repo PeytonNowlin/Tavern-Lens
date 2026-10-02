@@ -27,3 +27,9 @@ Use subsequent real-game diagnostics and UI checks to select the next improvemen
 ## Third stage
 
 Add known Fruit Vendor rewards and scoped Lovely Locket spell copies while preserving recorded policy 7. Keep random copies and unsupported reactions explicit; restore combat checks for unaffected actions. Use the live process sample to remove unnecessary Deity text matching when no Deity exists. Make MMR screen-reading permission accessible from its own window and confirm lobby readings sooner, while retaining three stable observations. Keep validation focused on the changed effect transitions before the next signed stage.
+
+## Stronger advice when exact plans are unavailable
+
+The user authorizes broad advisor redesign and new data sources to improve purchasing, selling, leveling and game outcomes. First address two concrete causes of silence: hidden tentative actions and an exact-effect gate that prevents ranking otherwise ordinary minions. Policy 9 shows explicit estimates in the main panel and adds short contextual fallback comparisons without fabricating combat odds or overriding negative combat evidence. It also resolves the observed Ichoron and Pocket Cyclone gaps.
+
+Validate legal funding/space, protection of engine value, trinket/consume opportunity cost, uncertain-trigger labeling, survival rejections, archived policy behavior and rendered estimated guidance. Replay captured no-option requests through the new evaluator; record whether a useful action or explicit hold decision replaces silence. Subsequent work must still evaluate broader effect coverage, strategic direction, source quality and real outcome improvement. Passing these checks establishes software behavior, not a measured increase in wins; the larger objective remains open until independent decision-quality and prospective outcome evidence supports it.

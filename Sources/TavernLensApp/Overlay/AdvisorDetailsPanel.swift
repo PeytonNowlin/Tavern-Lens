@@ -20,7 +20,9 @@ struct AdvisorDetailsPanel: View {
                     .tracking(0.7)
                     .foregroundStyle(AdvisorStyle.accent)
                 if let primary = presentation.primary {
-                    section("Why this action") { Text(primary.reason) }
+                    section(presentation.state == .estimated ? "Why consider this" : "Why this action") {
+                        Text(primary.reason)
+                    }
                     section("Sequence · reassess after each action") {
                         ForEach(Array(primary.steps.enumerated()), id: \.offset) { index, step in
                             HStack(alignment: .top, spacing: 6) {

@@ -21,7 +21,8 @@ struct AdvisorOverlays: View {
             detectedBuilds: game.builds?.detected ?? [], name: name)
         ZStack(alignment: .topLeading) {
             if let primary = presentation.primary {
-                AdvisorHighlights(targets: primary.targets, game: game, layout: layout)
+                AdvisorHighlights(targets: primary.targets, game: game, layout: layout,
+                                  label: presentation.highlightLabel)
             }
             let rect = collapsed ? layout.advisorHeader : layout.advisorPanel
             AdvisorPanel(presentation: presentation, collapsed: collapsed, detailsExpanded: detailsExpanded,
@@ -52,12 +53,13 @@ extension GameView {
     }
 }
 
-/// Only the first target of the current action gets a Next marker. Supporting targets
+/// Only the first target of the current action gets a Next or Consider marker. Supporting targets
 /// keep a quiet dashed outline, without implying numbered alternative ranks are plan steps.
 struct AdvisorHighlights: View {
     let targets: [AdvisorTarget]
     let game: GameView
     let layout: OverlayLayout
+    var label = "Next"
 
     var body: some View {
         let m = layout.constants.advisor, h = layout.height
@@ -72,12 +74,14 @@ struct AdvisorHighlights: View {
                     .offset(x: ring.minX, y: ring.minY)
                 if index == 0 {
                     let badge = layout.advisorNextBadge(element)
-                    Text("Next")
+                    let width = label == "Consider" ? max(badge.width, max(64, badge.height * 3)) : badge.width
+                    Text(label)
                         .font(.system(size: max(12, badge.height * 0.48), weight: .semibold))
+                        .lineLimit(1)
                         .foregroundStyle(.black.opacity(0.9))
-                        .frame(width: badge.width, height: badge.height)
+                        .frame(width: width, height: badge.height)
                         .background(AdvisorStyle.accent, in: Capsule())
-                        .offset(x: badge.minX, y: badge.minY)
+                        .offset(x: badge.maxX - width, y: badge.minY)
                 }
             }
         }
@@ -158,7 +162,8 @@ struct AdvisorPanel: View {
     private func summary(showsContext: Bool, reasonLines: Int) -> some View {
         VStack(alignment: .leading, spacing: 5 * scale) {
             HStack {
-                Text(presentation.primary == nil ? "ADVISOR" : "NEXT ACTION")
+                Text(presentation.state == .estimated ? "ESTIMATED OPTION"
+                    : presentation.primary == nil ? "ADVISOR" : "NEXT ACTION")
                     .tracking(0.9)
                     .foregroundStyle(AdvisorStyle.accent)
                 Spacer(minLength: 0)
