@@ -160,7 +160,8 @@ public enum BattleInputBuilder {
             secrets: secrets,
             trinkets: mechanics.trinkets.map {
                 BattleTrinket(cardId: $0.cardID, entityId: $0.entityID, scriptDataNum1: $0.scriptData[1],
-                              scriptDataNum2: $0.scriptData[2], scriptDataNum6: $0.scriptData[6])
+                              scriptDataNum2: $0.scriptData[2], scriptDataNum6: $0.scriptData[6],
+                              tags: store[$0.entityID]?.int(GameTag.id(32)).map { ["32": $0] })
             },
             globalInfo: globalInfo(mechanics)
         )

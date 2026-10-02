@@ -67,7 +67,7 @@ final class LiveTrackingModel {
     static private(set) var engineSetup = EngineSetup()
 
     /// Called on the main actor when a game ends (log housekeeping runs then).
-    @ObservationIgnored var onGameEnded: (@MainActor () -> Void)?
+    @ObservationIgnored var onGameEnded: (@MainActor (Int?) -> Void)?
 
     @ObservationIgnored private var setup = LogSetup(locations: .standard)
     @ObservationIgnored private var pipeline: LivePipeline?
@@ -166,10 +166,10 @@ final class LiveTrackingModel {
     private func startFollowing(_ client: RunningClient) {
         generation += 1
         let token = generation
-        let pipeline = LivePipeline(records: .standard, onGameEnded: { [weak self] _ in
+        let pipeline = LivePipeline(records: .standard, onGameEnded: { [weak self] record in
             Task { @MainActor in
                 guard let self, self.generation == token else { return }
-                self.onGameEnded?()
+                self.onGameEnded?(record.gameSeed)
             }
         }, onCombatRequest: { [weak self] request in
             Task { @MainActor in

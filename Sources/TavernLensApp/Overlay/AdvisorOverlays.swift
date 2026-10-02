@@ -17,7 +17,7 @@ struct AdvisorOverlays: View {
     var toggleDetails: () -> Void = {}
 
     var body: some View {
-        let presentation = AdvisorPresentation(advice: advice, request: request,
+        let presentation = AdvisorPresentation(advice: advice, request: detailsExpanded && !collapsed ? request : nil,
             detectedBuilds: game.builds?.detected ?? [], name: name)
         ZStack(alignment: .topLeading) {
             if let primary = presentation.primary {

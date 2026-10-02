@@ -1,6 +1,21 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 6)
+## Live planner (evaluation version 7)
+
+Version 7 adds normal/golden Suspicious Prisonguard's targeted +3/+3 and +6/+6
+Activate buffs and normal Decoy Conjurer's steal when the Tavern has one uniquely
+highest-Attack minion. Both use observed readiness and price, spend gold, and become
+unavailable for the remainder of the proposed plan. Decoy acquires the card without
+firing a purchase or Battlecry; shared triple resolution still applies. Highest-Attack
+ties, golden Decoy, unverified Living Prison pending state, other non-discard Activate
+families, and double-trigger gifts remain explicitly named coverage gaps.
+
+Deathly Phylactery now carries the observed `TRIGGER_VISUAL` flag (tag 32) into
+combat input, including consumed zero. Its extra Deathrattle is owned by the pinned
+simulator. Policy 7 permits its recruit plans only with the expected text and an
+observed flag. Manipulator Portrait's one-time reward is already represented in
+hand; allowing that passive trinket does not model Faceless Manipulator's copy
+Battlecry. Older inputs without trinket tags keep their original serialized form.
 
 Version 6 retains the version-5 survival and confidence policies and adds observed
 discard-engine effects. Lesser Hammer of Twilight updates the discard counter,
@@ -29,7 +44,7 @@ fully checked supported plan can have medium confidence with a visible caveat th
 the ranking covers supported plans, even while other plans are still being evaluated;
 unfinished candidate checks retain low confidence. Missing alternative coverage without combat
 evidence, missing chosen-card definitions and unresolved chosen effects remain uncertain.
-Recorded versions 1–3 and 5 retain their original policies and fingerprints. Version 4 is
+Recorded versions 1–3, 5 and 6 retain their original policies and fingerprints. Version 4 is
 reserved for the separate, uncommitted advisor-quality worktree.
 
 Replay the captured development cases locally without committing private data:
@@ -282,7 +297,7 @@ transitions use the observed `INTERACTABLE_OBJECT` (4089), `INTERACTABLE_OBJECT_
 per-plan used set. Missing availability in older archives does not imply ready. Brain Rotter and
 Abyssal Envoy can discard a chosen card; Sludge casts twice, each Sludge Portrait adds one copy, and
 an Envoy random reward stops search. Portrait triggers precede the activator reward, including hand
-capacity. Efficiency-modified activations and other Activate effects remain explicit coverage gaps.
+capacity. Policy 7 adds the targeted Prisonguard and unique-highest Decoy effects described above; other Activate effects remain explicit coverage gaps.
 
 Dark Gift play-card buffs, discard counters, Tavern-spell counters and battlecry counters update the
 candidate state and combat global counters; observed historical bonuses are not reapplied. Attached combat gifts contribute

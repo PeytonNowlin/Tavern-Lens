@@ -37,7 +37,7 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3, lobbySweepSimulations: 30, version: 6
+        lobbyGroups: 3, lobbySweepSimulations: 30, version: 7
     )
 
     public init(

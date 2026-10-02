@@ -183,6 +183,10 @@ public enum RecruitEvaluation {
                     let context = request.recruit, let explanation = RecruitHeroPowers.explanation(id, context: context) {
                 reason = explanation
             }
+            else if case .activateMinion(_, _, _, let target, _) = first.action {
+                reason = target.kind == .shop ? "Uses Activate to take the highest-Attack Tavern minion"
+                    : "Uses Activate to strengthen a minion with the gold available"
+            }
             else if first.kind == .activate { reason = "Uses your discard engine and its attached rewards" }
             else if first.kind == .roll { reason = "Keep enough gold to buy; reassess after the refresh" }
             else if first.kind == .freeze { reason = "Preserves an unaffordable engine card for next turn" }
@@ -215,6 +219,11 @@ public enum RecruitEvaluation {
         if !search.limitations.isEmpty {
             notes.append(usesLogPolicy ? "Some alternative actions are unmodelled; ranking covers supported plans"
                 : "Unmodelled effects; no confident recommendation")
+        }
+        if (request.recruit?.evaluationVersion ?? 0) >= 7 {
+            let prefix = "Unmodelled Activate: "
+            let missing = search.limitations.filter { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }.sorted()
+            if !missing.isEmpty { notes.append("Activate coverage missing: " + missing.joined(separator: ", ")) }
         }
         if suggestions.isEmpty { notes.append("No supported plan clearly improves the position") }
         return Advice(status: suggestions.first?.confidence == .medium ? .recommendation : .noStrongRecommendation,

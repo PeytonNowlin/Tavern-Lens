@@ -178,59 +178,63 @@ struct NextOpponentPreview: View {
     var oddsMetrics = OddsPreviewMetrics()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4 * scale) {
-            Text("Next opponent")
-                .font(.system(size: 9.5 * scale, weight: .semibold))
+        let m = NextOpponentPreviewMetrics(scale: scale)
+        VStack(alignment: .leading, spacing: m.rowSpacing) {
+            Text("Next · \(OpponentText.heroName(entry, cards: cards))")
+                .font(.system(size: m.headerFontSize, weight: .semibold))
                 .foregroundStyle(Palette.next)
-            Text(OpponentText.heroName(entry, cards: cards))
-                .font(.system(size: 12.5 * scale, weight: .semibold))
-            HStack(spacing: 8 * scale) {
-                StatLabel(symbol: "star.fill", tint: Palette.tier, text: entry.tier.map(String.init) ?? "–",
-                          scale: scale * 0.85)
-                StatLabel(symbol: "heart.fill", tint: Palette.health, text: OpponentText.health(entry),
-                          scale: scale * 0.85)
-                if entry.hero.triples > 0 {
-                    StatLabel(symbol: "trophy.fill", tint: Palette.triple, text: "\(entry.hero.triples)",
-                              scale: scale * 0.85)
-                }
+                .frame(height: m.headerHeight, alignment: .leading)
+            HStack(spacing: m.cardSpacing) {
+                Text("T\(entry.tier.map(String.init) ?? "–")").foregroundStyle(Palette.tier)
+                Text("\(OpponentText.health(entry))HP").foregroundStyle(Palette.health)
+                Spacer(minLength: 0)
+                Text(OpponentText.previewAge(entry.lastSeenBoard, currentTurn: currentTurn))
+                    .foregroundStyle(isStale ? Color.orange : Color.secondary)
             }
-            Divider().opacity(0.5)
-            if let board = entry.lastSeenBoard {
-                Text(OpponentText.seen(board, currentTurn: currentTurn))
-                    .font(.system(size: 9.5 * scale))
-                    .foregroundStyle(.secondary)
-                if let likely = board.likelyBuild {
-                    Text(likely.name)
-                        .font(.system(size: 9.5 * scale, weight: .semibold))
-                        .foregroundStyle(Palette.build)
-                }
-                if board.cards.isEmpty {
-                    Text("Empty board").font(.system(size: 10.5 * scale)).foregroundStyle(.secondary)
-                }
-                ForEach(Array(board.cards.enumerated()), id: \.offset) { _, card in
-                    HStack(spacing: 4 * scale) {
-                        Text(OpponentText.cardName(card, cards: cards))
-                            .foregroundStyle(card.golden ? Palette.golden : .primary)
-                            .truncationMode(.tail)
-                        Spacer(minLength: 2 * scale)
-                        Text(OpponentText.stats(card)).foregroundStyle(.secondary)
+            .font(.system(size: m.bodyFontSize, weight: .medium))
+            .frame(height: m.rowHeight)
+
+            VStack(alignment: .leading, spacing: 0) {
+                if let board = entry.lastSeenBoard {
+                    if board.cards.isEmpty {
+                        Text("Empty board").foregroundStyle(.secondary)
+                            .frame(height: m.rowHeight)
                     }
-                    .font(.system(size: 10.5 * scale))
+                    ForEach(Array(board.cards.prefix(7).enumerated()), id: \.offset) { _, card in
+                        HStack(spacing: m.cardSpacing) {
+                            Text(OpponentText.cardName(card, cards: cards))
+                                .foregroundStyle(card.golden ? Palette.golden : .primary)
+                                .truncationMode(.tail)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text(OpponentText.stats(card))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .layoutPriority(1)
+                        }
+                        .frame(height: m.rowHeight)
+                    }
+                } else {
+                    Text("Not seen yet").foregroundStyle(.secondary)
+                        .frame(height: m.rowHeight)
                 }
-            } else {
-                Text("Not seen yet")
-                    .font(.system(size: 10.5 * scale, weight: .medium))
-                    .foregroundStyle(.secondary)
             }
-            Divider().opacity(0.5)
+            .font(.system(size: m.bodyFontSize))
+            .frame(height: 7 * m.rowHeight, alignment: .top)
+
+            Divider().opacity(0.5).frame(height: 1)
             PreviewOdds(odds: odds, seen: entry.lastSeenBoard != nil, scale: scale, metrics: oddsMetrics)
+                .frame(height: oddsMetrics.height * scale, alignment: .top)
         }
         .lineLimit(1)
         .monospacedDigit()
-        .padding(.horizontal, 9 * scale)
-        .padding(.vertical, 7 * scale)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, m.padding.width)
+        .padding(.vertical, m.padding.height)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .panelBackground(scale: scale)
+    }
+
+    private var isStale: Bool {
+        entry.lastSeenBoard.map { currentTurn - $0.bgTurn >= AdvisorRequest.staleBoardTurns } ?? false
     }
 }
 
@@ -338,6 +342,12 @@ enum OpponentText {
         default: "\(ago) turns ago"
         }
         return "Seen turn \(board.bgTurn) (\(when))"
+    }
+
+    static func previewAge(_ board: LastSeenBoardView?, currentTurn: Int) -> String {
+        guard let board else { return "Unseen" }
+        let age = max(0, currentTurn - board.bgTurn)
+        return age == 0 ? "This turn" : "\(age)t old"
     }
 
     static func ordinal(_ n: Int) -> String {

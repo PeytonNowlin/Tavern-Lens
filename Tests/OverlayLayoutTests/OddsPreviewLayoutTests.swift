@@ -13,6 +13,8 @@ struct OddsPreviewLayoutTests {
         let odds = l.nextOpponentOdds
         let preview = l.nextOpponentPreview
         #expect(preview.contains(odds))
+        expectNear(preview.width, 148 * l.panelScale, 1e-9, "existing preview width")
+        expectNear(preview.height, 228 * l.panelScale, 1e-9, "existing preview height")
         expectNear(odds.maxY, preview.maxY, 1e-9, "at the preview's foot")
         expectNear(odds.width, preview.width, 1e-9, "the preview's width")
         expectNear(preview.height, (l.constants.nextOpponentPreviewHeight + l.constants.oddsPreview.height) * l.panelScale,
@@ -29,39 +31,76 @@ struct OddsPreviewLayoutTests {
         #expect(l.tribesPanel.minY > preview.maxY)
     }
 
-    /// The preview's own padding and row spacing (`NextOpponentPreview`).
-    static let previewPadding: CGFloat = 9
-    static let previewSpacing: CGFloat = 4
-
-    static func contentSize(_ m: OddsPreviewMetrics, scale s: CGFloat) -> CGSize {
-        let percent = m.percentFontSize * s
-        let footnote = m.footnoteFontSize * s
-        // Three equal columns, each "L 100%".
-        let column = HUDFitTests.text("L", percent, .semibold) + 2 * s + HUDFitTests.text("100%", percent, .semibold)
-        let values = 3 * column + 2 * m.columnSpacing * s
-        let foot = HUDFitTests.text("Lethal 100%", footnote, .semibold) + m.columnSpacing * s
-            + HUDFitTests.text("8.0k…", footnote, .regular)
-        let noData = HUDFitTests.text("No data: not fought yet", percent, .medium)
-        let width = max(values, foot, noData) + 2 * previewPadding * s
-
-        let above = 2 * previewSpacing * s + 1  // the divider and the spacing around it
-        let withOdds = HUDFitTests.lineHeight(percent, .semibold) + m.barHeight * s
-            + HUDFitTests.lineHeight(footnote, .semibold) + 2 * m.rowSpacing * s
-        let withoutData = HUDFitTests.lineHeight(footnote, .medium) + HUDFitTests.lineHeight(percent, .medium)
-            + m.rowSpacing * s
-        return CGSize(width: width, height: above + max(withOdds, withoutData))
-    }
-
-    @Test("Win / tie / loss, the footnote and \"no data\" fit, at every reference frame and at the scale limits")
-    func fits() {
-        let layouts = ReferenceFrame.all.map(\.layout) + [600.0, 3000.0].map {
+    static var layouts: [OverlayLayout] {
+        ReferenceFrame.all.map(\.layout) + [600.0, 3000.0].map {
             OverlayLayout(contentSize: CGSize(width: $0 * 16 / 9, height: $0))!
         }
-        for l in layouts {
+    }
+
+    static func contentSize(_ m: OddsPreviewMetrics, scale s: CGFloat) -> CGSize {
+        let percent = m.percentSize(at: s)
+        let footnote = m.footnoteSize(at: s)
+        // Labels sit above values, so even all three widest values can fit at the text floor.
+        let column = ["100%", ">99%", "<1%"].map { HUDFitTests.text($0, percent, .semibold) }.max()!
+        let values = 3 * column + 2 * m.columnSpacing * s
+        let foot = ["Lethal 100%", "Lethal >99%", "Take 99.9", "Deal 99.9"]
+            .map { HUDFitTests.text($0, footnote, .semibold) }.max()!
+        let titles = ["No odds", "Board too old", "Odds unavailable", "Updating…"]
+            .map { HUDFitTests.text($0, percent, .semibold) }.max()!
+        let details = ["Not fought yet", "No odds shown", "Calculation failed", "Board changed", "Calculating…"]
+            .map { HUDFitTests.text($0, footnote, .regular) }.max()!
+        let padding = NextOpponentPreviewMetrics(scale: s).padding.width
+        let width = max(values, foot, titles, details) + 2 * padding
+        let withOdds = 3 * m.lineHeight(at: s) + m.barHeight * s + 2 * m.rowSpacing * s
+        let withoutData = 2 * m.lineHeight(at: s) + m.rowSpacing * s
+        return CGSize(width: width, height: max(withOdds, withoutData))
+    }
+
+    @Test("Readable odds and every unavailable-data state fit at all reference scales")
+    func fits() {
+        for l in Self.layouts {
             let needed = Self.contentSize(l.constants.oddsPreview, scale: l.panelScale)
             #expect(needed.width <= l.nextOpponentOdds.width, "needs \(needed.width) pt wide, has \(l.nextOpponentOdds.width)")
             #expect(needed.height <= l.nextOpponentOdds.height,
                     "needs \(needed.height) pt tall, has \(l.nextOpponentOdds.height)")
+        }
+    }
+
+    @Test("Seven minions, header, age and readable odds fit without growing the panel")
+    func wholePreviewFits() {
+        for l in Self.layouts {
+            let s = l.panelScale
+            let m = NextOpponentPreviewMetrics(scale: s)
+            // Header, metadata, grouped board, divider and reserved odds: four outer gaps.
+            let height = m.headerHeight + 8 * m.rowHeight + 1
+                + l.constants.oddsPreview.height * s + 4 * m.rowSpacing + 2 * m.padding.height
+            #expect(height <= l.nextOpponentPreview.height,
+                    "seven-card preview needs \(height) pt, has \(l.nextOpponentPreview.height)")
+            let width = l.nextOpponentPreview.width - 2 * m.padding.width
+            let metadata = HUDFitTests.text("T6", m.bodyFontSize, .medium)
+                + HUDFitTests.text("99HP", m.bodyFontSize, .medium)
+                + ["This turn", "99t old", "Unseen"].map { HUDFitTests.text($0, m.bodyFontSize, .medium) }.max()!
+                + 3 * m.cardSpacing  // includes the flexible space
+            #expect(metadata <= width, "metadata needs \(metadata) pt, has \(width)")
+            // Names yield first. Five-digit stats still leave room for a visibly truncated name.
+            let statsAndName = HUDFitTests.text("99999/99999", m.bodyFontSize, .regular)
+                + m.cardSpacing + HUDFitTests.text("M…", m.bodyFontSize, .regular)
+            #expect(statsAndName <= width)
+        }
+    }
+
+    @Test("Text retains its minimum size and each reserved row fits its system font")
+    func typographyFitsRows() {
+        // Include intermediate scales where a rounded font line height can change.
+        for s in stride(from: CGFloat(0.8), through: 1.3, by: 0.01) {
+            let m = NextOpponentPreviewMetrics(scale: s)
+            let odds = OddsPreviewMetrics()
+            #expect(m.bodyFontSize >= 11 && m.headerFontSize >= 12)
+            #expect(odds.percentSize(at: s) >= 11 && odds.footnoteSize(at: s) >= 11)
+            #expect(HUDFitTests.lineHeight(m.bodyFontSize, .medium) <= m.rowHeight)
+            #expect(HUDFitTests.lineHeight(m.headerFontSize, .semibold) <= m.headerHeight)
+            #expect(HUDFitTests.lineHeight(odds.percentSize(at: s), .semibold) <= odds.lineHeight(at: s))
+            #expect(HUDFitTests.lineHeight(odds.footnoteSize(at: s), .regular) <= odds.lineHeight(at: s))
         }
     }
 }

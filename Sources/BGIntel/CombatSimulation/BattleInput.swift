@@ -171,6 +171,8 @@ public struct BattleTrinket: Codable, Hashable, Sendable {
     public var scriptDataNum1: Int
     public var scriptDataNum2: Int
     public var scriptDataNum6: Int
+    /// Observed simulator counters, including TRIGGER_VISUAL (32). Missing in older inputs.
+    public var tags: [String: Int]? = nil
 }
 
 /// `BgsBattleOptions`. The runner may override the budget fields per request.

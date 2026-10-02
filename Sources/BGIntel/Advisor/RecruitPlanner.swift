@@ -74,6 +74,10 @@ public enum RecruitPlanner {
             guard let availability = context.activations?[card.entity.entityId], availability.ready,
                   availability.cost <= state.gold, !state.usedActivations.contains(card.entity.entityId),
                   RecruitMechanics.activationSupported(card, context) else { continue }
+            if let supported = RecruitActivations.actions(card, index: i, state: state, context: context) {
+                actions += supported
+                continue
+            }
             for (h, discarded) in state.hand.enumerated() where !discarded.entity.locked {
                 let action = AdvisorAction.activate(board: i, cardID: card.cardID, cost: availability.cost,
                     discard: h, discardedCardID: discarded.cardID)

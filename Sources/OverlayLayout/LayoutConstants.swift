@@ -261,7 +261,7 @@ extension LayoutConstants {
         hudInset: 8,
         hudMetrics: HUDMetrics(),
         opponentPanelSize: CGSize(width: 760, height: 160),
-        nextOpponentPreviewHeight: 184,
+        nextOpponentPreviewHeight: 170,
         panelGap: 6
     )
 }

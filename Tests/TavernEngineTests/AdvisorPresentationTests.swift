@@ -202,6 +202,27 @@ struct AdvisorPresentationTests {
         #expect(!AdvisorPresentation(advice: archived, request: request).requirements.isEmpty)
     }
 
+    @Test("Hidden requirements do not change the compact summary, highlights or direction",
+          arguments: [Advice.Status.recommendation, .noStrongRecommendation])
+    func compactWithoutRequest(status: Advice.Status) throws {
+        let request = try Self.request(), view = Self.view(request, status: status)
+        let compact = AdvisorPresentation(advice: view, name: { $0.uppercased() })
+        let expanded = AdvisorPresentation(advice: view, request: request, name: { $0.uppercased() })
+        #expect(compact.state == expanded.state && compact.title == expanded.title)
+        #expect(compact.reason == expanded.reason && compact.summaryReason == expanded.summaryReason)
+        #expect(compact.note == expanded.note && compact.caveat == expanded.caveat)
+        #expect(compact.primary?.title == expanded.primary?.title)
+        #expect(compact.primary?.targets == expanded.primary?.targets)
+        #expect(compact.primary?.confidence == expanded.primary?.confidence)
+        #expect(compact.topSuggestion == expanded.topSuggestion)
+        #expect(compact.direction == expanded.direction && compact.choice == expanded.choice)
+        #expect(compact.alternatives.map(\.title) == expanded.alternatives.map(\.title))
+        #expect(compact.requirements.isEmpty)
+        #expect(expanded.requirements.map(\.state) == [.owned, .owned, .available, .required, .unverified])
+        var changed = request; changed.gold += 1
+        #expect(AdvisorPresentation(advice: view, request: changed).requirements.isEmpty)
+    }
+
     @Test("Current detector fits remain distinct from a proposed direction")
     func currentFits() throws {
         let request = try Self.request()

@@ -66,6 +66,7 @@ enum RecruitMechanics {
     }
 
     static func activationSupported(_ card: AdvisorCard, _ context: RecruitContext) -> Bool {
+        if RecruitActivations.supported(card, context: context) { return true }
         guard let body = activationBody(card, context),
               !gifts(card, context).contains("This minion's Activate triggers twice.") else { return false }
         if body == "Discard a card to get a random Tavern spell." { return true }
@@ -77,6 +78,7 @@ enum RecruitMechanics {
     }
 
     static func activate(_ step: RecruitStep, state: inout RecruitState, context: RecruitContext) -> Bool {
+        if let handled = RecruitActivations.apply(step, state: &state, context: context) { return handled }
         guard let i = state.board.firstIndex(where: { $0.entity.entityId == step.entityID }),
               let availability = context.activations?[step.entityID], availability.ready,
               !state.usedActivations.contains(step.entityID), availability.cost <= state.gold,
@@ -158,10 +160,14 @@ enum RecruitMechanics {
         var result = RecruitDiscardEffects.hammerValidation(state, context: context)
         for t in state.input.playerBoard.player.trinkets where !trinketSupported(t.cardId, context: context) {
             if projectionOnly, state.steps.allSatisfy({ $0.kind == .move }),
+               !(t.cardId == "BG30_MagicItem_700" && (context.evaluationVersion ?? 0) >= 7),
                !context.text(t.cardId).isEmpty, !context.text(t.cardId).lowercased().contains("end of") { continue }
             result.append("Unmodelled trinket: \(context.definitions[t.cardId]?.name ?? t.cardId)")
         }
         for card in state.board {
+            if !projectionOnly, let limitation = RecruitActivations.limitation(card, state: state, context: context) {
+                result.append(limitation)
+            }
             for enchantment in card.entity.enchantments where enchantment.cardId.hasPrefix("BG36_MidGameEffect_") {
                 if let supported = RecruitDiscardEffects.supportsGift(enchantment, state: state, context: context) {
                     if !supported { result.append("Unmodelled Dark Gift: \(context.definitions[enchantment.cardId]?.name ?? enchantment.cardId)") }

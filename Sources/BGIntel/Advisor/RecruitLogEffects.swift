@@ -8,6 +8,18 @@ enum RecruitLogEffects {
     static func supportsTrinket(_ id: String, context: RecruitContext) -> Bool? {
         guard enabled(context) else { return nil }
         switch id {
+        case "BG30_MagicItem_700":
+            // The simulator consumes tags[32], not scriptDataNum1. Older recordings lack
+            // that observation; never assume their first Deathrattle is still available.
+            return (context.evaluationVersion ?? 0) >= 7
+                && context.text(id) == "Discover a Deathrattle minion. Your first Deathrattle each combat triggers an extra time."
+                && context.input.playerBoard.player.trinkets.filter { $0.cardId == id }.allSatisfy {
+                    $0.tags?["32"] == 0 || $0.tags?["32"] == 1
+                }
+        case "BG30_MagicItem_876":
+            // Its one-time reward is already observed in hand. This does not model the
+            // separate Faceless Manipulator copy Battlecry or grant another copy.
+            return (context.evaluationVersion ?? 0) >= 7 && context.text(id) == "Get a Faceless Manipulator."
         case "BG32_MagicItem_363":
             // faerie-dragon-scale.js owns shield grants and the remaining-use counter.
             return context.text(id) == "Whenever a friendly Dragon attacks, give it Divine Shield. (3 times per combat.)"

@@ -32,12 +32,19 @@ struct TavernLensApp: App {
         }
         .defaultLaunchBehavior(.suppressed)
         .windowResizability(.contentSize)
+
+        Window("Tavern Lens MMR History", id: WindowID.rating) {
+            RatingHistoryWindow(model: appDelegate.ratingHistory, readingStatus: appDelegate.ratingReader.statusText)
+        }
+        .defaultLaunchBehavior(.suppressed)
+        .defaultSize(width: 780, height: 640)
     }
 }
 
 enum WindowID {
     static let debug = "debug"
     static let settings = "settings"
+    static let rating = "rating"
 }
 
 @MainActor
@@ -49,6 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let housekeeping: HousekeepingModel
     let feedback: FeedbackController
     let screenReader: HeroPickScreenReader
+    let ratingHistory = RatingHistoryModel()
+    let ratingReader: RatingScreenReader
 
     override init() {
         live = LiveTrackingModel()
@@ -56,10 +65,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         housekeeping = HousekeepingModel(settings: retention, live: live)
         feedback = FeedbackController(live: live, overlay: overlay)
         screenReader = HeroPickScreenReader(live: live, overlay: overlay)
+        ratingReader = RatingScreenReader(live: live, history: ratingHistory)
         super.init()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--render-rating-preview") {
+            Self.renderRatingPreview(CommandLine.arguments)
+            return
+        }
+        if CommandLine.arguments.contains("--render-opponent-preview") {
+            Self.renderOpponentPreview(CommandLine.arguments)
+            return
+        }
         if CommandLine.arguments.contains("--render-advisor-preview") || CommandLine.arguments.contains("--show-advisor-preview") {
             Self.renderAdvisorPreview(CommandLine.arguments)
             return
@@ -106,8 +124,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.start()
         feedback.start()
         screenReader.start()
+        ratingReader.start()
+        Task { await ratingHistory.refresh() }
         // Log retention: a pass now, and one after every game.
-        live.onGameEnded = { [housekeeping] in housekeeping.run() }
+        live.onGameEnded = { [housekeeping, ratingReader] seed in
+            housekeeping.run()
+            ratingReader.gameEnded(seed: seed)
+        }
         housekeeping.run()
     }
 
@@ -204,6 +227,10 @@ struct MenuBarContent: View {
                 .help(failure)
         }
         Divider()
+        Button("MMR History…") {
+            openWindow(id: WindowID.rating)
+            NSApp.activate()
+        }
         if debugReplay.isReplaying || debugReplay.result != nil {
             Text(debugReplay.menuStatus)
         }

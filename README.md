@@ -21,6 +21,7 @@ The recruit advisor also rates offered trinkets using current-board fit and fres
 | Recruiting | Detected builds, matching shop cards, build tips, and combat estimates against the next opponent's last-seen board. |
 | Combat | Win, tie, and loss probabilities, expected damage, damage ranges, and lethal risk. Results refine as simulations run. |
 | Action advice | One next action with its reason, confidence and evidence caveat, plus a “Next” marker on its target. “Why & plan” opens the sequence, limitations and alternatives. Close or uncertain choices show “no strong recommendation.” |
+| MMR history | A separate menu-bar window with observed rating history, a dated chart, latest change, and explicit entry/correction controls. Lobby screen readings require existing Screen Recording access and a clear stable rating; placements never become MMR. |
 | Debugging | Log replay, an inspectable state timeline, saved game records, and feedback bookmarks that capture what the app knew and recommended. |
 
 The app lives in the menu bar. Its overlay follows Hearthstone in windowed and native fullscreen modes, hides when neither Hearthstone nor Tavern Lens is frontmost, and passes clicks through except over its own interactive controls.
@@ -112,7 +113,16 @@ While playing, prepare an update as a ZIP with limited build parallelism:
 nice -n 15 scripts/bundle-app.sh --stage --jobs 2
 ```
 
-This writes `build/Tavern Lens.zip` after verifying its signature and archive integrity. Temporary app bundles are removed when the script exits; the running app and `/Applications` shortcut stay in place. The ZIP is not opened or installed automatically. `--stage` cannot be combined with `--install`; `--output DIR` changes where the ZIP is saved. When ready to switch, quit Tavern Lens and run the usual `scripts/bundle-app.sh --install` command, then reopen `/Applications/Tavern Lens.app`.
+This writes `build/Tavern Lens.zip` after verifying its signature and archive integrity. Temporary app bundles are removed when the script exits; the running app and `/Applications` shortcut stay in place. The ZIP is not opened or installed automatically. `--stage` cannot be combined with `--install`; `--output DIR` changes where the ZIP is saved.
+
+Between games, quit Tavern Lens and promote that prepared update without rebuilding:
+
+```bash
+scripts/install-staged-app.sh
+open "/Applications/Tavern Lens.app"
+```
+
+The installer verifies the archive and app identity, saves `build/Tavern Lens.previous.zip`, and atomically replaces this checkout's existing `build/Tavern Lens.app`. The `/Applications` shortcut continues to reach the same location. It refuses a running app, a mismatched installation, or unavailable atomic replacement; an installation error restores the old bundle. It never quits or launches the app automatically. To roll back after quitting, run `scripts/install-staged-app.sh --archive "build/Tavern Lens.previous.zip"`. The `TAVERN_APPLICATIONS_LINK` inspection override is for the packaging tests only.
 
 For stable permission grants across rebuilds, the script looks for a local code-signing identity named **Tavern Lens Local**. Without one, it falls back to ad-hoc signing, which can cause macOS to forget permissions after a rebuild. Run `scripts/bundle-app.sh --help` for the one-time certificate setup or use `TAVERN_SIGN_IDENTITY` to select an existing identity.
 
