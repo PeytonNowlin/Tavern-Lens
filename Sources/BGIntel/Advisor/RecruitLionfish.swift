@@ -4,7 +4,7 @@ enum RecruitLionfish {
     static let normal = "BG36_201", golden = "BG36_201_G"
 
     static func recognized(_ card: AdvisorCard, context: RecruitContext) -> Bool {
-        guard (context.evaluationVersion ?? 0) >= 11, card.isMinion,
+        guard context.policy.has(.lionfishActivate), card.isMinion,
               context.definitions[card.cardID]?.type == "MINION",
               !RecruitMechanics.gifts(card, context).contains("This minion's Activate triggers twice.") else { return false }
         switch (card.cardID, context.text(card.cardID)) {

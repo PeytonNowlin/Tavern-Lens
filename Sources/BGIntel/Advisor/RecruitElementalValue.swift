@@ -4,7 +4,7 @@ import Foundation
 /// A tribe by itself has no value: an observed source must have a compatible recipient.
 enum RecruitElementalValue {
     static func production(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double? {
-        guard (context.evaluationVersion ?? 0) >= 10 else { return nil }
+        guard context.policy.has(.elementalEngineValue) else { return nil }
         switch card.cardID {
         case "BG34_858", "BG34_858_G":
             let reward = card.cardID == "BG34_858_G" ? "two Easterly Winds" : "Easterly Winds"

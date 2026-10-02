@@ -7,7 +7,7 @@ enum RecruitSpellCopies {
     static let locketText = "After you cast a spell on a friendly minion, this casts it on another friendly minion."
 
     static func supportsLocket(_ id: String, context: RecruitContext) -> Bool {
-        (context.evaluationVersion ?? 0) >= 8 && id == locketID && context.text(id) == locketText
+        context.policy.has(.spellCopies) && id == locketID && context.text(id) == locketText
     }
 
     static func afterPlayerSpell(_ step: RecruitStep, before: RecruitState, state: inout RecruitState,

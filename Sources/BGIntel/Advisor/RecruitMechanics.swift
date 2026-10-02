@@ -160,7 +160,7 @@ enum RecruitMechanics {
         var result = RecruitDiscardEffects.hammerValidation(state, context: context)
         for t in state.input.playerBoard.player.trinkets where !trinketSupported(t.cardId, context: context) {
             if projectionOnly, state.steps.allSatisfy({ $0.kind == .move }),
-               !(t.cardId == "BG30_MagicItem_700" && (context.evaluationVersion ?? 0) >= 7),
+               !(t.cardId == "BG30_MagicItem_700" && context.policy.has(.observedTrinketState)),
                !context.text(t.cardId).isEmpty, !context.text(t.cardId).lowercased().contains("end of") { continue }
             result.append("Unmodelled trinket: \(context.definitions[t.cardId]?.name ?? t.cardId)")
         }

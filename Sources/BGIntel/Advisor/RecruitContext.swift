@@ -198,7 +198,7 @@ public struct RecruitState: Hashable, Sendable {
     public init(request: AdvisorRequest, context: RecruitContext) {
         board = request.board; hand = request.hand; shop = request.shop; gold = request.gold; tier = request.tier
         levelCost = request.levelCost; rollCost = request.rollCost; frozen = request.shopFrozen; input = context.input
-        if (context.evaluationVersion ?? 0) >= 11 {
+        if context.policy.has(.livingPrison) {
             pendingPrisonBuys = context.pendingPrisonBuys ?? [:]
         }
     }

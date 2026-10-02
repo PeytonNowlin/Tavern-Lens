@@ -2,7 +2,7 @@
 /// Summoned tokens do not pass through this hook.
 enum RecruitPlayedMinions {
     private static func shieldEnchantment(_ card: AdvisorCard, context: RecruitContext) -> String? {
-        guard (context.evaluationVersion ?? 0) >= 9,
+        guard context.policy.has(.playedMinionEffects),
               card.cardID == "BG31_812" || card.cardID == "BG31_812_G" else { return nil }
         let enchantment: String
         let text: String

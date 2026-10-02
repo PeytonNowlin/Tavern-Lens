@@ -1,7 +1,7 @@
 /// Living Prison's historical stat enchantment is already included in the observed
 /// body. Only explicit tag 4945, or an activation in this plan, arms a future buy.
 enum RecruitPrison {
-    static func enabled(_ context: RecruitContext) -> Bool { (context.evaluationVersion ?? 0) >= 11 }
+    static func enabled(_ context: RecruitContext) -> Bool { context.policy.has(.livingPrison) }
     static func isPrison(_ id: String) -> Bool { id == "BG36_180" || id == "BG36_180_G" }
 
     static func multiplier(_ card: AdvisorCard, context: RecruitContext) -> Int? {

@@ -103,7 +103,7 @@ public struct AdvisorDecisionTrace: Sendable {
             decisions = []
         }
         var decision = AdvisorDecision(request: request, displayed: displayed, displayedAt: displayedAt)
-        if displayed.plan.version >= 11 {
+        if displayed.plan.policy.has(.coverageDiagnostics) {
             decision.coverage = alreadyValidated ? previous?.coverage
                 : AdvisorCoverageDiagnostic(request: request, policyVersion: displayed.plan.version)
         }

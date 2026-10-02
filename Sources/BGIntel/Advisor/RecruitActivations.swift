@@ -6,7 +6,7 @@ enum RecruitActivations {
     }
 
     private static func effect(_ card: AdvisorCard, context: RecruitContext) -> Effect? {
-        guard (context.evaluationVersion ?? 0) >= 7,
+        guard context.policy.has(.activateEffects),
               !RecruitMechanics.gifts(card, context).contains("This minion's Activate triggers twice.") else { return nil }
         if RecruitPrison.multiplier(card, context: context) != nil { return .prison }
         switch (card.cardID, context.text(card.cardID)) {
@@ -15,7 +15,7 @@ enum RecruitActivations {
         case ("BG36_354", "Activate (2): Steal the highest-Attack minion in the Tavern."): return .stealHighest
         case ("BG36_346", "Activate (1): Get 2 Tavern Dish Bananas."),
              ("BG36_346_G", "Activate (1): Get 4 Tavern Dish Bananas."):
-            guard (context.evaluationVersion ?? 0) >= 8,
+            guard context.policy.has(.bananaActivate),
                   context.definitions["BG28_897"]?.type == "BATTLEGROUND_SPELL",
                   context.text("BG28_897") == "Give a minion +2/+2." else { return nil }
             return .bananas(card.cardID == "BG36_346_G" ? 4 : 2)

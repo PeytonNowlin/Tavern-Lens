@@ -34,7 +34,7 @@ public struct AdvisorCoverageDiagnostic: Codable, Hashable, Sendable {
                 }.map(\.id).sorted()
                 return Gap(kind: kind, reason: reason, cardIDs: ids)
             }
-            if policyVersion >= 11 {
+            if context.policy.has(.coverageDiagnostics) {
                 let unknownCosts = Set(visible.filter {
                     context.activations?[$0.entity.entityId]?.costObserved == false
                 }.map(\.cardID)).sorted()

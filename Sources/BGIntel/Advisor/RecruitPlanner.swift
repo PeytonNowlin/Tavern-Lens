@@ -293,7 +293,7 @@ public enum RecruitPlanner {
         for card in s.hand {
             // An unused purchase is worth its resale option, not more than its
             // three-Gold price. Otherwise filler buys improve any useful sequence.
-            let unusedPurchase = (context.evaluationVersion ?? 0) >= 10
+            let unusedPurchase = context.policy.has(.unusedPurchaseValue)
                 && purchased.contains(card.entity.entityId)
             v.economy += card.isMinion ? (unusedPurchase ? 0.35 : 1.2) : 0.8
         }
@@ -302,12 +302,12 @@ public enum RecruitPlanner {
         v.economy += Double(unlocked) * (s.tier <= curveTier ? 7 : 3) * horizon
         let held = s.board + s.hand
         let roleCards = AdvisorBuildReadiness.roleCards(board: s.board, hand: s.hand,
-            evaluationVersion: context.evaluationVersion, base: context.base)
+            policy: context.policy, base: context.base)
         for build in request.builds ?? [] {
             let core = Set(held.map { context.base($0.cardID) }).intersection(build.core).count
             let support = Set(held.map { context.base($0.cardID) }).intersection(build.addons).count
             // Supporting cards have value when there is an engine; catalog membership alone is weak.
-            if let requirements = AdvisorBuildReadiness.requirements(build, evaluationVersion: context.evaluationVersion), !requirements.isEmpty {
+            if let requirements = AdvisorBuildReadiness.requirements(build, policy: context.policy), !requirements.isEmpty {
                 let supplied = requirements.filter { !roleCards.intersection($0.anyOf).isEmpty }.count
                 let complete = supplied == requirements.count
                 v.synergy += build.share * Double(supplied * 4 + core + (complete ? support * 2 + 4 : 0)) * horizon

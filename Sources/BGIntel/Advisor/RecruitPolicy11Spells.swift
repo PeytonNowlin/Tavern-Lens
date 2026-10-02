@@ -21,7 +21,7 @@ enum RecruitPolicy11Spells {
     }
 
     static func effect(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> RecruitEffects.Effect? {
-        guard (context.evaluationVersion ?? 0) >= 11 else { return nil }
+        guard context.policy.has(.arcaneAbsorption) else { return nil }
         if card.cardID == "BG28_503" || card.cardID == absorptionID,
            state.board.contains(where: { context.text($0.cardID).lowercased().contains("tavern spells give") }) {
             return .unsupported("Tavern spell stat modifier is unmodelled")
@@ -43,7 +43,7 @@ enum RecruitPolicy11Spells {
     }
 
     static func targetAllowed(_ card: AdvisorCard, target: Int?, state: RecruitState, context: RecruitContext) -> Bool {
-        guard (context.evaluationVersion ?? 0) >= 11, card.cardID == absorptionID else { return true }
+        guard context.policy.has(.arcaneAbsorption), card.cardID == absorptionID else { return true }
         guard supportsAbsorption(context), absorptionStats(state) != nil,
               let recipient = state.board.first(where: { $0.entity.entityId == target }),
               let tribes = context.definitions[recipient.cardID]?.races else { return false }
@@ -51,7 +51,7 @@ enum RecruitPolicy11Spells {
     }
 
     static func battlecry(_ card: AdvisorCard, context: RecruitContext) -> RecruitEffects.Effect? {
-        guard (context.evaluationVersion ?? 0) >= 11,
+        guard context.policy.has(.arcaneAbsorption),
               card.cardID == "BG35_881" || card.cardID == "BG35_881_G" else { return nil }
         let count = card.cardID == "BG35_881_G" ? 2 : 1
         let text = count == 2 ? "Battlecry and Deathrattle: Get 2 Arcane Absorptions."

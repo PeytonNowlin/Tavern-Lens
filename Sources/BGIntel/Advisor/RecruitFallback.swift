@@ -5,7 +5,7 @@ import Foundation
 public enum RecruitFallback {
     public static func suggestions(_ request: AdvisorRequest, context: RecruitContext,
                                    limitations: [String]) -> [AdvisorSuggestion] {
-        guard (context.evaluationVersion ?? 0) >= 9, context.pendingChoice != true else { return [] }
+        guard context.policy.has(.fallbackAdvice), context.pendingChoice != true else { return [] }
         let initial = RecruitState(request: request, context: context)
         let baseline = RecruitPlanner.value(RecruitEffects.combatProjection(initial, context: context),
                                             request: request, context: context)
