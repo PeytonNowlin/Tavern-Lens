@@ -20,7 +20,7 @@ Builds the TavernLens product and assembles "Tavern Lens.app" (default: build/).
 Options:
   --debug        Build the debug configuration instead of release.
   --output DIR   Put the app in DIR instead of build/.
-  --install      Also copy the app to /Applications (replacing an older copy).
+  --install      Link /Applications to this bundle, keeping one app copy.
   -h, --help     Show this help.
 
 Environment:
@@ -59,6 +59,8 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd -P)"
 APP="$OUT_DIR/Tavern Lens.app"
 
 echo "==> Building TavernLens ($CONFIG)"
@@ -108,9 +110,11 @@ codesign --display --verbose=2 "$APP" 2>&1 | grep -E '^(Identifier|Authority|Sig
 
 if [[ "$INSTALL" == 1 ]]; then
     DEST="/Applications/Tavern Lens.app"
-    echo "==> Installing to $DEST"
-    rm -rf "$DEST"
-    ditto "$APP" "$DEST"
+    if [[ "$APP" != "$DEST" && ! "$APP" -ef "$DEST" ]]; then
+        echo "==> Linking $DEST to $APP"
+        rm -rf "$DEST"
+        ln -s "$APP" "$DEST"
+    fi
 fi
 
 echo "==> Done: $APP"

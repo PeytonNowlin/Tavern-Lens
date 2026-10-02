@@ -100,11 +100,11 @@ Layout is independently testable: window bounds map to overlay rectangles throug
 ```sh
 git clone https://github.com/PeytonNowlin/Tavern-Lens.git
 cd Tavern-Lens
-scripts/bundle-app.sh
-open "build/Tavern Lens.app"
+scripts/bundle-app.sh --install
+open "/Applications/Tavern Lens.app"
 ```
 
-The bundling script builds a release executable, includes the SwiftPM resources, and signs the app. Use `scripts/bundle-app.sh --debug` for a debug bundle. `--install` also copies the app to `/Applications`, replacing an existing copy.
+The bundling script builds a release executable, includes the SwiftPM resources, and signs the app. Use `scripts/bundle-app.sh --debug` for a debug bundle. `--install` creates a shortcut at `/Applications/Tavern Lens.app` to the bundle in `build/`, replacing an existing copy or shortcut. Both launch paths use the same app; keep this checkout and its disk available. Quit Tavern Lens before rebuilding its bundle, and use this same build location for updates. Separate `--output` bundles are for development; do not install or launch them for normal play.
 
 For stable permission grants across rebuilds, the script looks for a local code-signing identity named **Tavern Lens Local**. Without one, it falls back to ad-hoc signing, which can cause macOS to forget permissions after a rebuild. Run `scripts/bundle-app.sh --help` for the one-time certificate setup or use `TAVERN_SIGN_IDENTITY` to select an existing identity.
 
