@@ -24,9 +24,17 @@ enum BannerCapture {
     ///   - pid: Hearthstone's process.
     ///   - rect: what to capture, in global top-left points (CGWindowList coordinates).
     /// - Returns: the image, at the display's pixel scale.
-    static func capture(pid: pid_t, rect: CGRect) async throws -> CGImage {
+    /// The on-screen windows. Query it once and pass it to several `capture` calls that
+    /// happen back to back (the board check's anchors), instead of once per capture.
+    static func shareableContent() async throws -> SCShareableContent {
         guard ScreenRecordingPermission.isGranted else { throw Failure.noPermission }
-        let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+        return try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+    }
+
+    /// - Parameter content: a `shareableContent()` result to reuse; nil queries a fresh one.
+    static func capture(pid: pid_t, rect: CGRect, content: SCShareableContent? = nil) async throws -> CGImage {
+        guard ScreenRecordingPermission.isGranted else { throw Failure.noPermission }
+        let content = if let content { content } else { try await shareableContent() }
         // Hearthstone's main window: its largest layer-0 window (it owns a few small helpers too).
         let window = content.windows
             .filter { $0.owningApplication?.processID == pid && $0.windowLayer == 0 && $0.frame.width >= 200 }

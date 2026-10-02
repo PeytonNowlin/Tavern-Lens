@@ -20,35 +20,65 @@ struct HearthstoneWindow: Equatable {
     var isFullscreen: Bool { mode == .fullscreen }
 }
 
+/// What the off-main locator needs from AppKit, which is main-actor only: the title-bar
+/// height and the screens (as top-left frames with their notch insets).
+struct WindowEnvironment: Sendable {
+    var titleBarHeight: CGFloat
+    var screens: [(frame: CGRect, topInset: CGFloat)]
+
+    @MainActor static var current: WindowEnvironment {
+        let primaryHeight = NSScreen.screens.first?.frame.maxY
+        return WindowEnvironment(
+            titleBarHeight: HearthstoneWindowTracker.titleBarHeight,
+            screens: primaryHeight.map { primaryHeight in
+                NSScreen.screens.map { screen in
+                    (frame: WindowGeometry.appKitRect(fromTopLeft: screen.frame, primaryScreenHeight: primaryHeight),
+                     topInset: screen.safeAreaInsets.top)
+                }
+            } ?? []
+        )
+    }
+}
+
 /// Finds Hearthstone's main window: CGWindowList by PID, refined by Accessibility when granted.
 ///
 /// CGWindowList gives bounds without any permission, but can report a stale Mission Control
 /// rect for a moment, and it can't tell fullscreen apart from a window that fills the screen.
 /// Accessibility reports the real frame and `AXFullScreen`, so it wins when available.
-@MainActor
-enum HearthstoneWindowTracker {
-    static func locate(pid: pid_t) -> HearthstoneWindow? {
+///
+/// The lookup makes synchronous Accessibility calls (each can wait up to its messaging
+/// timeout), so it runs on this actor, never on the main actor. Callers `await` it and
+/// keep the last result themselves.
+actor HearthstoneWindowTracker {
+    static let shared = HearthstoneWindowTracker()
+
+    func locate(pid: pid_t) async -> HearthstoneWindow? {
+        let environment = await MainActor.run { WindowEnvironment.current }
+        return Self.locate(pid: pid, environment: environment)
+    }
+
+    nonisolated static func locate(pid: pid_t, environment: WindowEnvironment) -> HearthstoneWindow? {
         let listed = windowListFrame(pid: pid)
         if AXIsProcessTrusted(), let ax = accessibilityWindow(pid: pid) {
             // AX sometimes reports a helper window; trust it only if it's the size of the main one.
-            if listed == nil || ax.frame.width * ax.frame.height >= 0.5 * (listed!.width * listed!.height) {
-                let mode: WindowMode = ax.fullscreen ? .fullscreen : .windowed(titleBarHeight: titleBarHeight)
+            if listed.map({ ax.frame.width * ax.frame.height >= 0.5 * ($0.width * $0.height) }) ?? true {
+                let mode: WindowMode = ax.fullscreen ? .fullscreen : .windowed(titleBarHeight: environment.titleBarHeight)
                 return HearthstoneWindow(windowFrame: ax.frame, mode: mode, source: .accessibility)
             }
         }
         guard let listed else { return nil }
-        return HearthstoneWindow(windowFrame: listed, mode: inferMode(listed), source: .windowList)
+        return HearthstoneWindow(windowFrame: listed, mode: inferMode(listed, environment), source: .windowList)
     }
 
     /// The standard title-bar height (the frame of a titled window minus its content).
-    static let titleBarHeight: CGFloat = {
+    @MainActor static let titleBarHeight: CGFloat = {
         let content = NSRect(x: 0, y: 0, width: 800, height: 600)
         return NSWindow.frameRect(forContentRect: content, styleMask: [.titled]).height - content.height
     }()
 
     /// The largest on-screen layer-0 window of the process. Hearthstone also owns a few
     /// thin or off-screen helper windows at layer 0.
-    private static func windowListFrame(pid: pid_t) -> CGRect? {
+    private nonisolated static func windowListFrame(pid: pid_t) -> CGRect? {
         guard let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]]
         else { return nil }
@@ -67,7 +97,7 @@ enum HearthstoneWindowTracker {
         return best
     }
 
-    private static func accessibilityWindow(pid: pid_t) -> (frame: CGRect, fullscreen: Bool)? {
+    private nonisolated static func accessibilityWindow(pid: pid_t) -> (frame: CGRect, fullscreen: Bool)? {
         let app = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(app, 0.25)
         let window = element(app, kAXFocusedWindowAttribute) ?? element(app, kAXMainWindowAttribute)
@@ -83,7 +113,7 @@ enum HearthstoneWindowTracker {
         return (CGRect(origin: origin, size: size), (fullscreen as? Bool) ?? false)
     }
 
-    private static func element(_ parent: AXUIElement, _ attribute: String) -> AXUIElement? {
+    private nonisolated static func element(_ parent: AXUIElement, _ attribute: String) -> AXUIElement? {
         var ref: CFTypeRef?
         guard AXUIElementCopyAttributeValue(parent, attribute as CFString, &ref) == .success,
               let ref, CFGetTypeID(ref) == AXUIElementGetTypeID()
@@ -91,7 +121,7 @@ enum HearthstoneWindowTracker {
         return (ref as! AXUIElement)
     }
 
-    private static func firstWindow(_ app: AXUIElement) -> AXUIElement? {
+    private nonisolated static func firstWindow(_ app: AXUIElement) -> AXUIElement? {
         var ref: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &ref) == .success,
               let windows = ref as? [AXUIElement]
@@ -99,7 +129,7 @@ enum HearthstoneWindowTracker {
         return windows.first
     }
 
-    private static func value<T>(_ element: AXUIElement, _ attribute: String, type: AXValueType, as _: T.Type) -> T? {
+    private nonisolated static func value<T>(_ element: AXUIElement, _ attribute: String, type: AXValueType, as _: T.Type) -> T? {
         var ref: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &ref) == .success,
               let ref, CFGetTypeID(ref) == AXValueGetTypeID()
@@ -113,22 +143,13 @@ enum HearthstoneWindowTracker {
 
     /// Without AX: fullscreen when the window fills the width and bottom of the screen it's on,
     /// starting at the top or just below the notch.
-    private static func inferMode(_ frame: CGRect) -> WindowMode {
-        guard let primaryHeight = NSScreen.screens.first?.frame.maxY else {
-            return .windowed(titleBarHeight: titleBarHeight)
-        }
-        let screens = NSScreen.screens.map { screen in
-            (frame: WindowGeometry.appKitRect(fromTopLeft: screen.frame, primaryScreenHeight: primaryHeight),
-             topInset: screen.safeAreaInsets.top)
-        }
-        // appKitRect is its own inverse, so the same call converts AppKit screen frames to top-left.
-        let screen = screens.max { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area }
-        guard let screen, !screen.frame.intersection(frame).isNull else {
-            return .windowed(titleBarHeight: titleBarHeight)
-        }
+    private nonisolated static func inferMode(_ frame: CGRect, _ environment: WindowEnvironment) -> WindowMode {
+        let windowed = WindowMode.windowed(titleBarHeight: environment.titleBarHeight)
+        let screen = environment.screens.max { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area }
+        guard let screen, !screen.frame.intersection(frame).isNull else { return windowed }
         return WindowGeometry.inferMode(
             windowFrame: frame, screenFrame: screen.frame, screenTopInset: screen.topInset,
-            titleBarHeight: titleBarHeight
+            titleBarHeight: environment.titleBarHeight
         )
     }
 }

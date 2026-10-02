@@ -11,7 +11,8 @@ import TavernEngine
 /// - Visible only while Hearthstone or Tavern Lens is frontmost, Hearthstone has a window,
 ///   and the player hasn't hidden it with the hotkey.
 /// - Follows the window by polling it at 10 Hz while visible (CGWindowList, plus AX when
-///   Accessibility is granted), so moves, resizes and fullscreen transitions are picked up.
+///   Accessibility is granted; looked up off the main actor and cached), so moves,
+///   resizes and fullscreen transitions are picked up.
 /// - Re-shows the panel after fullscreen transitions and Space changes, because a window
 ///   shown before the transition isn't moved into the new Space on its own.
 /// - Click-through, except while the cursor is inside one of the model's interactive regions.
@@ -55,6 +56,9 @@ final class OverlayController {
     @ObservationIgnored private var mouseMonitors: [Any] = []
     @ObservationIgnored private var isShown = false
     @ObservationIgnored private var needsReshow = false
+    /// The tracker's last result for a process, and the lookup in flight (one at a time).
+    @ObservationIgnored private var locatedWindow: (pid: pid_t, window: HearthstoneWindow?)?
+    @ObservationIgnored private var locateTask: Task<Void, Never>?
 
     init(live: LiveTrackingModel, preferences: OverlayPreferences) {
         self.live = live
@@ -221,6 +225,27 @@ final class OverlayController {
         return front == pid || front == ProcessInfo.processInfo.processIdentifier || NSApp.isActive
     }
 
+    /// The last window the tracker found for Hearthstone's current process, and starts a
+    /// lookup off the main actor to refresh it. A changed result calls `refresh()` again.
+    private func cachedWindow() -> HearthstoneWindow? {
+        guard let pid = hearthstonePID else {
+            locatedWindow = nil
+            return nil
+        }
+        if locatedWindow?.pid != pid { locatedWindow = nil }
+        if locateTask == nil {
+            locateTask = Task { [weak self] in
+                let found = await HearthstoneWindowTracker.shared.locate(pid: pid)
+                guard let self else { return }
+                self.locateTask = nil
+                guard self.hearthstonePID == pid, self.locatedWindow?.window != found else { return }
+                self.locatedWindow = (pid, found)
+                self.refresh()
+            }
+        }
+        return locatedWindow?.window
+    }
+
     /// Re-reads the window and the view state, then shows, moves or hides the panel.
     private func refresh() {
         guard let panel else { return }
@@ -235,7 +260,7 @@ final class OverlayController {
         if model.adviceRequest != request { model.adviceRequest = request }
         if model.shownAdvice == nil { model.advisorDetailsExpanded = false }
         let wanted = !isHiddenByUser && hearthstoneOrUsFrontmost
-        let located = wanted ? hearthstonePID.flatMap(HearthstoneWindowTracker.locate) : nil
+        let located = wanted ? cachedWindow() : nil
         if !wanted || located == nil {
             accessibilityTrusted = AXIsProcessTrusted()
         }

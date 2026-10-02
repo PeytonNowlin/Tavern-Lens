@@ -196,25 +196,25 @@ final class HeroPickScreenReader {
 
     /// One capture and recognition. True once the tribes are read.
     private func attempt() async -> Bool {
-        guard let pid = live.hearthstone?.processIdentifier,
-              let window = HearthstoneWindowTracker.locate(pid: pid),
-              let layout = OverlayLayout(contentSize: window.contentFrame.size)
-        else {
-            lastFailure = "Hearthstone's window wasn't found"
+        let context: HearthstoneRegionContext
+        switch await HearthstoneRegionContext.locate(pid: live.hearthstone?.processIdentifier) {
+        case .success(let found): context = found
+        case .failure(let failure):
+            lastFailure = failure.description
             return false
         }
+        let layout = context.layout
         let rect = layout.heroPickCapture
-        let content = window.contentFrame
         let expected = live.pool?.tribesPerLobby ?? 5
         let clock = ContinuousClock()
         let start = clock.now
         let image: CGImage
-        do {
-            image = try await BannerCapture.capture(pid: pid, rect: rect.offsetBy(dx: content.minX, dy: content.minY))
-        } catch {
-            lastFailure = "\(error)"
-            Self.log.error("Banner capture failed: \(String(describing: error), privacy: .public)")
-            if error as? BannerCapture.Failure == .noPermission { permissionGranted = false }
+        switch await context.captureRegion(rect) {
+        case .success(let captured): image = captured
+        case .failure(let failure):
+            lastFailure = failure.description
+            Self.log.error("Banner capture failed: \(failure.description, privacy: .public)")
+            if failure == .noPermission { permissionGranted = false }
             return false
         }
         let captured = clock.now
@@ -264,9 +264,12 @@ final class HeroPickScreenReader {
         updateOverlayWarning()
     }
 
+    /// Stops the running check but leaves this game's alignment result alone. The check is
+    /// no longer "started", so turning the reader back on during recruit starts it again.
     private func stopBoardCheck() {
         boardTask?.cancel()
         boardTask = nil
+        boardCheckStarted = false
     }
 
     /// Once per game, at the first recruit phase: a few tries until an anchor is found.
@@ -289,21 +292,24 @@ final class HeroPickScreenReader {
 
     /// One capture of each anchor and recognition. True once an anchor was found.
     private func attemptBoardCheck() async -> Bool {
-        guard let pid = live.hearthstone?.processIdentifier,
-              let window = HearthstoneWindowTracker.locate(pid: pid),
-              let layout = OverlayLayout(contentSize: window.contentFrame.size)
+        guard case .success(let context) = await HearthstoneRegionContext.locate(pid: live.hearthstone?.processIdentifier)
         else { return false }
-        let content = window.contentFrame
+        let layout = context.layout
         var captures: [BoardAnchor: (image: CGImage, rect: CGRect)] = [:]
         do {
+            // One window query for all the anchors.
+            let shareable = try await BannerCapture.shareableContent()
             for anchor in BoardAnchor.allCases {
                 let rect = layout.boardCheckCapture(anchor)
-                let image = try await BannerCapture.capture(pid: pid, rect: rect.offsetBy(dx: content.minX, dy: content.minY))
-                captures[anchor] = (image, rect)
+                switch await context.captureRegion(rect, shareable: shareable) {
+                case .success(let image): captures[anchor] = (image, rect)
+                case .failure(let failure): throw failure
+                }
             }
         } catch {
-            Self.log.error("Board capture failed: \(String(describing: error), privacy: .public)")
-            if error as? BannerCapture.Failure == .noPermission { permissionGranted = false }
+            let failure = error as? RegionCaptureFailure ?? RegionCaptureFailure(error)
+            Self.log.error("Board capture failed: \(failure.description, privacy: .public)")
+            if failure == .noPermission { permissionGranted = false }
             return false
         }
         let snapshot = captures

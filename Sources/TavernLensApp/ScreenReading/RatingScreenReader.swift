@@ -1,11 +1,13 @@
 import AppKit
 import Observation
+import os
 import ScreenReading
 
 /// Reads only the Battlegrounds lobby, using the existing Screen Recording grant.
 /// Captures stay in memory; gameplay and other applications are never sampled.
 @MainActor @Observable
 final class RatingScreenReader {
+    private static let log = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "screen")
     private(set) var permissionGranted = ScreenRecordingPermission.isGranted
     private(set) var statusText = "Automatic MMR reading waits for the Battlegrounds lobby. You can also enter your rating below."
     @ObservationIgnored private let live: LiveTrackingModel
@@ -95,15 +97,31 @@ final class RatingScreenReader {
     }
 
     private func captureRating() async -> Int? {
-        guard let pid = live.hearthstone?.processIdentifier,
-              let window = HearthstoneWindowTracker.locate(pid: pid) else { return nil }
+        let context: HearthstoneRegionContext
+        switch await HearthstoneRegionContext.locate(pid: live.hearthstone?.processIdentifier) {
+        case .success(let found): context = found
+        case .failure(let failure):
+            Self.log.info("Rating read skipped: \(failure.description, privacy: .public)")
+            return nil
+        }
+        let content = context.window.contentFrame
+        let image: CGImage
+        switch await context.captureRegion(CGRect(origin: .zero, size: content.size)) {
+        case .success(let captured): image = captured
+        case .failure(let failure):
+            Self.log.error("Rating capture failed: \(failure.description, privacy: .public)")
+            if failure == .noPermission { permissionGranted = false }
+            return nil
+        }
+        let rect = CGRect(origin: .zero, size: content.size)
         do {
-            let image = try await BannerCapture.capture(pid: pid, rect: window.contentFrame)
-            let rect = CGRect(origin: .zero, size: window.contentFrame.size)
             return try await Task.detached(priority: .utility) {
                 let lines = try HeroPickBannerReader.recognizeLines(in: image, showing: rect)
                 return RatingScreenParser.rating(in: lines)
             }.value
-        } catch { return nil }
+        } catch {
+            Self.log.error("Rating recognition failed: \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 }
