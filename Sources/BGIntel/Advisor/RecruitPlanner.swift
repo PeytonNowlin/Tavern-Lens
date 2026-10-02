@@ -162,6 +162,8 @@ public enum RecruitPlanner {
             let card = s.hand.remove(at: i)
             guard card.isMinion, !card.entity.locked else { return nil }
             s.board.append(card)
+            let entered = s
+            guard RecruitDiscardEffects.synchronizeHammer(card: &s.board[s.board.count - 1], state: entered, context: context) else { return nil }
             for _ in 0..<RecruitEffects.battlecryRepeats(original, context: context) {
                 guard RecruitEffects.apply(RecruitEffects.battlecry(card, context: context), target: step.targetID, state: &s, context: context) else { return nil }
                 if context.text(card.cardID).contains("Battlecry") {
@@ -329,6 +331,7 @@ public enum RecruitPlanner {
     }
 
     private static func baseProduction(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double {
+        if let production = RecruitDiscardEffects.fleshlingProduction(card, state: state, context: context) { return production }
         let text = context.text(card.cardID).lowercased()
         // Battlecries have already been resolved by the transition. Counting their rewards
         // again every future turn would incorrectly protect disposable cycle minions.

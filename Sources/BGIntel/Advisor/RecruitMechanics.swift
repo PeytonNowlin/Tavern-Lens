@@ -105,7 +105,11 @@ enum RecruitMechanics {
         let discardText = context.text(discarded.cardID)
         let sludge = discardText == "Give your minions +1/+1. If you discard this, cast it twice."
         if discardText.lowercased().contains("discard"), !sludge { return false }
-        state.input.playerBoard.player.globalInfo["CardsDiscardedThisGame", default: 0] += 1
+        if RecruitDiscardEffects.enabled(context) {
+            guard RecruitDiscardEffects.discarded(state: &state, context: context) else { return false }
+        } else {
+            state.input.playerBoard.player.globalInfo["CardsDiscardedThisGame", default: 0] += 1
+        }
         for trinket in state.input.playerBoard.player.trinkets {
             let text = context.text(trinket.cardId)
             if text == "Get a Sludge Corrosion. After you discard a card, get a Sludge Corrosion." {
@@ -113,6 +117,9 @@ enum RecruitMechanics {
                 if state.hand.count + state.unknownRewards < AdvisorRequest.handLimit {
                     guard RecruitEffects.apply(.token("BG36_301t", 1, toHand: true), target: nil, state: &state, context: context) else { return false }
                 }
+            } else if RecruitDiscardEffects.supportsHammer(trinket.cardId, context: context) {
+                // The shared discard handler updated its aura and simulator metadata.
+                continue
             } else if text.lowercased().contains("discard") { return false }
         }
         if sludge {
@@ -136,6 +143,7 @@ enum RecruitMechanics {
     }
 
     static func trinketSupported(_ id: String, context: RecruitContext) -> Bool {
+        if RecruitDiscardEffects.supportsHammer(id, context: context) { return true }
         if let supported = RecruitLogEffects.supportsTrinket(id, context: context) { return supported }
         let text = context.text(id)
         if (id == "BG36_MagicItem_302" || id == "BG36_MagicItem_302t") && text.hasPrefix("At the end of your turn, give your minions +") { return true }
@@ -147,7 +155,7 @@ enum RecruitMechanics {
     }
 
     static func limitations(_ state: RecruitState, context: RecruitContext, projectionOnly: Bool = false) -> [String] {
-        var result: [String] = []
+        var result = RecruitDiscardEffects.hammerValidation(state, context: context)
         for t in state.input.playerBoard.player.trinkets where !trinketSupported(t.cardId, context: context) {
             if projectionOnly, state.steps.allSatisfy({ $0.kind == .move }),
                !context.text(t.cardId).isEmpty, !context.text(t.cardId).lowercased().contains("end of") { continue }
@@ -155,6 +163,10 @@ enum RecruitMechanics {
         }
         for card in state.board {
             for enchantment in card.entity.enchantments where enchantment.cardId.hasPrefix("BG36_MidGameEffect_") {
+                if let supported = RecruitDiscardEffects.supportsGift(enchantment, state: state, context: context) {
+                    if !supported { result.append("Unmodelled Dark Gift: \(context.definitions[enchantment.cardId]?.name ?? enchantment.cardId)") }
+                    continue
+                }
                 if let supported = RecruitLogEffects.supportsGift(enchantment, context: context) {
                     if !supported { result.append("Unmodelled Dark Gift: \(context.definitions[enchantment.cardId]?.name ?? enchantment.cardId)") }
                     continue

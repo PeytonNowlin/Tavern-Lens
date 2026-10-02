@@ -113,7 +113,10 @@ public enum RecruitEffects {
             state.input.playerBoard.player.secrets[i] = secret
         case .setStats(let a, let h):
             guard let i = state.board.firstIndex(where: { $0.entity.entityId == target }) else { return false }
+            RecruitDiscardEffects.stripHammer(card: &state.board[i], context: context)
             state.board[i].entity.attack = a; state.board[i].entity.health = h; state.board[i].entity.maxHealth = h
+            let reset = state
+            guard RecruitDiscardEffects.synchronizeHammer(card: &state.board[i], state: reset, context: context) else { return false }
         case .buffTaunt(let a, let h):
             guard let i = state.board.firstIndex(where: { $0.entity.entityId == target }) else { return false }
             buff(&state.board[i], attack: a, health: h); state.board[i].entity.taunt = true
@@ -132,7 +135,11 @@ public enum RecruitEffects {
             for _ in 0..<min(n, 10) {
                 if toHand ? state.hand.count >= AdvisorRequest.handLimit : state.board.count >= AdvisorRequest.boardLimit { continue }
                 guard let card = token(id, state: &state, context: context) else { return false }
-                if toHand { state.hand.append(card) } else { state.board.append(card) }
+                if toHand { state.hand.append(card) } else {
+                    state.board.append(card)
+                    let entered = state
+                    guard RecruitDiscardEffects.synchronizeHammer(card: &state.board[state.board.count - 1], state: entered, context: context) else { return false }
+                }
             }
         case .unsupported: return false
         }
@@ -212,8 +219,10 @@ public enum RecruitEffects {
         let groups = Dictionary(grouping: all.filter { $0.isMinion && !$0.golden }, by: \.cardID)
         for id in groups.keys.sorted() {
             guard let copies = groups[id], copies.count >= 3 else { continue }
+            guard RecruitDiscardEffects.hammerValidation(state, context: context).isEmpty else { return false }
             guard let normal = context.definitions[id], let golden = context.golden(id) else { return false }
-            let consumed = Array(copies.prefix(3)); let ids = Set(consumed.map { $0.entity.entityId })
+            var consumed = Array(copies.prefix(3)); let ids = Set(consumed.map { $0.entity.entityId })
+            for i in consumed.indices { RecruitDiscardEffects.stripHammer(card: &consumed[i], context: context) }
             var combined = consumed[0]
             combined.cardID = golden.id; combined.entity.cardId = golden.id; combined.golden = true
             combined.entity.attack = (golden.attack ?? 0) + consumed.reduce(0) { $0 + $1.entity.attack - (normal.attack ?? 0) }
@@ -242,6 +251,10 @@ public enum RecruitEffects {
         var result = state
         var consumedFromShop = false
         for card in state.board {
+            if let resolved = RecruitDiscardEffects.projectFleshling(card, state: &result, context: context) {
+                if !resolved { result.limitations.append("End-of-turn effect not resolved: \(context.definitions[card.cardID]?.name ?? card.cardID)") }
+                continue
+            }
             let text = context.text(card.cardID)
             if text.hasPrefix("At the end of your turn, ") {
                 for _ in 0..<endOfTurnRepeats(state, context: context) {

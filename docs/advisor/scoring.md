@@ -1,8 +1,22 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 5)
+## Live planner (evaluation version 6)
 
-Version 5 retains the version-3 strategic search and adds fixes from recorded games.
+Version 6 retains the version-5 survival and confidence policies and adds observed
+discard-engine effects. Lesser Hammer of Twilight updates the discard counter,
+board Attack and its simulator aura metadata together. New bodies receive the aura
+once; triples retain only permanent buffs. Normal/golden Parasitic Fleshling gives
+its left-most target 2/4 times (1 + observed discards), with known end-of-turn
+multipliers. Time Turning does not repeat a start-of-turn buff already in observed
+stats; its additional recurring value is a future-production estimate.
+
+Affinity countdown 2 becomes 1 once even with Drakkari, so no reward affects the
+upcoming combat. A due or unknown reward stays uncertain if it could complete a
+board pair or affect hand-sensitive combat; no random minion is fabricated.
+Changed definitions, missing counters, inconsistent aura metadata and unsupported
+underlying end-of-turn effects remain limitations.
+
+Version 5 retained the version-3 strategic search and added earlier recorded-game fixes.
 Exact Faerie Dragon Scale and greater Beetle Band effects remain owned by the pinned
 combat simulator. Rockin' Music Box's next random reward is not invented before the
 next turn. Steady Growth projects only its observed pending increment, with supported
@@ -15,7 +29,7 @@ fully checked supported plan can have medium confidence with a visible caveat th
 the ranking covers supported plans, even while other plans are still being evaluated;
 unfinished candidate checks retain low confidence. Missing alternative coverage without combat
 evidence, missing chosen-card definitions and unresolved chosen effects remain uncertain.
-Recorded versions 1–3 retain their original policies and fingerprints. Version 4 is
+Recorded versions 1–3 and 5 retain their original policies and fingerprints. Version 4 is
 reserved for the separate, uncommitted advisor-quality worktree.
 
 Replay the captured development cases locally without committing private data:
@@ -24,6 +38,11 @@ Replay the captured development cases locally without committing private data:
 TAVERN_LOG_AUDIT_DIAGNOSTICS="$HOME/Library/Application Support/TavernLens/AdvisorDiagnostics" \
   scripts/test.sh --filter AdvisorLogRegressionTests
 ```
+
+The optional `TAVERN_DISCARD_AUDIT_DIAGNOSTICS` directory enables
+`AdvisorDiscardReplayTests`: exact saved version-5 replay plus version-6 projection
+and combat-coverage checks from the October 1 discard game. These are development
+regressions, not independent action-quality labels or win-rate evidence.
 
 ### Recruit search foundation (versions 2 and 3)
 

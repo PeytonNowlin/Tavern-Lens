@@ -37,7 +37,7 @@ public struct AdvisorPlan: Codable, Hashable, Sendable {
     /// The app's: about 5 s of simulation for a late-game state with the JIT, less early on.
     public static let live = AdvisorPlan(
         seed: 0x19AD_7150, simulations: 300, refineSimulations: 900, refinedGroups: 4, lobbySimulations: 150,
-        lobbyGroups: 3, lobbySweepSimulations: 30, version: 5
+        lobbyGroups: 3, lobbySweepSimulations: 30, version: 6
     )
 
     public init(
@@ -268,6 +268,9 @@ public struct AdviceView: Codable, Hashable, Sendable {
         if version == 1 { request.recruit = nil }
         if version < 3 { request.strategyCatalog = nil; request.choice = nil; request.poolTiers = nil }
         if version < 5 { request.recruit?.evaluationVersion = nil }
+        // Preserve archived encodings through version 5. New policies identify both raw
+        // requests and requests already prepared for evaluation with their selected version.
+        if version >= 6 { request.recruit?.evaluationVersion = version }
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         let data = (try? encoder.encode(request)) ?? Data()

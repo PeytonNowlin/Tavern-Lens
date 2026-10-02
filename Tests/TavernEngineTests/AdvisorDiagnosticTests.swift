@@ -93,6 +93,20 @@ struct AdvisorDiagnosticTests {
         let store = AdvisorDiagnosticStore(directory: dir, maximumBytes: 1)
         await #expect(throws: (any Error).self) { try await store.save(record()) }
     }
+    @Test("Version-6 fingerprints identify the selected policy before and after preparation")
+    func policyFingerprint() throws {
+        var request = try RecruitPlannerTests.request()
+        let archived = AdviceView.fingerprint(of: request, version: 5)
+        let current = AdviceView.fingerprint(of: request, version: 6)
+        #expect(current != archived)
+        request.recruit?.evaluationVersion = 6
+        #expect(AdviceView.fingerprint(of: request, version: 6) == current)
+        request.recruit?.evaluationVersion = 5
+        #expect(AdviceView.fingerprint(of: request, version: 6) == current)
+        request.recruit?.evaluationVersion = nil
+        #expect(AdviceView.fingerprint(of: request, version: 5) == archived)
+    }
+
     @Test("Version-1 fingerprints exclude planner metadata when an old bookmark is reconstructed")
     func legacyFingerprint() throws {
         let request = try RecruitPlannerTests.request(shop: [AdvisorSynthetic.shopMinion(1, attack: 4, health: 4, cardID: "body")])
