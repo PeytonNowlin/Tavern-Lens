@@ -136,8 +136,12 @@ public enum LogConfig {
 /// Section names match case-insensitively; keys match exactly after trimming.
 struct IniDocument {
     private(set) var lines: [String]
+    /// The line ending the file used (its first one), written back on every line so a
+    /// CRLF file isn't silently rewritten as LF. New files use "\n".
+    private let lineEnding: String
 
     init(text: String) {
+        lineEnding = text.first { $0 == "\n" || $0 == "\r\n" || $0 == "\r" }.map(String.init) ?? "\n"
         // "\r\n" is a single Character, so split on any line break rather than on "\n".
         var lines = text.split(omittingEmptySubsequences: false) { $0 == "\n" || $0 == "\r\n" || $0 == "\r" }
             .map(String.init)
@@ -145,7 +149,7 @@ struct IniDocument {
         self.lines = lines
     }
 
-    var text: String { lines.map { $0 + "\n" }.joined() }
+    var text: String { lines.map { $0 + lineEnding }.joined() }
 
     private static func sectionName(_ line: String) -> String? {
         let trimmed = line.trimmingCharacters(in: .whitespaces)

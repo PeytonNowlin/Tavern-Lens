@@ -148,10 +148,11 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/TavernLens" "$APP/Contents/MacOS/TavernLens"
 
 BUILD_NUMBER="$(git -C "$ROOT" rev-list --count HEAD 2>/dev/null || echo 1)"
-sed -e "s|__BUNDLE_ID__|$BUNDLE_ID|" \
-    -e "s|__VERSION__|$VERSION|" \
-    -e "s|__BUILD__|$BUILD_NUMBER|" \
-    "$ROOT/Packaging/Info.plist" > "$APP/Contents/Info.plist"
+cp "$ROOT/Packaging/Info.plist" "$APP/Contents/Info.plist"
+# plutil -replace takes the values verbatim; sed would treat "|" and "&" in them as syntax.
+plutil -replace CFBundleIdentifier -string "$BUNDLE_ID" "$APP/Contents/Info.plist"
+plutil -replace CFBundleShortVersionString -string "$VERSION" "$APP/Contents/Info.plist"
+plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$APP/Contents/Info.plist"
 plutil -lint -s "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
