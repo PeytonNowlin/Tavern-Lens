@@ -205,8 +205,8 @@ enum RecruitMechanics {
             // Remaining deaths determine how close this board is to summoning the Deity.
             value += min(12, strength / Double(max(1, deity.scriptDataNum1))) * deaths * 0.25
         }
-        if let c = RecruitEffects.captures(".*Deathrattle: Give your Deity \\+([0-9]+)/\\+([0-9]+)\\..*", text),
-           state.input.playerBoard.player.secrets.contains(where: { $0.cardId == "BG_OldGod" }) {
+        if state.input.playerBoard.player.secrets.contains(where: { $0.cardId == "BG_OldGod" }),
+           let c = RecruitEffects.captures(".*Deathrattle: Give your Deity \\+([0-9]+)/\\+([0-9]+)\\..*", text) {
             value += Double(Int(c[0])! + Int(c[1])!) * deaths * 0.5
         }
         if text.contains("Deathrattle:"), text.contains("Fodder") { value += 2 * deaths }

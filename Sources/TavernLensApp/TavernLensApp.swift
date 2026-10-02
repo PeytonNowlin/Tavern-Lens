@@ -34,7 +34,10 @@ struct TavernLensApp: App {
         .windowResizability(.contentSize)
 
         Window("Tavern Lens MMR History", id: WindowID.rating) {
-            RatingHistoryWindow(model: appDelegate.ratingHistory, readingStatus: appDelegate.ratingReader.statusText)
+            RatingHistoryWindow(model: appDelegate.ratingHistory, readingStatus: appDelegate.ratingReader.statusText,
+                requestScreenReadingPermission: appDelegate.ratingReader.permissionGranted ? nil
+                    : { appDelegate.ratingReader.requestPermission() })
+                .onAppear { appDelegate.ratingReader.refreshPermission() }
         }
         .defaultLaunchBehavior(.suppressed)
         .defaultSize(width: 780, height: 640)

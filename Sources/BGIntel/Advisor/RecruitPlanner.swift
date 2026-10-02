@@ -244,6 +244,7 @@ public enum RecruitPlanner {
             let card = s.board.remove(at: i); s.board.insert(card, at: to); s.terminal = true
         }
         guard RecruitEffects.triggerEffects(step.kind, before: original, state: &s, context: context) else { return nil }
+        guard RecruitSpellCopies.afterPlayerSpell(step, before: original, state: &s, context: context) else { return nil }
         if step.kind == .play || step.kind == .spell {
             RecruitMechanics.playedCard(before: original, state: &s, context: context)
         }

@@ -6,6 +6,7 @@ import ScreenReading
 /// Captures stay in memory; gameplay and other applications are never sampled.
 @MainActor @Observable
 final class RatingScreenReader {
+    private(set) var permissionGranted = ScreenRecordingPermission.isGranted
     private(set) var statusText = "Automatic MMR reading waits for the Battlegrounds lobby. You can also enter your rating below."
     @ObservationIgnored private let live: LiveTrackingModel
     @ObservationIgnored private let history: RatingHistoryModel
@@ -24,6 +25,19 @@ final class RatingScreenReader {
     }
 
     func gameEnded(seed: Int?) { completedGameSeed = seed }
+
+    func refreshPermission() {
+        permissionGranted = ScreenRecordingPermission.isGranted
+        if canReadLobby {
+            inLobby = false
+            stateChanged()
+        }
+    }
+
+    func requestPermission() {
+        permissionGranted = ScreenRecordingPermission.request()
+        if permissionGranted { refreshPermission() }
+    }
 
     private var canReadLobby: Bool {
         live.hearthstone != nil && live.update.scene == "BACON" && live.update.state.status != .inGame
@@ -51,15 +65,20 @@ final class RatingScreenReader {
             statusText = "MMR is read between games when the rating is visible in the Battlegrounds lobby."
             return
         }
-        guard ScreenRecordingPermission.isGranted else {
+        permissionGranted = ScreenRecordingPermission.isGranted
+        guard permissionGranted else {
             statusText = "Automatic MMR reading needs Screen Recording access. You can enter your rating below."
             return
         }
         statusText = "Looking for a clear, stable MMR in the Battlegrounds lobby…"
         task = Task { [weak self] in
             var stable = StableRatingReading()
-            for _ in 0..<24 {
-                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+            for attempt in 0..<24 {
+                // Wait for the lobby transition, then confirm the stable total promptly
+                // so a player can queue again without spending 15 seconds in the lobby.
+                // Keep retrying more slowly if an animation or dialog obscures the rating.
+                let delay: Duration = attempt == 0 ? .seconds(2) : (attempt < 3 ? .seconds(1) : .seconds(5))
+                do { try await Task.sleep(for: delay) } catch { return }
                 guard let self, !Task.isCancelled, self.canReadLobby else { return }
                 let rating = await self.captureRating()
                 guard !Task.isCancelled, self.canReadLobby else { return }

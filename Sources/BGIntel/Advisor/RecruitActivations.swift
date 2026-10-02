@@ -2,7 +2,7 @@
 /// still come from the log; unknown rewards and ambiguous selections are not invented.
 enum RecruitActivations {
     private enum Effect {
-        case buff(Int), stealHighest
+        case buff(Int), stealHighest, bananas(Int)
     }
 
     private static func effect(_ card: AdvisorCard, context: RecruitContext) -> Effect? {
@@ -12,6 +12,12 @@ enum RecruitActivations {
         case ("BG36_345", "Activate (1): Give another minion +3/+3."): return .buff(3)
         case ("BG36_345_G", "Activate (1): Give another minion +6/+6."): return .buff(6)
         case ("BG36_354", "Activate (2): Steal the highest-Attack minion in the Tavern."): return .stealHighest
+        case ("BG36_346", "Activate (1): Get 2 Tavern Dish Bananas."),
+             ("BG36_346_G", "Activate (1): Get 4 Tavern Dish Bananas."):
+            guard (context.evaluationVersion ?? 0) >= 8,
+                  context.definitions["BG28_897"]?.type == "BATTLEGROUND_SPELL",
+                  context.text("BG28_897") == "Give a minion +2/+2." else { return nil }
+            return .bananas(card.cardID == "BG36_346_G" ? 4 : 2)
         default: return nil
         }
     }
@@ -43,6 +49,11 @@ enum RecruitActivations {
               !state.usedActivations.contains(card.entity.entityId) else { return [] }
         let targets: [(AdvisorCard, AdvisorTarget)]
         switch effect {
+        case .bananas(let count):
+            guard state.hand.count + state.unknownRewards + count <= AdvisorRequest.handLimit else { return [] }
+            let action = AdvisorAction.activateUntargeted(board: index, cardID: card.cardID, cost: available.cost)
+            return [RecruitStep(kind: .activate, entityID: card.entity.entityId, action: action,
+                title: action.title { context.definitions[$0]?.name ?? $0 })]
         case .buff:
             targets = state.board.enumerated().filter { $0.element.entity.entityId != card.entity.entityId }
                 .map { ($0.element, AdvisorTarget(.board, $0.offset)) }
@@ -68,6 +79,13 @@ enum RecruitActivations {
               available.cost >= 0, available.cost <= state.gold,
               !state.usedActivations.contains(step.entityID) else { return false }
         switch effect {
+        case .bananas(let count):
+            guard step.targetID == nil,
+                  state.hand.count + state.unknownRewards + count <= AdvisorRequest.handLimit else { return false }
+            // These rewards are known cards. Continue into the ordinary hand-spell path,
+            // which applies their buffs and spell triggers when each Banana is actually cast.
+            guard RecruitEffects.apply(.token("BG28_897", count, toHand: true), target: nil,
+                                       state: &state, context: context) else { return false }
         case .buff(let amount):
             guard step.targetID != step.entityID,
                   let target = state.board.firstIndex(where: { $0.entity.entityId == step.targetID }) else { return false }

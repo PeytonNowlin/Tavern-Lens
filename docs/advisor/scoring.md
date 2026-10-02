@@ -1,6 +1,20 @@
 # Recruit planner and archived advisor scoring
 
-## Live planner (evaluation version 7)
+## Live planner (evaluation version 8)
+
+Version 8 adds normal/golden Fruit Vendor's known two/four Tavern Dish Bananas.
+The activation spends its observed gold cost once; later casts use the existing
+free-from-hand Tavern-spell path and trigger the normal spell counters/effects.
+Missing or changed token definitions, insufficient hand room and double-Activate
+gifts stay unsupported. No random cards or bonus valuation are invented.
+
+Lovely Locket is also scoped per action in version 8. An ordinary buy, sell, move
+or non-targeted spell does not require a recruit copy. A targeted spell copies its
+known effect to the sole other living friendly minion after the original board
+spell triggers, without replaying hero counters or card-play effects. Random copy
+targets, duplicate Lockets, repeat-cast interactions and unmodelled Gem reactions
+stop that candidate at the cast with an explicit limitation. They do not block
+unaffected alternatives, and the advisor does not choose a favorable random target.
 
 Version 7 adds normal/golden Suspicious Prisonguard's targeted +3/+3 and +6/+6
 Activate buffs and normal Decoy Conjurer's steal when the Tavern has one uniquely
@@ -44,7 +58,7 @@ fully checked supported plan can have medium confidence with a visible caveat th
 the ranking covers supported plans, even while other plans are still being evaluated;
 unfinished candidate checks retain low confidence. Missing alternative coverage without combat
 evidence, missing chosen-card definitions and unresolved chosen effects remain uncertain.
-Recorded versions 1–3, 5 and 6 retain their original policies and fingerprints. Version 4 is
+Recorded versions 1–3 and 5–7 retain their original policies and fingerprints. Version 4 is
 reserved for the separate, uncommitted advisor-quality worktree.
 
 Replay the captured development cases locally without committing private data:

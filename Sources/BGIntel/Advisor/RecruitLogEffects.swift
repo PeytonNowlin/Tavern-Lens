@@ -8,6 +8,9 @@ enum RecruitLogEffects {
     static func supportsTrinket(_ id: String, context: RecruitContext) -> Bool? {
         guard enabled(context) else { return nil }
         switch id {
+        case RecruitSpellCopies.locketID:
+            // Targeted player casts are resolved or limited per action by the copy handler.
+            return RecruitSpellCopies.supportsLocket(id, context: context)
         case "BG30_MagicItem_700":
             // The simulator consumes tags[32], not scriptDataNum1. Older recordings lack
             // that observation; never assume their first Deathrattle is still available.

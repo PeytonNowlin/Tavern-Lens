@@ -23,3 +23,7 @@ Use subsequent real-game diagnostics and UI checks to select the next improvemen
 - Add policy 7 minion Activate candidates using observed readiness and cost. Preserve archived policies and distinguish unsupported activation families in the UI.
 - Check the active game's trinkets at both the advisor coverage boundary and the simulator input boundary; a known card definition does not establish effect support.
 - Promote staged archives with a verified atomic installer and a restorable previous ZIP, retaining one installed bundle.
+
+## Third stage
+
+Add known Fruit Vendor rewards and scoped Lovely Locket spell copies while preserving recorded policy 7. Keep random copies and unsupported reactions explicit; restore combat checks for unaffected actions. Use the live process sample to remove unnecessary Deity text matching when no Deity exists. Make MMR screen-reading permission accessible from its own window and confirm lobby readings sooner, while retaining three stable observations. Keep validation focused on the changed effect transitions before the next signed stage.

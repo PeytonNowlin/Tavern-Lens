@@ -187,6 +187,9 @@ public enum RecruitEvaluation {
                 reason = target.kind == .shop ? "Uses Activate to take the highest-Attack Tavern minion"
                     : "Uses Activate to strengthen a minion with the gold available"
             }
+            else if case .activateUntargeted = first.action {
+                reason = "Generates Tavern Dish Bananas to buff your minions"
+            }
             else if first.kind == .activate { reason = "Uses your discard engine and its attached rewards" }
             else if first.kind == .roll { reason = "Keep enough gold to buy; reassess after the refresh" }
             else if first.kind == .freeze { reason = "Preserves an unaffordable engine card for next turn" }

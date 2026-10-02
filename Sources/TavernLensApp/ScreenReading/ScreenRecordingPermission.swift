@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
 
-/// Screen Recording, which reading the hero-pick banner needs. Everything else works without it.
+/// Permission for tribe/alignment checks and automatic lobby MMR reading.
 @MainActor
 enum ScreenRecordingPermission {
     /// Granted. Never prompts.
@@ -14,15 +14,16 @@ enum ScreenRecordingPermission {
     static func request() -> Bool {
         guard !isGranted else { return true }
         let explain = NSAlert()
-        explain.messageText = "Read the lobby's tribes from the screen?"
+        explain.messageText = "Read tribes and MMR from Hearthstone?"
         explain.informativeText = """
             At the hero pick, Hearthstone lists the lobby's five tribes under “Choose a Hero”. With Screen \
             Recording allowed, Tavern Lens reads that line, so the tribes are exact from the start instead of \
             inferred by about turn 4. It also checks once per game that the overlay still lines up with the game.
 
-            It captures only that small strip of Hearthstone's window during the hero pick, and two small spots \
-            of the board (the gold and your hero's health) at the first recruit phase. Nothing is saved or sent \
-            anywhere. Without it, everything else works as before.
+            During play it captures only the hero-pick strip and two small board spots for alignment checks. \
+            Between games it also reads Hearthstone's lobby window to record your visible MMR in local rating history. \
+            Screenshots are never saved or sent anywhere. Without access, log tracking still works and you can \
+            enter MMR manually.
             """
         explain.addButton(withTitle: "Continue")
         explain.addButton(withTitle: "Not Now")

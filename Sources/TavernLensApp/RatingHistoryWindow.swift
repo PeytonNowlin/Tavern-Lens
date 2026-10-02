@@ -5,6 +5,7 @@ import TavernEngine
 struct RatingHistoryWindow: View {
     let model: RatingHistoryModel
     var readingStatus: String = ""
+    var requestScreenReadingPermission: (() -> Void)?
     @State private var showsEditor = false
     @State private var editingReading: RatingReading?
 
@@ -42,6 +43,11 @@ struct RatingHistoryWindow: View {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                     .textSelection(.enabled)
+            }
+
+            if let requestScreenReadingPermission {
+                Button("Allow automatic MMR reading…", action: requestScreenReadingPermission)
+                    .buttonStyle(.borderless)
             }
 
             if model.entries.isEmpty {

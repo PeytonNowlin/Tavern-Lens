@@ -25,7 +25,7 @@ struct AdvisorPublicationTests {
         }
     }
 
-    @Test("Partials keep their request identity through a same-turn replacement", arguments: [1, 5, 6, 7])
+    @Test("Partials keep their request identity through a same-turn replacement", arguments: [1, 5, 6, 7, 8])
     @MainActor func replacement(version: Int) async throws {
         let first = try RecruitPlannerTests.request(
             board: [S.boardMinion(1, "body", attack: 3, health: 4),
