@@ -1,0 +1,442 @@
+{
+  "board": [
+    {
+      "cardID": "filler",
+      "entity": {
+        "attack": 2,
+        "cardId": "filler",
+        "divineShield": false,
+        "enchantments": [],
+        "entityId": 1,
+        "health": 3,
+        "locked": false,
+        "maxHealth": 3,
+        "poisonous": false,
+        "reborn": false,
+        "scriptDataNum1": 0,
+        "scriptDataNum2": 0,
+        "scriptDataNum3": 0,
+        "scriptDataNum4": 0,
+        "scriptDataNum5": 0,
+        "scriptDataNum6": 0,
+        "stealth": false,
+        "tags": {},
+        "taunt": false,
+        "venomous": false,
+        "windfury": false
+      },
+      "golden": false,
+      "kind": "minion",
+      "tier": 1
+    }
+  ],
+  "builds": [
+    {
+      "addons": [],
+      "core": [
+        "engine",
+        "upgrade"
+      ],
+      "coreTiers": {
+        "engine": 2,
+        "upgrade": 3
+      },
+      "id": "synthetic-build",
+      "name": "Synthetic build",
+      "share": 1
+    }
+  ],
+  "canFreeze": false,
+  "gold": 4,
+  "goldCap": 10,
+  "hand": [],
+  "income": 6,
+  "levelCost": 3,
+  "preview": {
+    "bgTurn": 8,
+    "gameSeed": 1,
+    "input": {
+      "gameState": {
+        "anomalies": [],
+        "currentTurn": 8,
+        "numberOfPlayersAlive": 6
+      },
+      "opponentBoard": {
+        "board": [
+          {
+            "attack": 4,
+            "cardId": "opponent",
+            "divineShield": false,
+            "enchantments": [],
+            "entityId": 100,
+            "health": 6,
+            "locked": false,
+            "maxHealth": 6,
+            "poisonous": false,
+            "reborn": false,
+            "scriptDataNum1": 0,
+            "scriptDataNum2": 0,
+            "scriptDataNum3": 0,
+            "scriptDataNum4": 0,
+            "scriptDataNum5": 0,
+            "scriptDataNum6": 0,
+            "stealth": false,
+            "tags": {},
+            "taunt": false,
+            "venomous": false,
+            "windfury": false
+          }
+        ],
+        "player": {
+          "cardId": "BG_HERO",
+          "entityId": 200,
+          "globalInfo": {},
+          "hand": [],
+          "heroPowers": [],
+          "hpLeft": 25,
+          "questEntities": [],
+          "questRewardEntities": [],
+          "questRewards": [],
+          "secrets": [],
+          "tavernTier": 3,
+          "trinkets": []
+        }
+      },
+      "options": {
+        "applyDamageCap": true,
+        "includeOutcomeSamples": false,
+        "intermediateResults": 200,
+        "maxAcceptableDuration": 2000,
+        "numberOfSimulations": 8000,
+        "skipInfoLogs": true
+      },
+      "playerBoard": {
+        "board": [
+          {
+            "attack": 2,
+            "cardId": "filler",
+            "divineShield": false,
+            "enchantments": [],
+            "entityId": 1,
+            "health": 3,
+            "locked": false,
+            "maxHealth": 3,
+            "poisonous": false,
+            "reborn": false,
+            "scriptDataNum1": 0,
+            "scriptDataNum2": 0,
+            "scriptDataNum3": 0,
+            "scriptDataNum4": 0,
+            "scriptDataNum5": 0,
+            "scriptDataNum6": 0,
+            "stealth": false,
+            "tags": {},
+            "taunt": false,
+            "venomous": false,
+            "windfury": false
+          }
+        ],
+        "player": {
+          "cardId": "TB_BaconShop_HERO_15",
+          "entityId": 108,
+          "globalInfo": {
+            "AstralAutomatonsSummonedThisGame": 0,
+            "BattlecriesTriggeredThisGame": 0,
+            "BeastsSummonedThisGame": 0,
+            "BeetleAttackBuff": 0,
+            "BeetleHealthBuff": 0,
+            "BloodGemAttackBonus": 0,
+            "BloodGemHealthBonus": 0,
+            "CardsDiscardedThisGame": 2,
+            "DeathrattlesTriggeredThisGame": 24,
+            "DeepBluesPlayed": 0,
+            "ElementalAttackBuff": 0,
+            "ElementalHealthBuff": 0,
+            "EternalKnightsDeadThisGame": 0,
+            "FriendlyMinionsDeadLastCombat": 0,
+            "FrostlingBonus": 0,
+            "GoldSpentThisGame": 86,
+            "GoldenMinionsPlayedThisGame": 2,
+            "GoldrinnBuffAtk": 0,
+            "GoldrinnBuffHealth": 0,
+            "HauntedCarapaceAttackBonus": 0,
+            "HauntedCarapaceHealthBonus": 0,
+            "MagnetizedThisGame": 0,
+            "PiratesPlayedThisGame": 0,
+            "PiratesSummonedThisGame": 0,
+            "SanlaynScribesDeadThisGame": 0,
+            "SpellsCastThisGame": 20,
+            "TastyLobstersBuff": 0,
+            "TavernSpellAttackBuff": 0,
+            "TavernSpellHealthBuff": 0,
+            "TavernSpellsCastThisGame": 20,
+            "UndeadAttackBonus": 0,
+            "UndeadHealthBonus": 0,
+            "VolumizerAttackBuff": 0,
+            "VolumizerHealthBuff": 0,
+            "WhelpAttackBuff": 0,
+            "WhelpHealthBuff": 0
+          },
+          "hand": [],
+          "heroPowers": [
+            {
+              "cardId": "TB_BaconShop_HP_010",
+              "entityId": 122,
+              "info": 0,
+              "info2": 0,
+              "info3": 0,
+              "info4": 0,
+              "info5": 0,
+              "info6": 0,
+              "locked": 0,
+              "scoreValue1": 0,
+              "scoreValue2": 0,
+              "scoreValue3": 0,
+              "used": true
+            }
+          ],
+          "hpLeft": 16,
+          "questEntities": [],
+          "questRewardEntities": [],
+          "questRewards": [],
+          "secrets": [
+            {
+              "cardId": "BG_OldGod",
+              "entityId": 351,
+              "scriptDataNum1": 3,
+              "scriptDataNum2": 236,
+              "scriptDataNum3": 222,
+              "scriptDataNum6": 130610,
+              "tags": {
+                "4914": 236,
+                "4915": 222
+              }
+            }
+          ],
+          "tavernTier": 2,
+          "trinkets": [
+            {
+              "cardId": "BG36_MagicItem_404",
+              "entityId": 348,
+              "scriptDataNum1": 4,
+              "scriptDataNum2": 4,
+              "scriptDataNum6": 1
+            },
+            {
+              "cardId": "BG36_MagicItem_404t",
+              "entityId": 349,
+              "scriptDataNum1": 10,
+              "scriptDataNum2": 10,
+              "scriptDataNum6": 2
+            }
+          ]
+        }
+      }
+    },
+    "opponentPlayerID": 2,
+    "opponentSeenTurn": 7,
+    "opponentSource": "combatStart",
+    "tribesKnown": false
+  },
+  "recruit": {
+    "definitions": {
+      "BG28_810": {
+        "cost": 0,
+        "dbfId": 999,
+        "id": "BG28_810",
+        "name": "Tavern Coin",
+        "text": "Gain 1 Gold.",
+        "type": "SPELL"
+      },
+      "engine": {
+        "attack": 12,
+        "dbfId": 2,
+        "health": 12,
+        "id": "engine",
+        "name": "engine",
+        "techLevel": 2,
+        "type": "MINION"
+      },
+      "filler": {
+        "attack": 2,
+        "dbfId": 1,
+        "health": 3,
+        "id": "filler",
+        "name": "filler",
+        "techLevel": 1,
+        "type": "MINION"
+      },
+      "other": {
+        "attack": 3,
+        "dbfId": 3,
+        "health": 4,
+        "id": "other",
+        "name": "other",
+        "techLevel": 2,
+        "type": "MINION"
+      }
+    },
+    "evaluationVersion": 12,
+    "input": {
+      "gameState": {
+        "anomalies": [],
+        "currentTurn": 8,
+        "numberOfPlayersAlive": 6
+      },
+      "opponentBoard": {
+        "board": [
+          {
+            "attack": 4,
+            "cardId": "opponent",
+            "divineShield": false,
+            "enchantments": [],
+            "entityId": 100,
+            "health": 6,
+            "locked": false,
+            "maxHealth": 6,
+            "poisonous": false,
+            "reborn": false,
+            "scriptDataNum1": 0,
+            "scriptDataNum2": 0,
+            "scriptDataNum3": 0,
+            "scriptDataNum4": 0,
+            "scriptDataNum5": 0,
+            "scriptDataNum6": 0,
+            "stealth": false,
+            "tags": {},
+            "taunt": false,
+            "venomous": false,
+            "windfury": false
+          }
+        ],
+        "player": {
+          "cardId": "BG_HERO",
+          "entityId": 200,
+          "globalInfo": {},
+          "hand": [],
+          "heroPowers": [],
+          "hpLeft": 25,
+          "questEntities": [],
+          "questRewardEntities": [],
+          "questRewards": [],
+          "secrets": [],
+          "tavernTier": 3,
+          "trinkets": []
+        }
+      },
+      "options": {
+        "applyDamageCap": true,
+        "includeOutcomeSamples": false,
+        "intermediateResults": 200,
+        "maxAcceptableDuration": 2000,
+        "numberOfSimulations": 8000,
+        "skipInfoLogs": true
+      },
+      "playerBoard": {
+        "board": [
+          {
+            "attack": 2,
+            "cardId": "filler",
+            "divineShield": false,
+            "enchantments": [],
+            "entityId": 1,
+            "health": 3,
+            "locked": false,
+            "maxHealth": 3,
+            "poisonous": false,
+            "reborn": false,
+            "scriptDataNum1": 0,
+            "scriptDataNum2": 0,
+            "scriptDataNum3": 0,
+            "scriptDataNum4": 0,
+            "scriptDataNum5": 0,
+            "scriptDataNum6": 0,
+            "stealth": false,
+            "tags": {},
+            "taunt": false,
+            "venomous": false,
+            "windfury": false
+          }
+        ],
+        "player": {
+          "cardId": "TB_BaconShop_HERO_15",
+          "entityId": 108,
+          "globalInfo": {},
+          "hand": [],
+          "heroPowers": [],
+          "hpLeft": 30,
+          "questEntities": [],
+          "questRewardEntities": [],
+          "questRewards": [],
+          "secrets": [],
+          "tavernTier": 2,
+          "trinkets": []
+        }
+      }
+    },
+    "powerCosts": {}
+  },
+  "rollCost": 1,
+  "shop": [
+    {
+      "cardID": "engine",
+      "entity": {
+        "attack": 12,
+        "cardId": "engine",
+        "divineShield": false,
+        "enchantments": [],
+        "entityId": 2,
+        "health": 12,
+        "locked": false,
+        "maxHealth": 12,
+        "poisonous": false,
+        "reborn": false,
+        "scriptDataNum1": 0,
+        "scriptDataNum2": 0,
+        "scriptDataNum3": 0,
+        "scriptDataNum4": 0,
+        "scriptDataNum5": 0,
+        "scriptDataNum6": 0,
+        "stealth": false,
+        "tags": {},
+        "taunt": false,
+        "venomous": false,
+        "windfury": false
+      },
+      "golden": false,
+      "kind": "minion",
+      "tier": 2
+    },
+    {
+      "cardID": "other",
+      "entity": {
+        "attack": 3,
+        "cardId": "other",
+        "divineShield": false,
+        "enchantments": [],
+        "entityId": 3,
+        "health": 4,
+        "locked": false,
+        "maxHealth": 4,
+        "poisonous": false,
+        "reborn": false,
+        "scriptDataNum1": 0,
+        "scriptDataNum2": 0,
+        "scriptDataNum3": 0,
+        "scriptDataNum4": 0,
+        "scriptDataNum5": 0,
+        "scriptDataNum6": 0,
+        "stealth": false,
+        "tags": {},
+        "taunt": false,
+        "venomous": false,
+        "windfury": false
+      },
+      "golden": false,
+      "kind": "minion",
+      "tier": 2
+    }
+  ],
+  "shopFrozen": false,
+  "tier": 2
+}

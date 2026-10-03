@@ -350,37 +350,7 @@ public enum RecruitPlanner {
     /// Production estimates describe a card's role and its inputs. They are deliberately separate
     /// from exact recruit effects and never used to fabricate a combat board.
     public static func production(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double {
-        RecruitMechanics.production(card, state: state, context: context)
-            + baseProduction(card, state: state, context: context)
-    }
-
-    private static func baseProduction(_ card: AdvisorCard, state: RecruitState, context: RecruitContext) -> Double {
-        if let production = RecruitElementalValue.production(card, state: state, context: context) { return production }
-        if let production = RecruitDiscardEffects.fleshlingProduction(card, state: state, context: context) { return production }
-        let text = context.text(card.cardID).lowercased()
-        // Battlecries have already been resolved by the transition. Counting their rewards
-        // again every future turn would incorrectly protect disposable cycle minions.
-        if text.hasPrefix("battlecry:") || text.hasPrefix("when you sell this") { return 0 }
-        let gems = state.board.contains { context.text($0.cardID).lowercased().contains("blood gem") }
-        let gemValue = Double(2 + (state.input.playerBoard.player.globalInfo["BloodGemAttackBonus"] ?? 0)
-                                + (state.input.playerBoard.player.globalInfo["BloodGemHealthBonus"] ?? 0)).squareRoot()
-        if text.contains("blood gems played from your hand") {
-            let supply = state.hand.filter { $0.cardID == "BG20_GEM" }.count
-                + state.board.filter { context.text($0.cardID).lowercased().contains("get") && context.text($0.cardID).lowercased().contains("blood gem") }.count * 2
-            return Double(min(supply, 8)) * gemValue
-        }
-        if text.contains("plays a blood gem on all") || text.contains("plays 2 blood gems on all") {
-            return Double(max(0, state.board.count - 1)) * gemValue * (card.golden ? 2 : 1)
-        }
-        if text.contains("blood gems give an extra"), gems { return gemValue * 4 }
-        if text.contains("get"), text.contains("blood gem") { return gemValue * (card.golden ? 4 : 2) }
-        if text.contains("end of your turn") {
-            return (text.contains("all") || text.contains("your minions") ? Double(state.board.count) * 2 : 3)
-                * (card.golden ? 2 : 1) * Double(RecruitEffects.endOfTurnRepeats(state, context: context))
-        }
-        if text.contains("get"), text.contains("gold") || text.contains("coin") { return 3 }
-        if text.contains("sludge corrosion") { return Double(state.board.count) * (card.golden ? 1.2 : 0.6) }
-        return 0
+        RecruitProduction.value(card, state: state, context: context)
     }
 
     public static func search(_ request: AdvisorRequest, context: RecruitContext, budget: Budget = Budget(),
@@ -392,7 +362,7 @@ public enum RecruitPlanner {
                                value: value(projection, request: request, context: context))
         }
         let baseline = plan(initial)
-        var beam = [initial], all: [RecruitPlan] = [], expanded = 0
+        var beam = [initial], best: [String: RecruitPlan] = [:], expanded = 0
         var limitations = Set(baseline.projection.limitations + RecruitMechanics.limitations(initial, context: context))
         for card in request.board + request.hand + request.shop {
             if context.definitions[card.cardID] == nil { limitations.insert("Missing card definitions") }
@@ -424,7 +394,7 @@ public enum RecruitPlanner {
                 }
             }
         }
-        for _ in 0..<max(0, budget.depth) {
+        for depth in 0..<max(0, budget.depth) {
             var next: [RecruitState] = []
             for s in beam {
                 for step in actions(s, context: context, canFreeze: request.canFreeze) {
@@ -434,14 +404,18 @@ public enum RecruitPlanner {
                     next.append(result)
                     // A buy is allowed to remain in hand for triples, but plans ending in an
                     // ordinary unplayed purchase are not promoted by hand-option value alone.
-                    all.append(plan(result))
+                    let candidate = plan(result)
+                    guard let first = candidate.state.steps.first else { continue }
+                    if let old = best[first.id], old.value.total >= candidate.value.total { continue }
+                    best[first.id] = candidate
                 }
                 if expanded >= budget.expansions || !shouldContinue() { break }
             }
+            if depth + 1 == budget.depth || expanded >= budget.expansions { break }
             // Score once per state, not twice per sort comparison. Value is pure; this
             // preserves ordering and archived results while avoiding repeated effect parsing.
             var ordered: [(state: RecruitState, score: Double, id: String)] = []
-            for state in next {
+            for state in next where !state.terminal {
                 let score = value(state, request: request, context: context).total
                 ordered.append((state, score, state.steps.map(\.id).joined()))
             }
@@ -454,12 +428,6 @@ public enum RecruitPlanner {
                 return perFirst[first.id]! <= 3
             }.prefix(max(1, budget.width)).map { $0 }
             if beam.isEmpty || expanded >= budget.expansions || !shouldContinue() { break }
-        }
-        var best: [String: RecruitPlan] = [:]
-        for p in all {
-            guard let first = p.state.steps.first else { continue }
-            if let old = best[first.id], old.value.total >= p.value.total { continue }
-            best[first.id] = p
         }
         let plans = best.values.sorted { a, b in a.value.total == b.value.total ? a.id < b.id : a.value.total > b.value.total }
         return RecruitSearch(baseline: baseline, plans: Array(plans.prefix(12)), limitations: limitations.sorted(), expanded: expanded)

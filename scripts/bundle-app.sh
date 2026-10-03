@@ -12,10 +12,12 @@ OUT_DIR="$ROOT/build"
 INSTALL=0
 STAGE=0
 JOBS=""
+SDK=""
+BUILD_SYSTEM=""
 
 usage() {
     cat <<EOF
-Usage: scripts/bundle-app.sh [--debug] [--output DIR] [--jobs N] [--install | --stage]
+Usage: scripts/bundle-app.sh [--debug] [--output DIR] [--jobs N] [--sdk PATH] [--build-system NAME] [--install | --stage]
 
 Builds the TavernLens product and assembles "Tavern Lens.app" (default: build/).
 
@@ -23,6 +25,8 @@ Options:
   --debug        Build the debug configuration instead of release.
   --output DIR   Put the app or staged ZIP in DIR instead of build/.
   --jobs N       Limit Swift build parallelism to N jobs (positive integer).
+  --sdk PATH     Use a specific installed SDK, as in swift build --sdk.
+  --build-system NAME  Use a specific SwiftPM build system.
   --install      Link /Applications to this bundle, keeping one app copy.
   --stage        Write a verified Tavern Lens.zip; leave the installed app alone.
   -h, --help     Show this help.
@@ -63,6 +67,8 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --debug) CONFIG="debug" ;;
         --output) require_value "$@"; OUT_DIR="$2"; shift ;;
+        --sdk) require_value "$@"; SDK="$2"; shift ;;
+        --build-system) require_value "$@"; BUILD_SYSTEM="$2"; shift ;;
         --jobs)
             require_value "$@"
             [[ "$2" =~ ^[1-9][0-9]*$ ]] || { echo "--jobs requires a positive integer" >&2; exit 2; }
@@ -136,6 +142,8 @@ fi
 
 BUILD_ARGS=(--package-path "$ROOT" -c "$CONFIG")
 if [[ -n "$JOBS" ]]; then BUILD_ARGS+=(--jobs "$JOBS"); fi
+if [[ -n "$SDK" ]]; then BUILD_ARGS+=(--sdk "$SDK"); fi
+if [[ -n "$BUILD_SYSTEM" ]]; then BUILD_ARGS+=(--build-system "$BUILD_SYSTEM"); fi
 echo "==> Building TavernLens ($CONFIG)"
 swift build "${BUILD_ARGS[@]}" --product TavernLens
 BIN_DIR="$(swift build "${BUILD_ARGS[@]}" --show-bin-path)"
