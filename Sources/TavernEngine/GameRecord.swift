@@ -1,5 +1,6 @@
 import BGState
 import Foundation
+import OSLog
 
 @_exported import struct BGState.BGGameJournal
 @_exported import struct BGState.BGTurnSnapshot
@@ -85,11 +86,22 @@ public struct GameRecord: Codable, Hashable, Sendable {
     public var outcome: BGGameOutcome { summary.outcome }
 }
 
+public enum GameRecordError: Error, Equatable, LocalizedError {
+    case unsupportedFormat(Int)
+
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedFormat(let version): "Game record format \(version) is not supported by this app."
+        }
+    }
+}
+
 /// Game records on disk: one JSON file per game, named after its `GAME_SEED`, in
 /// `~/Library/Application Support/TavernLens/Games` by default.
 ///
 /// Writes are atomic, so a crash never leaves a half-written record, and saving a game
-/// again replaces its file.
+/// again replaces its file. A file that can't be read is moved aside rather than overwritten, and
+/// one of an unsupported format is left alone (the save throws).
 public struct GameRecordStore: Sendable {
     public let directory: URL
 
@@ -124,9 +136,22 @@ public struct GameRecordStore: Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = url(for: record)
         var record = record
-        func keepBookmarks(of file: URL) -> Bool {
-            guard let existing = (try? Data(contentsOf: file)).flatMap({ try? Self.decoder.decode(GameRecord.self, from: $0) })
-            else { return false }
+        /// Folds the bookmarks of the record at `file` into `record`. An unreadable file is moved
+        /// aside (its bookmarks can't be merged, but the bytes survive); a record of a format this
+        /// app doesn't know is never replaced, so the save throws instead.
+        func keepBookmarks(of file: URL) throws -> Bool {
+            guard FileManager.default.fileExists(atPath: file.path) else { return false }
+            let existing: GameRecord
+            do {
+                existing = try decodeRecord(at: file)
+            } catch GameRecordError.unsupportedFormat(let version) {
+                Self.log.error("Not overwriting \(file.lastPathComponent, privacy: .public): format \(version) is unsupported")
+                throw GameRecordError.unsupportedFormat(version)
+            } catch {
+                Self.log.error("Corrupt record \(file.lastPathComponent, privacy: .public): \(String(describing: error), privacy: .public)")
+                try quarantine(file)
+                return false
+            }
             let known = Set(record.bookmarks.map(\.id))
             let kept = existing.bookmarks.filter { !known.contains($0.id) }
             if !kept.isEmpty {
@@ -134,15 +159,33 @@ public struct GameRecordStore: Sendable {
             }
             return true
         }
-        _ = keepBookmarks(of: url)
+        _ = try keepBookmarks(of: url)
         // Saved before its seed was known: the unseeded file's bookmarks move here, and it goes.
         var unseeded = record
         unseeded.summary.gameSeed = nil
         let fallback = self.url(for: unseeded)
-        let migrated = record.gameSeed != nil && fallback != url && keepBookmarks(of: fallback)
+        let migrated = try record.gameSeed != nil && fallback != url && keepBookmarks(of: fallback)
         try Self.encoder.encode(record).write(to: url, options: .atomic)
         if migrated { try? FileManager.default.removeItem(at: fallback) }
     }
+
+    /// Decodes the record at `file`, rejecting a `format` this app doesn't write.
+    public func decodeRecord(at file: URL) throws -> GameRecord {
+        let data = try Data(contentsOf: file)
+        // The format is read first so a newer record fails as unsupported, not as a decode error.
+        struct Header: Decodable { var format: Int }
+        let header = try Self.decoder.decode(Header.self, from: data)
+        guard header.format == GameRecord.currentFormat else { throw GameRecordError.unsupportedFormat(header.format) }
+        return try Self.decoder.decode(GameRecord.self, from: data)
+    }
+
+    /// Renames an unreadable record to `<name>.corrupt-<time>` (not `.json`, so listings skip it).
+    private func quarantine(_ file: URL) throws {
+        let stamp = Int(Date().timeIntervalSince1970 * 1000)
+        try FileManager.default.moveItem(at: file, to: file.appendingPathExtension("corrupt-\(stamp)"))
+    }
+
+    private static let log = Logger(subsystem: "com.nowlinautomation.TavernLens", category: "game-records")
 
     /// Adds a bookmark to its game's saved record, or replaces the one with its ID.
     /// Returns false when there's no saved record of that game.
@@ -164,7 +207,16 @@ public struct GameRecordStore: Sendable {
 
     public func load(seed: Int) -> GameRecord? {
         let url = directory.appending(path: "game-\(seed).json")
-        return (try? Data(contentsOf: url)).flatMap { try? Self.decoder.decode(GameRecord.self, from: $0) }
+        return readable(url)
+    }
+
+    /// The record at `file`, or nil (logged) when it's missing, corrupt or of an unsupported format.
+    private func readable(_ file: URL) -> GameRecord? {
+        guard FileManager.default.fileExists(atPath: file.path) else { return nil }
+        do { return try decodeRecord(at: file) } catch {
+            Self.log.error("Skipping \(file.lastPathComponent, privacy: .public): \(String(describing: error), privacy: .public)")
+            return nil
+        }
     }
 
     /// Every readable record, oldest first. Unreadable files are skipped.
@@ -172,7 +224,7 @@ public struct GameRecordStore: Sendable {
         let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
         return files
             .filter { $0.lastPathComponent.hasPrefix("game-") && $0.pathExtension == "json" }
-            .compactMap { (try? Data(contentsOf: $0)).flatMap { try? Self.decoder.decode(GameRecord.self, from: $0) } }
+            .compactMap { readable($0) }
             .sorted { ($0.startedAt ?? .distantPast, $0.gameSeed ?? 0) < ($1.startedAt ?? .distantPast, $1.gameSeed ?? 0) }
     }
 
