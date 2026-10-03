@@ -2,6 +2,10 @@
 
 ## Agent skills
 
+### Pstack models
+
+When a pstack skill selects subagent models in this repository, read `docs/agents/pstack-models.md` for the role mappings and reasoning budget. Use these repository settings in preference to the user-level pstack settings.
+
 ### Issue tracker
 
 Issues are tracked in GitHub Issues for `PeytonNowlin/Tavern-Lens` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
