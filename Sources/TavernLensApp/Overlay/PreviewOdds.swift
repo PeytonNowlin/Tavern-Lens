@@ -17,24 +17,21 @@ struct PreviewOdds: View {
         let m = metrics
         let s = scale
         VStack(alignment: .leading, spacing: m.rowSpacing * s) {
-            if !seen || odds?.hasData == false {
-                status("No odds", detail: "Not fought yet")
-            } else if let odds, let seenTurn = odds.opponentSeenTurn,
-                      odds.bgTurn - seenTurn >= AdvisorRequest.staleBoardTurns {
-                status("Board too old", detail: "No odds shown", warning: true)
-            } else if let failure = odds?.failure {
-                status("Odds unavailable", detail: "Calculation failed", warning: true)
-                    .help(failure)
-            } else if odds?.isUpdating == true || odds?.odds == nil {
-                status("Updating…", detail: odds?.isUpdating == true ? "Board changed" : "Calculating…")
-            } else {
+            switch OverlayText.previewState(previewInput, staleBoardTurns: AdvisorRequest.staleBoardTurns) {
+            case .status(let title, let detail, let isWarning, let help):
+                if let help {
+                    status(title, detail: detail, warning: isWarning).help(help)
+                } else {
+                    status(title, detail: detail, warning: isWarning)
+                }
+            case .odds:
                 let result = odds?.odds
                 HStack(spacing: m.columnSpacing * s) {
                     value("W", result?.won, .green)
                     value("T", result?.tied, .secondary)
                     value("L", result?.lost, .red)
                 }
-                PreviewOddsBar(won: result?.won ?? 0, tied: result?.tied ?? 0, lost: result?.lost ?? 0)
+                OddsBar(won: result?.won ?? 0, tied: result?.tied ?? 0, lost: result?.lost ?? 0)
                     .frame(height: m.barHeight * s)
                 footnote
                     .font(.system(size: m.footnoteSize(at: s)))
@@ -63,30 +60,35 @@ struct PreviewOdds: View {
         VStack(alignment: .leading, spacing: 0) {
             Text(label).foregroundStyle(.secondary)
                 .frame(height: metrics.lineHeight(at: scale))
-            Text(percent.map(CombatOddsPanel.percent) ?? "…").foregroundStyle(color)
+            Text(percent.map(OverlayText.percent) ?? "…").foregroundStyle(color)
                 .frame(height: metrics.lineHeight(at: scale))
         }
         .font(.system(size: metrics.percentSize(at: scale), weight: .semibold))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var previewInput: OverlayText.PreviewInput {
+        OverlayText.PreviewInput(seen: seen, request: odds.map {
+            .init(hasData: $0.hasData, bgTurn: $0.bgTurn, opponentSeenTurn: $0.opponentSeenTurn,
+                  failure: $0.failure, isUpdating: $0.isUpdating, hasResult: $0.odds != nil)
+        })
+    }
+
     @ViewBuilder private var footnote: some View {
         if let result = odds?.odds {
-            if let risk = odds?.lethalRisk {
-                Text("Lethal \(CombatOddsPanel.percent(risk))").foregroundStyle(.red).fontWeight(.semibold)
-            } else if result.lost >= result.won, result.lost > 0 {
-                Text("Take \(String(format: "%.1f", result.averageDamageLost))").foregroundStyle(.secondary)
-            } else if result.won > 0 {
-                Text("Deal \(String(format: "%.1f", result.averageDamageWon))").foregroundStyle(.secondary)
+            switch OverlayText.previewFootnote(
+                won: result.won, lost: result.lost, averageDamageWon: result.averageDamageWon,
+                averageDamageLost: result.averageDamageLost, lethalRisk: odds?.lethalRisk) {
+            case .lethal(let text): Text(text).foregroundStyle(.red).fontWeight(.semibold)
+            case .take(let text), .deal(let text): Text(text).foregroundStyle(.secondary)
+            case nil: EmptyView()
             }
         }
     }
 
     private var progressText: String {
-        guard let result = odds?.odds else { return "…" }
-        let count = result.simulations >= 1000
-            ? String(format: "%.1fk", Double(result.simulations) / 1000) : String(result.simulations)
-        return result.isFinal && odds?.isUpdating != true ? count : "\(count)…"
+        OverlayText.progress(simulations: odds?.odds?.simulations, isFinal: odds?.odds?.isFinal == true,
+                             isUpdating: odds?.isUpdating == true)
     }
 
     private var helpText: String {
@@ -95,25 +97,5 @@ struct PreviewOdds: View {
         let seen = odds.opponentSeenTurn.map { "their board from turn \($0)" } ?? "their last-seen board"
         if odds.isUpdating { return "Your board changed. Calculating new odds against \(seen)" }
         return "Your board now against \(seen). \(progressText) simulations"
-    }
-}
-
-private struct PreviewOddsBar: View {
-    var won: Double
-    var tied: Double
-    var lost: Double
-
-    var body: some View {
-        GeometryReader { geometry in
-            let total = max(won + tied + lost, 1)
-            HStack(spacing: 0) {
-                Rectangle().fill(.green.opacity(0.85)).frame(width: geometry.size.width * won / total)
-                Rectangle().fill(.gray.opacity(0.6)).frame(width: geometry.size.width * tied / total)
-                Rectangle().fill(.red.opacity(0.85)).frame(width: geometry.size.width * lost / total)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white.opacity(0.1))
-            .clipShape(Capsule())
-        }
     }
 }

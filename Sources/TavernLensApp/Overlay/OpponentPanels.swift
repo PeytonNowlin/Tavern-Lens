@@ -12,10 +12,11 @@ struct OpponentOverlays: View {
 
     var body: some View {
         let scale = layout.panelScale
+        let ringInset = layout.constants.opponentPanels.ringInset
         ZStack(alignment: .topLeading) {
             if let slot = model.nextOpponentSlot {
-                let art = layout.leaderboardArt(slot, isNextOpponent: true).insetBy(dx: -2 * scale, dy: -2 * scale)
-                NextOpponentRing(scale: scale)
+                let art = layout.leaderboardArt(slot, isNextOpponent: true).insetBy(dx: -ringInset * scale, dy: -ringInset * scale)
+                NextOpponentRing(scale: scale, metrics: layout.constants.opponentPanels)
                     .frame(width: art.width, height: art.height)
                     .offset(x: art.minX, y: art.minY)
             }
@@ -30,7 +31,7 @@ struct OpponentOverlays: View {
                 let rect = layout.opponentPanel
                 OpponentPanel(
                     entry: entry, isNext: entry.playerID == game.nextOpponentPlayerID,
-                    currentTurn: game.bgTurn, cards: cards, scale: scale
+                    currentTurn: game.bgTurn, cards: cards, scale: scale, metrics: layout.constants.opponentPanels
                 )
                 .frame(width: rect.width, height: rect.height, alignment: .top)
                 .offset(x: rect.minX, y: rect.minY)
@@ -43,11 +44,12 @@ struct OpponentOverlays: View {
 /// Marks the next opponent's portrait on Hearthstone's leaderboard.
 struct NextOpponentRing: View {
     let scale: CGFloat
+    var metrics = OpponentPanelMetrics()
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 8 * scale, style: .continuous)
-            .strokeBorder(Palette.next, lineWidth: 2 * scale)
-            .shadow(color: Palette.next.opacity(0.7), radius: 5 * scale)
+        RoundedRectangle(cornerRadius: metrics.ringCornerRadius * scale, style: .continuous)
+            .strokeBorder(Palette.next, lineWidth: metrics.ringLineWidth * scale)
+            .shadow(color: Palette.next.opacity(0.7), radius: metrics.ringGlowRadius * scale)
     }
 }
 
@@ -58,66 +60,68 @@ struct OpponentPanel: View {
     let currentTurn: Int
     let cards: CardDB?
     let scale: CGFloat
+    var metrics = OpponentPanelMetrics()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8 * scale) {
-            HStack(alignment: .firstTextBaseline, spacing: 8 * scale) {
+        let m = metrics
+        VStack(alignment: .leading, spacing: m.panelSpacing * scale) {
+            HStack(alignment: .firstTextBaseline, spacing: m.panelSpacing * scale) {
                 Text(OpponentText.heroName(entry, cards: cards))
-                    .font(.system(size: 15 * scale, weight: .semibold))
+                    .font(.system(size: m.heroNameFontSize * scale, weight: .semibold))
                 if let name = entry.displayName {
                     Text(name)
-                        .font(.system(size: 12 * scale))
+                        .font(.system(size: m.playerNameFontSize * scale))
                         .foregroundStyle(.secondary)
                 }
                 if isNext {
-                    Tag(text: "Next opponent", color: Palette.next, scale: scale)
+                    Tag(text: "Next opponent", color: Palette.next, scale: scale, metrics: m)
                 }
                 if entry.isDead {
                     Tag(text: entry.place.map { "Out · \(OpponentText.ordinal($0))" } ?? "Out", color: .secondary,
-                        scale: scale)
+                        scale: scale, metrics: m)
                 }
-                Spacer(minLength: 12 * scale)
+                Spacer(minLength: m.panelPadding.width * scale)
                 StatLabel(symbol: "star.fill", tint: Palette.tier, text: entry.tier.map(String.init) ?? "–",
-                          scale: scale)
-                StatLabel(symbol: "trophy.fill", tint: Palette.triple, text: "\(entry.hero.triples)", scale: scale)
-                StatLabel(symbol: "heart.fill", tint: Palette.health, text: OpponentText.health(entry), scale: scale)
+                          scale: scale, metrics: m)
+                StatLabel(symbol: "trophy.fill", tint: Palette.triple, text: "\(entry.hero.triples)", scale: scale, metrics: m)
+                StatLabel(symbol: "heart.fill", tint: Palette.health, text: OpponentText.health(entry), scale: scale, metrics: m)
             }
             .lineLimit(1)
 
             if let board = entry.lastSeenBoard {
-                HStack(spacing: 6 * scale) {
+                HStack(spacing: m.tileSpacing * scale) {
                     Text(OpponentText.seen(board, currentTurn: currentTurn))
-                        .font(.system(size: 11 * scale, weight: .medium))
+                        .font(.system(size: m.seenFontSize * scale, weight: .medium))
                         .foregroundStyle(.secondary)
                     if let seenHero = board.heroCardID, seenHero != entry.heroCardID {
                         Text("as \(cards?.name(of: seenHero) ?? seenHero)")
-                            .font(.system(size: 11 * scale))
+                            .font(.system(size: m.seenFontSize * scale))
                             .foregroundStyle(.tertiary)
                     }
                     if let likely = board.likelyBuild {
                         Text("Likely build: \(likely.name)")
-                            .font(.system(size: 11 * scale, weight: .semibold))
+                            .font(.system(size: m.seenFontSize * scale, weight: .semibold))
                             .foregroundStyle(Palette.build)
                     }
                 }
                 if board.cards.isEmpty {
-                    Placeholder(text: "Empty board", scale: scale)
+                    Placeholder(text: "Empty board", scale: scale, metrics: m)
                 } else {
-                    HStack(spacing: 6 * scale) {
+                    HStack(spacing: m.tileSpacing * scale) {
                         ForEach(Array(board.cards.enumerated()), id: \.offset) { _, card in
-                            MinionTile(card: card, cards: cards, scale: scale)
+                            MinionTile(card: card, cards: cards, scale: scale, metrics: m)
                         }
                     }
                 }
             } else {
-                Placeholder(text: "Not seen: you haven't fought them yet", scale: scale)
+                Placeholder(text: "Not seen: you haven't fought them yet", scale: scale, metrics: m)
             }
         }
         .monospacedDigit()
-        .padding(.horizontal, 12 * scale)
-        .padding(.vertical, 10 * scale)
+        .padding(.horizontal, m.panelPadding.width * scale)
+        .padding(.vertical, m.panelPadding.height * scale)
         .fixedSize()
-        .panelBackground(scale: scale)
+        .hudPanel(cornerRadius: m.cornerRadius * scale)
     }
 }
 
@@ -126,24 +130,26 @@ struct MinionTile: View {
     let card: CardView
     let cards: CardDB?
     let scale: CGFloat
+    var metrics = OpponentPanelMetrics()
 
     var body: some View {
-        VStack(spacing: 3 * scale) {
+        let m = metrics
+        VStack(spacing: m.tileRowSpacing * scale) {
             HStack(spacing: 2 * scale) {
                 if let tier = card.tier {
                     Text("\(tier)")
-                        .font(.system(size: 9.5 * scale, weight: .bold))
+                        .font(.system(size: m.tileTierFontSize * scale, weight: .bold))
                         .foregroundStyle(Palette.tier)
                 }
                 Spacer(minLength: 0)
                 ForEach(KeywordBadge.shown(card.keywords), id: \.self) { keyword in
                     Image(systemName: KeywordBadge.symbol(keyword))
-                        .font(.system(size: 8.5 * scale, weight: .semibold))
+                        .font(.system(size: m.tileKeywordFontSize * scale, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
             }
             Text(OpponentText.cardName(card, cards: cards))
-                .font(.system(size: 10.5 * scale, weight: .medium))
+                .font(.system(size: m.tileNameFontSize * scale, weight: .medium))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.85)
@@ -153,14 +159,14 @@ struct MinionTile: View {
                 Spacer(minLength: 0)
                 Text(card.health.map(String.init) ?? "–").foregroundStyle(Palette.health)
             }
-            .font(.system(size: 15 * scale, weight: .bold))
+            .font(.system(size: m.tileStatFontSize * scale, weight: .bold))
         }
-        .padding(.horizontal, 6 * scale)
-        .padding(.vertical, 5 * scale)
-        .frame(width: 92 * scale, height: 88 * scale)
-        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 7 * scale, style: .continuous))
+        .padding(.horizontal, m.tilePadding.width * scale)
+        .padding(.vertical, m.tilePadding.height * scale)
+        .frame(width: m.tileSize.width * scale, height: m.tileSize.height * scale)
+        .background(.white.opacity(0.07), in: RoundedRectangle(cornerRadius: m.tileCornerRadius * scale, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 7 * scale, style: .continuous)
+            RoundedRectangle(cornerRadius: m.tileCornerRadius * scale, style: .continuous)
                 .strokeBorder(card.golden ? Palette.golden : .white.opacity(0.1), lineWidth: card.golden ? 1.5 : 0.5)
         )
     }
@@ -230,7 +236,7 @@ struct NextOpponentPreview: View {
         .padding(.horizontal, m.padding.width)
         .padding(.vertical, m.padding.height)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .panelBackground(scale: scale)
+        .hudPanel(cornerRadius: LayoutConstants.current.opponentPanels.cornerRadius * scale)
     }
 
     private var isStale: Bool {
@@ -244,11 +250,11 @@ struct NextOpponentPreview: View {
 private enum Palette {
     static let next = Color.orange
     static let tier = Color.yellow.opacity(0.85)
-    static let triple = Color(red: 0.95, green: 0.78, blue: 0.35)
-    static let golden = Color(red: 1.0, green: 0.8, blue: 0.3)
-    static let attack = Color(red: 1.0, green: 0.85, blue: 0.45)
-    static let health = Color(red: 1.0, green: 0.45, blue: 0.42)
-    static let build = Color(red: 0.35, green: 0.85, blue: 0.85)
+    static let triple = Color(OverlayPalette.triple)
+    static let golden = Color(OverlayPalette.golden)
+    static let attack = Color(OverlayPalette.attack)
+    static let health = Color(OverlayPalette.health)
+    static let build = Color(OverlayPalette.likelyBuild)
 }
 
 private struct StatLabel: View {
@@ -256,13 +262,14 @@ private struct StatLabel: View {
     let tint: Color
     let text: String
     let scale: CGFloat
+    let metrics: OpponentPanelMetrics
 
     var body: some View {
         HStack(spacing: 3 * scale) {
             Image(systemName: symbol)
-                .font(.system(size: 10 * scale))
+                .font(.system(size: metrics.statSymbolFontSize * scale))
                 .foregroundStyle(tint)
-            Text(text).font(.system(size: 13 * scale, weight: .semibold))
+            Text(text).font(.system(size: metrics.statFontSize * scale, weight: .semibold))
         }
     }
 }
@@ -271,13 +278,14 @@ private struct Tag: View {
     let text: String
     let color: Color
     let scale: CGFloat
+    let metrics: OpponentPanelMetrics
 
     var body: some View {
         Text(text)
-            .font(.system(size: 9.5 * scale, weight: .semibold))
+            .font(.system(size: metrics.tagFontSize * scale, weight: .semibold))
             .foregroundStyle(color)
-            .padding(.horizontal, 5 * scale)
-            .padding(.vertical, 1.5 * scale)
+            .padding(.horizontal, metrics.tagPadding.width * scale)
+            .padding(.vertical, metrics.tagPadding.height * scale)
             .background(color.opacity(0.18), in: Capsule())
     }
 }
@@ -285,13 +293,14 @@ private struct Tag: View {
 private struct Placeholder: View {
     let text: String
     let scale: CGFloat
+    let metrics: OpponentPanelMetrics
 
     var body: some View {
         Text(text)
-            .font(.system(size: 12 * scale, weight: .medium))
+            .font(.system(size: metrics.placeholderFontSize * scale, weight: .medium))
             .foregroundStyle(.secondary)
-            .frame(minWidth: 320 * scale, alignment: .leading)
-            .padding(.vertical, 4 * scale)
+            .frame(minWidth: metrics.placeholderMinWidth * scale, alignment: .leading)
+            .padding(.vertical, metrics.placeholderPadding * scale)
     }
 }
 
@@ -326,49 +335,20 @@ enum OpponentText {
     }
 
     static func health(_ entry: LobbyEntryView) -> String {
-        entry.isDead ? "0" : "\(entry.hero.hp)"
+        OverlayText.health(hp: entry.hero.hp, isDead: entry.isDead)
     }
 
     static func stats(_ card: CardView) -> String {
-        guard let attack = card.attack, let health = card.health else { return "" }
-        return "\(attack)/\(health)"
+        OverlayText.stats(attack: card.attack, health: card.health)
     }
 
     static func seen(_ board: LastSeenBoardView, currentTurn: Int) -> String {
-        let ago = currentTurn - board.bgTurn
-        let when = switch ago {
-        case ...0: "this turn"
-        case 1: "last turn"
-        default: "\(ago) turns ago"
-        }
-        return "Seen turn \(board.bgTurn) (\(when))"
+        OverlayText.seen(bgTurn: board.bgTurn, currentTurn: currentTurn)
     }
 
     static func previewAge(_ board: LastSeenBoardView?, currentTurn: Int) -> String {
-        guard let board else { return "Unseen" }
-        let age = max(0, currentTurn - board.bgTurn)
-        return age == 0 ? "This turn" : "\(age)t old"
+        OverlayText.previewAge(seenTurn: board?.bgTurn, currentTurn: currentTurn)
     }
 
-    static func ordinal(_ n: Int) -> String {
-        let suffix = switch (n % 10, n % 100) {
-        case (_, 11...13): "th"
-        case (1, _): "st"
-        case (2, _): "nd"
-        case (3, _): "rd"
-        default: "th"
-        }
-        return "\(n)\(suffix)"
-    }
-}
-
-private extension View {
-    /// The overlay's dark translucent panel look, shared with the status HUD.
-    func panelBackground(scale: CGFloat) -> some View {
-        background(HUDMaterial(cornerRadius: 10 * scale))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10 * scale, style: .continuous)
-                    .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-            )
-    }
+    static func ordinal(_ n: Int) -> String { OverlayText.ordinal(n) }
 }

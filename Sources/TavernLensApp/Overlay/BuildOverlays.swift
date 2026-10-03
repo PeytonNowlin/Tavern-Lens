@@ -47,23 +47,24 @@ struct ShopHighlights: View {
                 let ring = layout.shopHighlight(highlight.index, of: shopCount)
                 let badge = layout.shopHighlightBadge(highlight.index, of: shopCount)
                 let style = BuildStyle(highlight.role)
+                let badgeWidth = max(m.badgeMinSize.width, badge.width)
+                let badgeHeight = max(m.badgeMinSize.height, badge.height)
                 RoundedRectangle(cornerRadius: m.highlightCornerRadius * h, style: .continuous)
                     .strokeBorder(
-                        style.color.opacity(0.55),
+                        style.color.opacity(m.highlightOpacity),
                         style: StrokeStyle(
-                            lineWidth: m.highlightLineWidth * h * style.lineScale * 0.65,
-                            dash: style.dashed ? [0.012 * h, 0.006 * h] : []
+                            lineWidth: m.highlightLineWidth * h * style.lineScale * m.highlightLineShare,
+                            dash: style.dashed ? m.highlightDash.map { $0 * h } : []
                         )
                     )
                     .frame(width: ring.width, height: ring.height)
                     .offset(x: ring.minX, y: ring.minY)
                 Text(style.label)
-                    .font(.system(size: max(12, badge.height * 0.62), weight: .semibold))
+                    .font(.system(size: max(m.badgeMinFontSize, badge.height * m.badgeFontShare), weight: .semibold))
                     .foregroundStyle(style.color)
-                    .frame(width: max(58, badge.width), height: max(18, badge.height))
+                    .frame(width: badgeWidth, height: badgeHeight)
                     .background(.black.opacity(0.9), in: Capsule())
-                    .offset(x: badge.midX - max(58, badge.width) / 2,
-                            y: badge.midY - max(18, badge.height) / 2)
+                    .offset(x: badge.midX - badgeWidth / 2, y: badge.midY - badgeHeight / 2)
             }
         }
         .allowsHitTesting(false)
@@ -80,12 +81,12 @@ struct BuildStyle {
     init(_ role: ShopCardRole) {
         switch role {
         case .core:
-            color = Color(red: 0.9, green: 0.76, blue: 0.45)
+            color = Color(OverlayPalette.buildCore)
             label = "Core fit"
             dashed = false
             lineScale = 1
         case .addon:
-            color = Color(red: 0.72, green: 0.68, blue: 0.82)
+            color = Color(OverlayPalette.buildAddon)
             label = "Fits"
             dashed = true
             lineScale = 0.75
@@ -102,6 +103,8 @@ struct BuildTipsPanel: View {
     var metrics = BuildOverlayMetrics()
     var density: OverlayDensity = .compact
 
+    private var type: BuildTipsTypography { BuildTipsTypography(panelScale: scale) }
+
     var body: some View {
         ViewThatFits(in: .vertical) {
             if density == .comfortable {
@@ -117,10 +120,10 @@ struct BuildTipsPanel: View {
         return VStack(alignment: .leading, spacing: m.cardSpacing * scale) {
             HStack(spacing: 4) {
                 Text("Current fit")
-                    .font(.system(size: max(12, 12 * scale), weight: .semibold))
+                    .font(.system(size: type.headerFontSize, weight: .semibold))
                 if builds.catalogIsStale {
                     Text("· cached")
-                        .font(.system(size: max(12, 12 * scale)))
+                        .font(.system(size: type.headerFontSize))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -133,11 +136,7 @@ struct BuildTipsPanel: View {
         .padding(.horizontal, m.padding.width * scale)
         .padding(.vertical, m.padding.height * scale)
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * scale))
-        .overlay(
-            RoundedRectangle(cornerRadius: m.cornerRadius * scale, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-        )
+        .hudPanel(cornerRadius: m.cornerRadius * scale)
         .fixedSize(horizontal: false, vertical: true)
     }
 
@@ -145,12 +144,12 @@ struct BuildTipsPanel: View {
         let m = metrics
         return VStack(alignment: .leading, spacing: m.partSpacing * scale) {
             Text(build.name)
-                .font(.system(size: max(14, 14 * scale), weight: .semibold))
+                .font(.system(size: type.nameFontSize, weight: .semibold))
                 .lineLimit(1)
                 .truncationMode(.tail)
             if build.source == .overrides {
                 Text("Experimental fit")
-                    .font(.system(size: max(12, 12 * scale)))
+                    .font(.system(size: type.bodyFontSize))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -163,7 +162,7 @@ struct BuildTipsPanel: View {
     private func coreRow(_ label: String, ids: [String], empty: String) -> some View {
         let text = ids.isEmpty ? empty : ids.map(name).joined(separator: ", ")
         return Text("\(Text(label + ": ").foregroundStyle(.secondary))\(text)")
-            .font(.system(size: max(12, 12 * scale)))
+            .font(.system(size: type.bodyFontSize))
             .lineLimit(1)
             .truncationMode(.tail)
     }

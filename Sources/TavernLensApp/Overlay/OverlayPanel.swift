@@ -1,4 +1,5 @@
 import AppKit
+import OverlayLayout
 import SwiftUI
 
 /// The transparent panel laid over Hearthstone's client area.
@@ -33,6 +34,24 @@ final class OverlayHostingView<Content: View>: NSHostingView<Content> {
 }
 
 /// A native behind-window blur for the overlay's panels: dark HUD material, rounded.
+extension View {
+    /// The dark translucent panel look every overlay panel shares: the HUD material with a
+    /// hairline outline. `border` and `borderWidth` override the outline for a panel that flags
+    /// something (the combat odds panel's lethal risk).
+    func hudPanel(cornerRadius: CGFloat, border: Color? = nil, borderWidth: CGFloat? = nil) -> some View {
+        let chrome = LayoutConstants.current.panelChrome
+        return background(HUDMaterial(cornerRadius: cornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(border ?? .white.opacity(chrome.strokeOpacity), lineWidth: borderWidth ?? chrome.strokeWidth)
+            )
+    }
+}
+
+extension Color {
+    init(_ rgb: RGB) { self.init(red: rgb.red, green: rgb.green, blue: rgb.blue) }
+}
+
 struct HUDMaterial: NSViewRepresentable {
     var cornerRadius: CGFloat
 

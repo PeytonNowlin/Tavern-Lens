@@ -29,33 +29,18 @@ public struct AdvisorTypography: Hashable, Sendable {
 
 /// Sizes for the advisor: its ranked list and the rank badges it puts on Hearthstone's cards and buttons.
 public struct AdvisorMetrics: Hashable, Sendable {
-    // The panel, in reference points (multiplied by `panelScale`): a header strip at the bottom
-    // (the top suggestion, or the status, and the collapse toggle) with up to `rows` suggestions
-    // listed above it when expanded. Each row: a rank badge, a title line and a reason line.
-    public var headerFontSize: CGFloat = 14
-    public var titleFontSize: CGFloat = 14
-    public var reasonFontSize: CGFloat = 12.5
-    public var rankFontSize: CGFloat = 12
-    /// The rank badge in the list.
-    public var rankDiameter: CGFloat = 20
-    public var rows = 3
-    /// Between a title and its reason.
-    public var lineSpacing: CGFloat = 1
-    /// Between rows, and between the list and the header.
-    public var rowSpacing: CGFloat = 6
-    /// Between the rank badge and the text.
-    public var badgeSpacing: CGFloat = 7
+    // The panel, in reference points (multiplied by `panelScale`): a summary above a header
+    // strip at the bottom (the Details control and the collapse toggle). The type is
+    // `AdvisorTypography`, already in actual points.
+    /// Between the summary's lines.
+    public var summarySpacing: CGFloat = 5
     public var padding = CGSize(width: 11, height: 8)
     public var cornerRadius: CGFloat = 10
     /// The header strip's height.
     public var headerHeight: CGFloat = 34
-    /// Lines a reason may wrap to before it's cut.
-    public var reasonLines = 2
-    /// Lines the note under the list may wrap to (a status and the stand-in caveat).
-    public var noteLines = 3
     /// The whole panel when expanded, right-aligned with the HUD but wider (it reaches left into
-    /// the free space beside the board, clear of the shop and the minions); the header, `rows`
-    /// rows and a note line must fit (checked in the layout tests).
+    /// the free space beside the board, clear of the shop and the minions); the summary and the
+    /// header must fit (checked in the layout tests).
     public var panelSize = CGSize(width: 250, height: 262)
 
     // In-place highlights, in units of `h` (they sit on Hearthstone's cards, so they scale with the board).
@@ -66,6 +51,11 @@ public struct AdvisorMetrics: Hashable, Sendable {
     /// The rank badge, in the target's top-right corner (clear of a shop card's tier shield, top-left,
     /// and of a build highlight's badge, bottom centre).
     public var badgeDiameter: CGFloat = 0.028
+    /// The "Next" pill: at least this big (in reference points, for 12-point text), as wide as
+    /// `nextBadgeWidthFactor` badges, and `nextBadgeShopClearance` below the opponent hero power.
+    public var nextBadgeMinSize = CGSize(width: 38, height: 22)
+    public var nextBadgeWidthFactor: CGFloat = 1.6
+    public var nextBadgeShopClearance: CGFloat = 2
 
     public init() {}
 }
@@ -163,14 +153,14 @@ extension OverlayLayout {
     public func advisorNextBadge(_ element: AdvisorElement) -> CGRect {
         let ring = advisorRing(element)
         let d = constants.advisor.badgeDiameter * height
-        let width = min(ring.width, max(38, d * 1.6))
-        let height = min(ring.height, max(22, d))
+        let width = min(ring.width, max(constants.advisor.nextBadgeMinSize.width, d * constants.advisor.nextBadgeWidthFactor))
+        let height = min(ring.height, max(constants.advisor.nextBadgeMinSize.height, d))
         let top: CGFloat
         if case .shop = element {
             // The opponent hero power's lower edge reaches into the shop's top strip.
             // Keep every shop pill at the same height and clear of that reserved region,
             // including while the game transitions between recruit and combat.
-            top = min(ring.maxY - height, max(ring.minY, rect(.opponentHeroPower).maxY + 2 * panelScale))
+            top = min(ring.maxY - height, max(ring.minY, rect(.opponentHeroPower).maxY + constants.advisor.nextBadgeShopClearance * panelScale))
         } else {
             top = ring.minY
         }
@@ -182,7 +172,7 @@ extension OverlayLayout {
     /// without the fan's tilt and drop. Only the advisor's badges use it. Estimated: ±0.02 h.
     public func handCard(_ index: Int, of count: Int) -> CGRect {
         let n = max(count, 1)
-        let spacing = min(constants.handCardPitch * height, 0.36 * boardRegion.width / CGFloat(n))
+        let spacing = min(constants.handCardPitch * height, constants.handSpacingBoardShare * boardRegion.width / CGFloat(n))
         let midX = x(kx: constants.handCentreKx) - spacing / 2 * CGFloat(n - 1 - 2 * index)
         let size = CGSize(width: constants.handCardSize.width * height, height: constants.handCardSize.height * height)
         return CGRect(x: midX - size.width / 2, y: constants.handCentreFy * height - size.height / 2,

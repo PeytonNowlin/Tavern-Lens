@@ -42,11 +42,9 @@ struct CombatOddsPanel: View {
         .padding(.horizontal, m.padding.width * s)
         .padding(.vertical, m.padding.height * s)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * s))
-        .overlay(
-            RoundedRectangle(cornerRadius: m.cornerRadius * s, style: .continuous)
-                .strokeBorder(odds.lethalRisk != nil ? .red.opacity(0.7) : .white.opacity(0.12), lineWidth: odds.lethalRisk != nil ? 1 : 0.5)
-        )
+        .hudPanel(cornerRadius: m.cornerRadius * s,
+                  border: odds.lethalRisk != nil ? .red.opacity(0.7) : nil,
+                  borderWidth: odds.lethalRisk != nil ? 1 : nil)
         .help(odds.failure.map { "Combat odds unavailable: \($0)" } ?? "Combat odds from \(odds.odds?.simulations ?? 0) simulations")
     }
 
@@ -55,7 +53,7 @@ struct CombatOddsPanel: View {
             Text(label)
                 .font(.system(size: metrics.labelFontSize * scale, weight: .medium))
                 .foregroundStyle(.secondary)
-            Text(percent.map(Self.percent) ?? "…")
+            Text(percent.map(OverlayText.percent) ?? "…")
                 .font(.system(size: metrics.percentFontSize * scale, weight: .semibold))
                 .foregroundStyle(color)
         }
@@ -64,62 +62,33 @@ struct CombatOddsPanel: View {
 
     @ViewBuilder private var warning: some View {
         let size = metrics.warningFontSize * scale
-        if odds.failure != nil {
+        switch OverlayText.combatWarning(failed: odds.failure != nil, lethalRisk: odds.lethalRisk,
+                                         lethalChance: odds.lethalChance) {
+        case .unavailable:
             Text("Unavailable").font(.system(size: size, weight: .semibold)).foregroundStyle(.orange)
-        } else if let risk = odds.lethalRisk {
-            Label("Lethal \(Self.percent(risk))", systemImage: "exclamationmark.triangle.fill")
+        case .lethalRisk(let text):
+            Label(text, systemImage: "exclamationmark.triangle.fill")
                 .labelStyle(.titleAndIcon)
                 .font(.system(size: size, weight: .semibold))
                 .foregroundStyle(.red)
                 .help("Chance this combat eliminates you")
-        } else if let chance = odds.lethalChance {
-            Text("Lethal \(Self.percent(chance))")
+        case .lethalChance(let text):
+            Text(text)
                 .font(.system(size: size, weight: .semibold))
                 .foregroundStyle(.green)
                 .help("Chance this combat eliminates the opponent")
+        case nil:
+            EmptyView()
         }
     }
 
     private var progressText: String {
-        guard let result = odds.odds else { return odds.failure == nil ? "…" : "" }
-        let count = result.simulations >= 1000
-            ? String(format: "%.1fk", Double(result.simulations) / 1000) : String(result.simulations)
-        return result.isFinal ? count : "\(count)…"
-    }
-
-    /// "74%", "<1%" for a small non-zero chance, ">99%" for a near-certain one.
-    static func percent(_ value: Double) -> String {
-        if value > 0, value < 1 { return "<1%" }
-        if value < 100, value > 99 { return ">99%" }
-        return "\(Int(value.rounded()))%"
+        OverlayText.progress(simulations: odds.odds?.simulations, isFinal: odds.odds?.isFinal == true,
+                             failed: odds.failure != nil)
     }
 
     /// "8.8 (7–13)", or "–" when no simulation ended that way.
     private func damage(_ average: Double?, _ range: CombatOdds.DamageRange?, any: Bool) -> String {
-        guard any, let average else { return "–" }
-        let mean = String(format: "%.1f", average)
-        guard let range else { return mean }
-        return range.min == range.max ? "\(mean) (\(range.min))" : "\(mean) (\(range.min)–\(range.max))"
-    }
-}
-
-/// The win, tie and loss shares as one bar.
-private struct OddsBar: View {
-    var won: Double
-    var tied: Double
-    var lost: Double
-
-    var body: some View {
-        GeometryReader { geometry in
-            let total = max(won + tied + lost, 1)
-            HStack(spacing: 0) {
-                Rectangle().fill(.green.opacity(0.85)).frame(width: geometry.size.width * won / total)
-                Rectangle().fill(.gray.opacity(0.6)).frame(width: geometry.size.width * tied / total)
-                Rectangle().fill(.red.opacity(0.85)).frame(width: geometry.size.width * lost / total)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.white.opacity(0.1))
-            .clipShape(Capsule())
-        }
+        OverlayText.damage(average: average, range: range.map { $0.min...$0.max }, any: any)
     }
 }

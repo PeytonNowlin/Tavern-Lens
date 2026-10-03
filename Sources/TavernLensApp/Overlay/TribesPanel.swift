@@ -31,11 +31,7 @@ struct TribesPanel: View {
         .padding(.horizontal, m.padding.width * scale)
         .padding(.vertical, m.padding.height * scale)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * scale))
-        .overlay(
-            RoundedRectangle(cornerRadius: m.cornerRadius * scale, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-        )
+        .hudPanel(cornerRadius: m.cornerRadius * scale)
         .help(helpText)
     }
 

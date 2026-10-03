@@ -113,7 +113,7 @@ enum AdvisorStyle {
     static func color(_ confidence: AdvisorConfidence) -> Color {
         switch confidence {
         case .high: .green
-        case .medium: Color(red: 0.88, green: 0.75, blue: 0.48)
+        case .medium: Color(OverlayPalette.caution)
         case .low: .secondary
         }
     }
@@ -148,7 +148,7 @@ struct AdvisorPanel: View {
                     summary(showsContext: false, reasonLines: 0)
                 }
                 .padding(.horizontal, metrics.padding.width * scale)
-                .padding(.vertical, 8 * scale)
+                .padding(.vertical, metrics.padding.height * scale)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
                 .allowsHitTesting(false)
                 Divider().overlay(.white.opacity(0.08))
@@ -160,7 +160,7 @@ struct AdvisorPanel: View {
     }
 
     private func summary(showsContext: Bool, reasonLines: Int) -> some View {
-        VStack(alignment: .leading, spacing: 5 * scale) {
+        VStack(alignment: .leading, spacing: metrics.summarySpacing * scale) {
             HStack {
                 Text(presentation.state == .estimated ? "ESTIMATED OPTION"
                     : presentation.primary == nil ? "ADVISOR" : "NEXT ACTION")
@@ -199,7 +199,7 @@ struct AdvisorPanel: View {
             if presentation.primary != nil, let caution = presentation.caveat {
                 Text(caution)
                     .font(.system(size: type.labelFontSize))
-                    .foregroundStyle(Color(red: 0.88, green: 0.75, blue: 0.48))
+                    .foregroundStyle(Color(OverlayPalette.caution))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                     .layoutPriority(1)
@@ -274,13 +274,15 @@ struct AdvisorPanel: View {
 
 struct AdvisorSurface: ViewModifier {
     let radius: CGFloat
+    private let chrome = LayoutConstants.current.panelChrome
+
     func body(content: Content) -> some View {
         content
             .foregroundStyle(.primary)
-            .background(Color(red: 0.10, green: 0.12, blue: 0.13),
+            .background(Color(OverlayPalette.advisorSurface),
                         in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .strokeBorder(.white.opacity(0.14), lineWidth: 0.5))
+                .strokeBorder(.white.opacity(chrome.strokeOpacity), lineWidth: chrome.strokeWidth))
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 }

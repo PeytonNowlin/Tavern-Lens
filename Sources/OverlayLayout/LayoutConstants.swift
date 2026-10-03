@@ -134,6 +134,14 @@ public struct LayoutConstants: Hashable, Sendable {
     public var buildOverlay = BuildOverlayMetrics()
     /// The advisor's ranked list (bottom of the right margin) and its in-place rank badges.
     public var advisor = AdvisorMetrics()
+    /// The outline shared by every panel.
+    public var panelChrome = PanelChromeMetrics()
+    /// The hovered opponent's panel, the next-opponent ring and the minion tiles.
+    public var opponentPanels = OpponentPanelMetrics()
+    /// Where the trinket-pick panel sits relative to the advisor panel.
+    public var trinketPick = TrinketPickMetrics()
+    /// The hand fan's spacing limit, as a share of the board's width per card.
+    public var handSpacingBoardShare: CGFloat = 0.36
     /// The hand fan, from the trackers (research §2b; not re-measured): centre, card size, pitch, in `h`.
     public var handCentreKx: CGFloat = -0.035
     public var handCentreFy: CGFloat = 0.95
