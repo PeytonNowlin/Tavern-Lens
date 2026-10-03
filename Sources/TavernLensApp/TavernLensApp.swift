@@ -73,19 +73,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if CommandLine.arguments.contains("--render-rating-preview") {
-            Self.renderRatingPreview(CommandLine.arguments)
-            return
-        }
-        if CommandLine.arguments.contains("--render-opponent-preview") {
-            Self.renderOpponentPreview(CommandLine.arguments)
-            return
-        }
-        if CommandLine.arguments.contains("--render-advisor-preview") || CommandLine.arguments.contains("--show-advisor-preview") {
-            Self.renderAdvisorPreview(CommandLine.arguments)
-            return
-        }
-        if CommandLine.arguments.contains("--show-settings-preview") {
+        let arguments = CommandLine.arguments
+        switch DebugCommand(arguments) {
+        case .ratingPreview: Self.renderRatingPreview(arguments); return
+        case .opponentPreview: Self.renderOpponentPreview(arguments); return
+        case .advisorPreview: Self.renderAdvisorPreview(arguments); return
+        case .trinketPreview: Self.renderTrinketPreview(arguments); return
+        case .simulatorBenchmark: Self.runSimulatorBenchmark(); return
+        case .settingsPreview:
             // Exercise the real settings and persistence without starting tracking or cleanup.
             NSApp.setActivationPolicy(.regular)
             let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 500, height: 480),
@@ -98,14 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate()
             return
-        }
-        if CommandLine.arguments.contains("--render-trinket-preview") {
-            Self.renderTrinketPreview(CommandLine.arguments)
-            return
-        }
-        if CommandLine.arguments.contains("--simulator-benchmark") {
-            Self.runSimulatorBenchmark()
-            return
+        case nil: break
         }
         // Menu-bar only. The bundle's Info.plist sets LSUIElement too; this also
         // covers running the bare executable with `swift run`.
