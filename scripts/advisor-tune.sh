@@ -33,7 +33,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-abs() { (cd "$(dirname "$1")" && echo "$(pwd)/$(basename "$1")"); }
+abs() { mkdir -p "$(dirname "$1")" && (cd "$(dirname "$1")" && echo "$(pwd)/$(basename "$1")"); }
 export TAVERN_ADVISOR_WEIGHTS="$(abs "$WEIGHTS")"
 export TAVERN_ADVISOR_BOOKMARKS="$BOOKMARKS"
 if [[ -n "$OUT" ]]; then

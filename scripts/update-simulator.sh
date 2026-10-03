@@ -34,6 +34,13 @@ here, on a deliberate update, never by the app.
 EOF
 }
 
+require_value() {
+    if [[ $# -lt 2 || -z "$2" || "$2" == --* ]]; then
+        echo "Missing value for $1" >&2
+        exit 2
+    fi
+}
+
 VERSION=""
 REBUILD=0
 REFERENCE=""
@@ -42,8 +49,8 @@ KEEP_CARDS=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --rebuild) REBUILD=1 ;;
-        --reference-data) REFERENCE="$2"; shift ;;
-        --cards) CARDS_FILE="$2"; shift ;;
+        --reference-data) require_value "$@"; REFERENCE="$2"; shift ;;
+        --cards) require_value "$@"; CARDS_FILE="$2"; shift ;;
         --keep-cards) KEEP_CARDS=1 ;;
         -h|--help) usage; exit 0 ;;
         -*) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
@@ -59,16 +66,24 @@ PINNED=(
 )
 BACKUP="$(mktemp -d)"
 trap 'rm -rf "$BACKUP"' EXIT
+# Remember exactly which pinned files existed, so a restore can also delete the ones a failed
+# run created (e.g. a new bgs-simulator.pin.json).
 for file in "${PINNED[@]}"; do
-    [[ -f "$file" ]] && cp "$file" "$BACKUP/$(basename "$file")"
+    if [[ -f "$file" ]]; then cp "$file" "$BACKUP/$(basename "$file")"; fi
 done
 
 restore() {
     echo "==> Restoring the previous pin, bundle and card data" >&2
     for file in "${PINNED[@]}"; do
-        if [[ -f "$BACKUP/$(basename "$file")" ]]; then cp "$BACKUP/$(basename "$file")" "$file"; fi
+        if [[ -f "$BACKUP/$(basename "$file")" ]]; then
+            cp "$BACKUP/$(basename "$file")" "$file"
+        else
+            rm -f "$file"
+        fi
     done
-    npm ci --prefix "$TOOLS" --no-audit --no-fund >/dev/null 2>&1 || true
+    if ! npm ci --prefix "$TOOLS" --no-audit --no-fund >/dev/null; then
+        echo "warning: npm ci failed while restoring; Tools/Simulator/node_modules may not match the restored pin" >&2
+    fi
 }
 fail() {
     echo "error: $1" >&2
