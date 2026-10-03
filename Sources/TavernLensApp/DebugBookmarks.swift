@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import BookmarkTooling
 import Observation
 import SwiftUI
 import TavernEngine
