@@ -26,7 +26,7 @@ public struct PowerLogGameSlice: Hashable, Sendable {
 public enum PowerLogGames {
     /// Every game in the file at `url`, in order; empty when it has none or can't be read.
     public static func slices(in url: URL) -> [PowerLogGameSlice] {
-        guard let data = try? Data(contentsOf: url, options: .alwaysMapped) else { return [] }
+        guard let data = try? LogBytes.read(url) else { return [] }
         return slices(in: data)
     }
 
@@ -50,22 +50,12 @@ public enum PowerLogGames {
             var line = 1
             var counted = 0
             for (index, block) in blocks.enumerated() {
-                line += newlines(in: base, from: counted, to: block.start)
+                line += LogBytes.newlines(in: base, from: counted, to: block.start)
                 counted = block.start
                 let end = index + 1 < blocks.count ? blocks[index + 1].start : raw.count
                 result.append(PowerLogGameSlice(byteRange: block.start..<end, line: line, gameSeed: block.seed))
             }
             return result
         }
-    }
-
-    private static func newlines(in base: UnsafeRawPointer, from start: Int, to end: Int) -> Int {
-        var lines = 0
-        var offset = start
-        while offset < end, let hit = memchr(base + offset, Int32(UInt8(ascii: "\n")), end - offset) {
-            lines += 1
-            offset = base.distance(to: UnsafeRawPointer(hit)) + 1
-        }
-        return lines
     }
 }

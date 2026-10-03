@@ -2,13 +2,13 @@ import Darwin
 import Foundation
 
 /// Byte offsets of lines in a log file, found by counting newlines in the raw bytes
-/// (memory-mapped), so locating a line in a large log takes milliseconds.
+/// (read through a file handle, never memory-mapped: the live file can shrink).
 public enum LogLineOffsets {
     /// The byte offset just past line `line` (after its `\n`), counting from a known line
     /// start: `startLine` begins at `startOffset`. Returns the file's length when the line
     /// is its unterminated last one, and nil when the file is shorter or can't be read.
     public static func end(ofLine line: Int, in url: URL, startLine: Int = 1, startOffset: UInt64 = 0) -> UInt64? {
-        guard line >= startLine, let data = try? Data(contentsOf: url, options: .alwaysMapped) else { return nil }
+        guard line >= startLine, let data = try? LogBytes.read(url) else { return nil }
         return end(ofLine: line, in: data, startLine: startLine, startOffset: startOffset)
     }
 
