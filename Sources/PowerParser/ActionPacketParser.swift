@@ -10,6 +10,11 @@ struct ActionPacketParser: Sendable {
     private static let optionsMethod: Substring = "GameState.DebugPrintOptions"
     private static let choicesMethod: Substring = "GameState.SendChoices"
 
+    /// Bounds on what one packet may hold, so a corrupt log can't grow state without limit.
+    static let maxChosenEntities = 64
+    static let maxOptions = 128
+    static let maxDetailRows = 4096
+
     mutating func feed(_ line: LogLine, lineNumber: Int?, emit: (PowerEvent) -> Void) {
         let s = line.payload.trimmingSpaces()
         if pendingOptions != nil, line.method != Self.optionsMethod || s.hasASCIIPrefix("id=") {
@@ -47,12 +52,13 @@ struct ActionPacketParser: Sendable {
                     pendingChoices = SentChoices(timestamp: String(line.timestamp), position: position,
                                                  id: id, choiceType: String(type))
                 }
-            } else if s.hasASCIIPrefix("m_chosenEntities["), pendingChoices != nil {
-                guard pendingChoices!.chosen.count < 64,
+            } else if s.hasASCIIPrefix("m_chosenEntities["), var choices = pendingChoices {
+                guard choices.chosen.count < Self.maxChosenEntities,
                       let equals = s.firstRange(of: "]="), let entity = Self.entity(s[equals.upperBound...]) else {
                     pendingChoices?.isComplete = false; return
                 }
-                pendingChoices?.chosen.append(entity)
+                choices.chosen.append(entity)
+                pendingChoices = choices
             }
         default: break
         }
@@ -77,10 +83,10 @@ struct ActionPacketParser: Sendable {
     }
 
     private mutating func appendOptionRow(_ s: Substring) {
-        guard pendingOptions != nil else { return }
+        guard var packet = pendingOptions else { return }
         if s.hasASCIIPrefix("option ") {
             currentOption = nil; currentSubOption = nil; canAppendTargets = false
-            guard pendingOptions!.options.count < 128,
+            guard packet.options.count < Self.maxOptions,
                   let index = Self.rowIndex(s), let type = Self.field(s, "type="),
                   let body = Self.entityBody(s, key: " mainEntity="),
                   body.isEmpty || Self.entity(body) != nil else {
@@ -88,29 +94,32 @@ struct ActionPacketParser: Sendable {
             }
             let row = PowerOption(index: index, type: String(type), mainEntity: Self.entity(body),
                                   error: Self.error(s), errorParam: Self.errorParam(s))
-            pendingOptions?.options.append(row)
-            currentOption = pendingOptions!.options.count - 1
+            packet.options.append(row)
+            pendingOptions = packet
+            currentOption = packet.options.count - 1
             canAppendTargets = true
         } else if s.hasASCIIPrefix("subOption ") {
             currentSubOption = nil; canAppendTargets = false
-            guard let option = currentOption, detailRows < 4096, let index = Self.rowIndex(s),
+            guard let option = currentOption, detailRows < Self.maxDetailRows, let index = Self.rowIndex(s),
                   let body = Self.entityBody(s, key: " entity="), let entity = Self.entity(body) else {
                 pendingOptions?.isComplete = false; return
             }
             detailRows += 1
-            pendingOptions?.options[option].subOptions.append(PowerSubOption(index: index, entity: entity,
+            packet.options[option].subOptions.append(PowerSubOption(index: index, entity: entity,
                 error: Self.error(s), errorParam: Self.errorParam(s)))
-            currentSubOption = pendingOptions!.options[option].subOptions.count - 1
+            pendingOptions = packet
+            currentSubOption = packet.options[option].subOptions.count - 1
             canAppendTargets = true
         } else if s.hasASCIIPrefix("target ") {
-            guard canAppendTargets, let option = currentOption, detailRows < 4096, let index = Self.rowIndex(s),
+            guard canAppendTargets, let option = currentOption, detailRows < Self.maxDetailRows, let index = Self.rowIndex(s),
                   let body = Self.entityBody(s, key: " entity="), let entity = Self.entity(body) else {
                 pendingOptions?.isComplete = false; return
             }
             detailRows += 1
             let target = PowerOptionTarget(index: index, entity: entity, error: Self.error(s), errorParam: Self.errorParam(s))
-            if let sub = currentSubOption { pendingOptions?.options[option].subOptions[sub].targets.append(target) }
-            else { pendingOptions?.options[option].targets.append(target) }
+            if let sub = currentSubOption { packet.options[option].subOptions[sub].targets.append(target) }
+            else { packet.options[option].targets.append(target) }
+            pendingOptions = packet
         } else {
             pendingOptions?.isComplete = false
         }
@@ -136,9 +145,9 @@ struct ActionPacketParser: Sendable {
     }
 
     private static func intField(_ s: Substring, _ key: StaticString) -> Int? { field(s, key).flatMap { Int($0) } }
+    /// Unlike the Power-line helper, an empty value is kept (`ChoiceType=` with nothing after it).
     private static func field(_ s: Substring, _ key: StaticString) -> Substring? {
-        guard let range = s.firstRange(of: key) else { return nil }
-        return s[range.upperBound...].prefix { $0 != " " }
+        s.fieldValue(after: key, allowEmpty: true)
     }
     private static func error(_ s: Substring) -> String? {
         guard let range = s.lastRange(of: " error=") else { return nil }

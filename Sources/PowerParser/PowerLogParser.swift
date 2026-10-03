@@ -172,17 +172,12 @@ public struct PowerLogParser: Sendable {
 
     /// The integer after `key` (up to the next space).
     private static func intField(_ s: Substring, _ key: StaticString) -> Int? {
-        field(s, key).flatMap { Int($0) }
+        s.fieldValue(after: key, allowEmpty: false).flatMap { Int($0) }
     }
 
-    /// The value after `key` up to the next space: `key` starts `s` or occurs in it.
+    /// The value after `key` up to the next space; nil when `key` is absent or the value empty.
     private static func field(_ s: Substring, _ key: StaticString) -> Substring? {
-        let range: Range<Substring.Index>? = s.hasASCIIPrefix(key)
-            ? s.startIndex..<s.utf8.index(s.startIndex, offsetBy: key.utf8CodeUnitCount)
-            : s.firstRange(of: key)
-        guard let range else { return nil }
-        let value = s[range.upperBound...].prefix { $0 != " " }
-        return value.isEmpty ? nil : value
+        s.fieldValue(after: key, allowEmpty: false)
     }
 
     // MARK: - Power payloads
@@ -199,55 +194,89 @@ public struct PowerLogParser: Sendable {
         }
         flushHeader(emit: emit)
 
-        if s.hasASCIIPrefix("TAG_CHANGE Entity=") {
-            var body = s.dropFirst("TAG_CHANGE Entity=".count)
-            if body.hasASCIISuffix(" DEF CHANGE") { body = body.dropLast(" DEF CHANGE".count).trimmingSpaces() }
-            guard let (ref, tag, value) = refTagValue(body) else { return malformed() }
-            emit(.tagChange(ref, TagAssignment(tag: GameTag(token: tag), value: TagValue(token: value))))
-        } else if s.hasASCIIPrefix("FULL_ENTITY - Updating ") {
-            guard let (ref, card) = refAndCard(s.dropFirst("FULL_ENTITY - Updating ".count)) else { return malformed() }
-            open(.full(ref, cardID: card))
-        } else if s.hasASCIIPrefix("FULL_ENTITY - Creating ID=") {
-            let body = s.dropFirst("FULL_ENTITY - Creating ID=".count)
-            guard let split = body.firstRange(of: " CardID="), let id = Int(body[..<split.lowerBound]) else {
-                return malformed()
-            }
-            open(.full(.id(id), cardID: String(body[split.upperBound...])))
-        } else if s.hasASCIIPrefix("SHOW_ENTITY - Updating Entity=") {
-            guard let (ref, card) = refAndCard(s.dropFirst("SHOW_ENTITY - Updating Entity=".count)) else {
-                return malformed()
-            }
-            open(.show(ref, cardID: card))
-        } else if s.hasASCIIPrefix("CHANGE_ENTITY - Updating Entity=") {
-            guard let (ref, card) = refAndCard(s.dropFirst("CHANGE_ENTITY - Updating Entity=".count)) else {
-                return malformed()
-            }
-            open(.change(ref, cardID: card))
-        } else if s.hasASCIIPrefix("HIDE_ENTITY - Entity=") {
-            guard let (ref, _, _) = refTagValue(s.dropFirst("HIDE_ENTITY - Entity=".count)) else { return malformed() }
-            emit(.hideEntity(ref))
-        } else if s.hasASCIIPrefix("BLOCK_START BlockType=") {
-            let body = s.dropFirst("BLOCK_START BlockType=".count)
-            let type = body.prefix { $0 != " " }
-            var ref: EntityRef?
-            if let entityStart = body.firstRange(of: " Entity=") {
-                let rest = body[entityStart.upperBound...]
-                let refText = rest.firstRange(of: " EffectCardId=").map { rest[..<$0.lowerBound] } ?? rest
-                ref = entityRef(refText)
-            }
-            emit(.blockStart(type: String(type), entity: ref))
-        } else if s == "BLOCK_END" {
+        if s == "BLOCK_END" {
             emit(.blockEnd)
         } else if s == "CREATE_GAME" {
             emit(.createGame)
-        } else if s.hasASCIIPrefix("GameEntity EntityID=") {
-            guard let id = Int(s.dropFirst("GameEntity EntityID=".count)) else { return malformed() }
-            open(.gameEntity(id: id))
-        } else if s.hasASCIIPrefix("Player EntityID=") {
-            guard let player = Self.playerHeader(s) else { return malformed() }
-            open(player)
+        } else if let row = Self.powerRows.first(where: { s.hasASCIIPrefix($0.prefix) }) {
+            let body = s.dropFirst(row.prefix.utf8CodeUnitCount)
+            if !row.parse(&self, body, s, emit) { malformed() }
         }
         // Everything else (META_DATA, SUB_SPELL_*, Info[n], Source, Targets, …) is ignored for now.
+    }
+
+    /// One recognised power line: its prefix and the helper that reads the rest.
+    /// A helper returns false when the line's shape is wrong, which counts as malformed.
+    private struct PowerRow: Sendable {
+        let prefix: StaticString
+        /// `(parser, text after the prefix, the whole trimmed line, emit)`.
+        let parse: @Sendable (inout PowerLogParser, Substring, Substring, (PowerEvent) -> Void) -> Bool
+    }
+
+    private static let powerRows: [PowerRow] = [
+        PowerRow(prefix: "TAG_CHANGE Entity=") { $0.parseTagChange($1, $3) },
+        PowerRow(prefix: "FULL_ENTITY - Updating ") { p, body, _, _ in
+            guard let (ref, card) = p.refAndCard(body) else { return false }
+            p.open(.full(ref, cardID: card))
+            return true
+        },
+        PowerRow(prefix: "FULL_ENTITY - Creating ID=") { p, body, _, _ in
+            guard let split = body.firstRange(of: " CardID="), let id = Int(body[..<split.lowerBound]) else {
+                return false
+            }
+            p.open(.full(.id(id), cardID: String(body[split.upperBound...])))
+            return true
+        },
+        PowerRow(prefix: "SHOW_ENTITY - Updating Entity=") { p, body, _, _ in
+            guard let (ref, card) = p.refAndCard(body) else { return false }
+            p.open(.show(ref, cardID: card))
+            return true
+        },
+        PowerRow(prefix: "CHANGE_ENTITY - Updating Entity=") { p, body, _, _ in
+            guard let (ref, card) = p.refAndCard(body) else { return false }
+            p.open(.change(ref, cardID: card))
+            return true
+        },
+        PowerRow(prefix: "HIDE_ENTITY - Entity=") { p, body, _, emit in
+            guard let (ref, _, _) = p.refTagValue(body) else { return false }
+            emit(.hideEntity(ref))
+            return true
+        },
+        PowerRow(prefix: "BLOCK_START BlockType=") { p, body, _, emit in
+            p.parseBlockStart(body, emit: emit)
+            return true
+        },
+        PowerRow(prefix: "GameEntity EntityID=") { p, body, _, _ in
+            guard let id = Int(body) else { return false }
+            p.open(.gameEntity(id: id))
+            return true
+        },
+        PowerRow(prefix: "Player EntityID=") { p, _, s, _ in
+            guard let player = Self.playerHeader(s) else { return false }
+            p.open(player)
+            return true
+        },
+    ]
+
+    /// `TAG_CHANGE Entity=<ref> tag=<T> value=<V>`, optionally ending ` DEF CHANGE`.
+    private mutating func parseTagChange(_ rest: Substring, _ emit: (PowerEvent) -> Void) -> Bool {
+        var body = rest
+        if body.hasASCIISuffix(" DEF CHANGE") { body = body.dropLast(" DEF CHANGE".count).trimmingSpaces() }
+        guard let (ref, tag, value) = refTagValue(body) else { return false }
+        emit(.tagChange(ref, TagAssignment(tag: GameTag(token: tag), value: TagValue(token: value))))
+        return true
+    }
+
+    /// `BLOCK_START BlockType=<T> Entity=<ref> EffectCardId=…`; the entity is optional.
+    private mutating func parseBlockStart(_ body: Substring, emit: (PowerEvent) -> Void) {
+        let type = body.prefix { $0 != " " }
+        var ref: EntityRef?
+        if let entityStart = body.firstRange(of: " Entity=") {
+            let rest = body[entityStart.upperBound...]
+            let refText = rest.firstRange(of: " EffectCardId=").map { rest[..<$0.lowerBound] } ?? rest
+            ref = entityRef(refText)
+        }
+        emit(.blockStart(type: String(type), entity: ref))
     }
 
     private mutating func open(_ newHeader: Header) {
@@ -425,6 +454,14 @@ extension Substring {
             if b == pattern.endIndex { return cursor..<a }
         }
         return nil
+    }
+
+    /// The value after the first occurrence of `key` up to the next space. An empty value
+    /// is returned as-is unless `allowEmpty` is false, in which case it is nil.
+    func fieldValue(after key: StaticString, allowEmpty: Bool) -> Substring? {
+        guard let range = firstRange(of: key) else { return nil }
+        let value = self[range.upperBound...].prefix { $0 != " " }
+        return value.isEmpty && !allowEmpty ? nil : value
     }
 
     func hasASCIISuffix(_ suffix: StaticString) -> Bool {
