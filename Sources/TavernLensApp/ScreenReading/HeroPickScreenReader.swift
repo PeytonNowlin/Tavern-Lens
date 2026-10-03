@@ -66,8 +66,8 @@ final class HeroPickScreenReader {
     @ObservationIgnored private var inHeroPick = false
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var lastFailure: String?
-    /// This game's board check has started (it runs once, at the first recruit phase seen).
-    @ObservationIgnored private var boardCheckStarted = false
+    /// This game's board check (it runs once, at the first recruit phase seen).
+    @ObservationIgnored private var boardGate = BoardCheckGate()
     @ObservationIgnored private var boardTask: Task<Void, Never>?
 
     init(live: LiveTrackingModel, overlay: OverlayController) {
@@ -151,7 +151,7 @@ final class HeroPickScreenReader {
     private func stateChanged() {
         if live.update.state.status != .inGame {
             resetBoardCheck()  // between games: the next one gets its own check
-        } else if isRecruit, !boardCheckStarted {
+        } else if isRecruit, !boardGate.isStarted {
             beginBoardCheck()
         }
         let heroPick = isHeroPick
@@ -259,24 +259,23 @@ final class HeroPickScreenReader {
     private func resetBoardCheck() {
         boardTask?.cancel()
         boardTask = nil
-        boardCheckStarted = false
+        boardGate.reset()
         boardAlignment = nil
         updateOverlayWarning()
     }
 
     /// Stops the running check but leaves this game's alignment result alone. The check is
-    /// no longer "started", so turning the reader back on during recruit starts it again.
+    /// no longer started, so turning the reader back on during recruit starts it again.
     private func stopBoardCheck() {
         boardTask?.cancel()
         boardTask = nil
-        boardCheckStarted = false
+        boardGate.stop()
     }
 
     /// Once per game, at the first recruit phase: a few tries until an anchor is found.
     private func beginBoardCheck() {
         refreshPermission()
-        guard isEnabled, permissionGranted else { return }
-        boardCheckStarted = true
+        guard boardGate.begin(isEnabled: isEnabled, permissionGranted: permissionGranted) else { return }
         boardTask?.cancel()
         boardTask = Task { [weak self] in
             for attempt in 0..<Self.boardMaxAttempts {
