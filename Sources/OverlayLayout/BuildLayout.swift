@@ -9,22 +9,28 @@ public struct BuildOverlayMetrics: Hashable, Sendable {
     /// The "Core" / "Add-on" badge, centred on the cell's bottom edge.
     public var badgeSize = CGSize(width: 0.066, height: 0.021)
 
-    // The tips panel, in reference points (multiplied by `panelScale`). Up to `cards` build
-    // cards stacked, each: the build's name and grade, its core cards, when to commit, a tip.
-    public var titleFontSize: CGFloat = 10
-    public var bodyFontSize: CGFloat = 9.5
-    /// Lines each part may wrap to before it's cut.
-    public var coreLines = 2
-    public var commitLines = 2
-    public var tipLines = 3
+    /// The "Core fit" / "Fits" badge is never smaller than this (in points) or its text smaller
+    /// than `badgeMinFontSize`; the text is `badgeFontShare` of the badge's height.
+    public var badgeMinSize = CGSize(width: 58, height: 18)
+    public var badgeMinFontSize: CGFloat = 12
+    public var badgeFontShare: CGFloat = 0.62
+    /// The ring is drawn this much thinner than `highlightLineWidth`, at this opacity, dashed in
+    /// `highlightDash` (in units of `h`) for an add-on.
+    public var highlightLineShare: CGFloat = 0.65
+    public var highlightOpacity: Double = 0.55
+    public var highlightDash: [CGFloat] = [0.012, 0.006]
+
+    // The tips panel, in reference points (multiplied by `panelScale`); its type is
+    // `BuildTipsTypography`. A "Current fit" header, then one build card (two in the comfortable
+    // density, when they fit): the build's name, an optional "Experimental fit" line, and its
+    // owned and missing core cards.
     /// Between a card's parts.
     public var partSpacing: CGFloat = 3
     /// Between two build cards.
     public var cardSpacing: CGFloat = 7
-    public var cards = 2
     public var padding = CGSize(width: 9, height: 7)
     public var cornerRadius: CGFloat = 10
-    /// The panel's height (its width is the HUD's); `cards` full cards must fit it (checked in the layout tests).
+    /// The panel's height (its width is the HUD's); a full card must fit it (checked in the layout tests).
     public var tipsPanelHeight: CGFloat = 250
 
     public init() {}

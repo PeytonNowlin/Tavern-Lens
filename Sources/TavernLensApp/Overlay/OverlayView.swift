@@ -165,10 +165,12 @@ struct OverlayRootView: View {
                     )
                 }
                 if let pick = model.game?.trinketPick, model.view.status == .inGame {
+                    let trinket = layout.constants.trinketPick
+                    let width = max(layout.advisorPanel.width, trinket.minWidth * layout.panelScale)
                     TrinketPickPanel(pick: pick, scale: layout.panelScale)
-                        .frame(width: max(layout.advisorPanel.width, 360 * layout.panelScale))
-                        .offset(x: max(0, layout.advisorPanel.maxX - max(layout.advisorPanel.width, 360 * layout.panelScale)),
-                                y: max(0, layout.advisorPanel.minY - 130 * layout.panelScale))
+                        .frame(width: width)
+                        .offset(x: max(0, layout.advisorPanel.maxX - width),
+                                y: max(0, layout.advisorPanel.minY - trinket.rise * layout.panelScale))
                         .allowsHitTesting(false)
                 }
                 if model.preferences.showsOpponentScouting, let game = model.leaderboardGame {
@@ -242,11 +244,7 @@ struct StatusHUD: View {
         .padding(.horizontal, m.padding.width * scale)
         .padding(.vertical, m.padding.height * scale)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * scale))
-        .overlay(
-            RoundedRectangle(cornerRadius: m.cornerRadius * scale, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
-        )
+        .hudPanel(cornerRadius: m.cornerRadius * scale)
     }
 
     private var turnText: String { game.bgTurn > 0 ? "Turn \(game.bgTurn)" : "Hero pick" }
@@ -305,12 +303,12 @@ struct LayoutGuides: View {
                 stroke(layout.leaderboardArt(i), .cyan, dash: true)
                 stroke(layout.leaderboardHitRect(i), .mint.opacity(0.6))
             }
-            for k in 0..<7 {
-                stroke(layout.boardSlot(.top, index: k, of: 7), .orange)
-                stroke(layout.boardSlot(.player, index: k, of: 7), .green)
+            for k in 0..<LayoutCounts.boardMinions {
+                stroke(layout.boardSlot(.top, index: k, of: LayoutCounts.boardMinions), .orange)
+                stroke(layout.boardSlot(.player, index: k, of: LayoutCounts.boardMinions), .green)
             }
             for element in HSElement.allCases { stroke(layout.rect(element), .pink) }
-            for i in 0..<10 { stroke(layout.goldCoin(i), .yellow) }
+            for i in 0..<LayoutCounts.goldCoins { stroke(layout.goldCoin(i), .yellow) }
             stroke(layout.hud, .white)
             stroke(layout.nextOpponentPreview, .white, dash: true)
             stroke(layout.nextOpponentOdds, .green.opacity(0.6), dash: true)
@@ -318,14 +316,14 @@ struct LayoutGuides: View {
             stroke(layout.opponentPanel, .white, dash: true)
             stroke(layout.tribesPanel, .white, dash: true)
             stroke(layout.heroPickCapture, .purple)
-            for i in 0..<4 {
-                stroke(layout.heroPickPortrait(i, of: 4), .purple, dash: true)
-                stroke(layout.heroPickPlate(i, of: 4), .purple)
+            for i in 0..<LayoutCounts.heroChoices {
+                stroke(layout.heroPickPortrait(i, of: LayoutCounts.heroChoices), .purple, dash: true)
+                stroke(layout.heroPickPlate(i, of: LayoutCounts.heroChoices), .purple)
             }
             stroke(layout.buildTipsPanel, .white, dash: true)
             stroke(layout.advisorPanel, .blue.opacity(0.7), dash: true)
             stroke(layout.advisorHeader, .blue.opacity(0.7))
-            for k in 0..<7 { stroke(layout.advisorBadge(.shop(index: k, count: 7)), .blue.opacity(0.7)) }
+            for k in 0..<LayoutCounts.boardMinions { stroke(layout.advisorBadge(.shop(index: k, count: LayoutCounts.boardMinions)), .blue.opacity(0.7)) }
             for button in [OverlayLayout.AdvisorElement.levelButton, .rollButton, .freezeButton] {
                 stroke(layout.advisorBadge(button), .blue.opacity(0.7))
             }

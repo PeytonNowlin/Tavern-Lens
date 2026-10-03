@@ -104,11 +104,7 @@ struct HeroPickPlate: View {
         .padding(.horizontal, m.padding.width * scale)
         .padding(.vertical, m.padding.height * scale)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * scale))
-        .overlay(
-            RoundedRectangle(cornerRadius: m.cornerRadius * scale, style: .continuous)
-                .strokeBorder(.white.opacity(0.14), lineWidth: 0.5)
-        )
+        .hudPanel(cornerRadius: m.cornerRadius * scale)
         .opacity(offer.isLocked ? 0.6 : 1)
     }
 
@@ -184,11 +180,7 @@ struct PlacementChart: View {
         .padding(.horizontal, m.padding.width * s)
         .padding(.vertical, m.padding.height * s)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(HUDMaterial(cornerRadius: m.cornerRadius * s))
-        .overlay(
-            RoundedRectangle(cornerRadius: m.cornerRadius * s, style: .continuous)
-                .strokeBorder(.white.opacity(0.14), lineWidth: 0.5)
-        )
+        .hudPanel(cornerRadius: m.cornerRadius * s)
     }
 
     /// Games, window and the tribe adjustment, e.g. "1,464 games · 3 days · tribes −0.18".

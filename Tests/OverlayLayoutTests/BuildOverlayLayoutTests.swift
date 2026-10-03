@@ -60,27 +60,39 @@ struct BuildOverlayLayoutTests {
         for i in 0..<8 { #expect(!panel.intersects(l.leaderboardHitRect(i, isNextOpponent: true))) }
     }
 
-    /// The panel's height for `cards` full build cards: a title line, then the core, commit and
-    /// tip lines; between two cards a 1 pt divider with the card spacing on each side.
-    static func contentHeight(_ m: BuildOverlayMetrics, scale s: CGFloat) -> CGFloat {
-        let title = HUDFitTests.lineHeight(m.titleFontSize * s, .semibold)
-        let body = HUDFitTests.lineHeight(m.bodyFontSize * s, .regular)
-        let card = title + CGFloat(m.coreLines + m.commitLines + m.tipLines) * body + 3 * m.partSpacing * s
-        return CGFloat(m.cards) * card + CGFloat(m.cards - 1) * (2 * m.cardSpacing * s + 1) + 2 * m.padding.height * s
+    /// `BuildTipsPanel`'s height for `cards` full build cards, laid out as the view does: a
+    /// "Current fit" header, then per card the name, an "Experimental fit" line and the owned and
+    /// missing core rows; between two cards a 1 pt divider, the card spacing on each side.
+    static func contentHeight(cards: Int, _ m: BuildOverlayMetrics, scale s: CGFloat) -> CGFloat {
+        let type = BuildTipsTypography(panelScale: s)
+        let header = HUDFitTests.lineHeight(type.headerFontSize, .semibold)
+        let name = HUDFitTests.lineHeight(type.nameFontSize, .semibold)
+        let body = HUDFitTests.lineHeight(type.bodyFontSize, .regular)
+        let card = name + 3 * body + 3 * m.partSpacing * s
+        let spacing = m.cardSpacing * s
+        let dividers = CGFloat(cards - 1) * (2 * spacing + 1)
+        return header + spacing + CGFloat(cards) * card + dividers + 2 * m.padding.height * s
     }
 
-    @Test("Two full build cards fit the tips panel, at every reference frame and at the scale limits")
+    @Test("The tips panel's real type is at least its readable minimum, at every scale")
+    func tipsTypography() {
+        for scale in [0.8, 1.0, 1.3, 2.0] as [CGFloat] {
+            let type = BuildTipsTypography(panelScale: scale)
+            #expect(type.headerFontSize >= 12 && type.bodyFontSize >= 12 && type.nameFontSize >= 14)
+        }
+    }
+
+    @Test("One full build card fits the tips panel, at every reference frame and at the scale limits")
     func tipsFit() {
         let layouts = ReferenceFrame.all.map(\.layout) + [600.0, 3000.0].map {
             OverlayLayout(contentSize: CGSize(width: $0 * 16 / 9, height: $0))!
         }
         for l in layouts {
-            let needed = Self.contentHeight(l.constants.buildOverlay, scale: l.panelScale)
+            // The view shows two cards only when they fit; one must always fit.
+            let needed = Self.contentHeight(cards: 1, l.constants.buildOverlay, scale: l.panelScale)
             #expect(needed <= l.buildTipsPanel.height, "needs \(needed) pt tall, has \(l.buildTipsPanel.height)")
-            // The longest build name fits one line.
-            let m = l.constants.buildOverlay
-            let name = HUDFitTests.text("Aberration Tavern Spells", m.titleFontSize * l.panelScale, .semibold)
-            #expect(name + 2 * m.padding.width * l.panelScale <= l.buildTipsPanel.width + 0.5)
+            // The build name is one line, tail-truncated: at the real 14-point minimum a long
+            // name such as "Aberration Tavern Spells" no longer fits the panel's width, by design.
         }
     }
 }
