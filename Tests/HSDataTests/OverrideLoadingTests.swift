@@ -18,6 +18,7 @@ import Testing
         let report = PoolOverrides.loadReport(directory: dir)
         #expect(report.loaded.map(\.patch) == ["1.0"])
         #expect(report.skipped.map(\.file) == ["b.json"])
+        #expect(report.skipped.first?.error.contains("dataCorrupted") == true)
         #expect(PoolOverrides.load(directory: dir).count == 1)
     }
 
@@ -30,5 +31,19 @@ import Testing
         let report = BuildOverrides.loadReport(directory: dir)
         #expect(report.loaded.map(\.patch) == ["1.0"])
         #expect(report.skipped.map(\.file) == ["b.json"])
+        #expect(report.skipped.first?.error.contains("keyNotFound") == true)
+    }
+
+    @Test func missingDirectoryIsEmptyButUnlistableDirectoryIsReported() throws {
+        let dir = try makeDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let missing = dir.appending(path: "nope", directoryHint: .isDirectory)
+        #expect(PoolOverrides.loadReport(directory: missing).skipped.isEmpty)
+        #expect(BuildOverrides.loadReport(directory: missing).skipped.isEmpty)
+
+        let notADirectory = dir.appending(path: "file.json")
+        try Data("x".utf8).write(to: notADirectory)
+        #expect(PoolOverrides.loadReport(directory: notADirectory).skipped.map(\.file) == ["file.json"])
+        #expect(BuildOverrides.loadReport(directory: notADirectory).skipped.map(\.file) == ["file.json"])
     }
 }

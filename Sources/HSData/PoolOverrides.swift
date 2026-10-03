@@ -14,8 +14,17 @@ public struct OverrideLoad<Value: Sendable>: Sendable {
     /// Decodes every `*.json` file in `directory` in file-name order, logging each one it skips.
     static func load(directory: URL, decode: (Data) throws -> Value) -> OverrideLoad {
         let log = Logger(subsystem: "TavernLens", category: "overrides")
-        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
         var result = OverrideLoad(loaded: [], skipped: [])
+        let files: [URL]
+        do {
+            files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+        } catch let error as CocoaError where error.code == .fileNoSuchFile || error.code == .fileReadNoSuchFile {
+            return result  // the override directory is optional
+        } catch {
+            log.error("Cannot list override directory \(directory.path, privacy: .public): \(String(describing: error), privacy: .public)")
+            result.skipped.append(.init(file: directory.lastPathComponent, error: String(describing: error)))
+            return result
+        }
         for file in files.filter({ $0.pathExtension == "json" }).sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) {
             do {
                 result.loaded.append(try decode(Data(contentsOf: file)))
